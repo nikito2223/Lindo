@@ -1,0 +1,240 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{2148c6ba-fbcc-415a-b695-be6f3c38e776}</ProjectGuid>
+    <RootNamespace>Lindo</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>D:\Users\Никита\source\repos\Lindo\Lindo\lib;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>D:\Users\Никита\source\repos\Lindo\Lindo\include;$(ExternalIncludePath)</ExternalIncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>D:\Users\Никита\source\repos\Lindo\Lindo\lib;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>D:\Users\Никита\source\repos\Lindo\Lindo\include;$(ExternalIncludePath)</ExternalIncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>ENCRYPT_TOOL</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>ENCRYPT_TOOL</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>ENCRYPT_TOOL</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>D:\Users\Никита\source\repos\Lindo\Lindo\src;D:\Users\Никита\source\repos\Lindo\Lindo\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc142-mtd.lib;unit.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>ENCRYPT_TOOL</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>D:\Users\Никита\source\repos\Lindo\Lindo\src;D:\Users\Никита\source\repos\Lindo\Lindo\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc142-mtd.lib;unit.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\antires\CryptoUtils.cpp" />
+    <ClCompile Include="src\camera\CameraSettings.cpp" />
+    <ClCompile Include="src\camera\FirstPersonCamera.cpp" />
+    <ClCompile Include="src\camera\Player.cpp" />
+    <ClCompile Include="src\Lindo.cpp" />
+    <ClCompile Include="src\render\Collision\BoxCollider.cpp" />
+    <ClCompile Include="src\render\Collision\CapsuleCollider.cpp" />
+    <ClCompile Include="src\render\Collision\Collider.cpp" />
+    <ClCompile Include="src\render\Collision\CollisionSystem.cpp" />
+    <ClCompile Include="src\render\Collision\PhysicsSystem.cpp" />
+    <ClCompile Include="src\render\Collision\RigidBody.cpp" />
+    <ClCompile Include="src\render\Collision\SphereCollider.cpp" />
+    <ClCompile Include="src\render\Light\CubeShadowMap.cpp" />
+    <ClCompile Include="src\render\Light\ShadowMap.cpp" />
+    <ClCompile Include="src\render\Frustum.cpp" />
+    <ClCompile Include="src\render\objects\Object.cpp" />
+    <ClCompile Include="src\render\skybox\skybox.cpp" />
+    <ClCompile Include="src\render\mesh\primitives.cpp" />
+    <ClCompile Include="src\utils\model.cpp" />
+    <ClCompile Include="src\render\mesh\mesh.cpp" />
+    <ClCompile Include="src\core\Input.cpp" />
+    <ClCompile Include="src\core\OGL.h" />
+    <ClCompile Include="src\core\WindowCallbacks.cpp" />
+    <ClCompile Include="src\render\Scene\Scene.cpp" />
+    <ClCompile Include="src\core\Globals.cpp" />
+    <ClCompile Include="src\glad.c" />
+    <ClCompile Include="src\stb_image.cpp" />
+    <ClCompile Include="src\utils\TextureLoader.cpp" />
+    <ClCompile Include="src\render\mesh\transform.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\antires\CryptoUtils.h" />
+    <ClInclude Include="src\camera\Player.h" />
+    <ClInclude Include="src\render\Collision\BoxCollider.h" />
+    <ClInclude Include="src\render\Collision\CapsuleCollider.h" />
+    <ClInclude Include="src\render\Collision\Collider.h" />
+    <ClInclude Include="src\render\Collision\ColliderFactory.h" />
+    <ClInclude Include="src\render\Collision\CollisionSystem.h" />
+    <ClInclude Include="src\render\Collision\PhysicsSystem.h" />
+    <ClInclude Include="src\render\Collision\RigidBody.h" />
+    <ClInclude Include="src\render\Collision\SphereCollider.h" />
+    <ClInclude Include="src\render\Light\CubeShadowMap.h" />
+    <ClInclude Include="src\render\Light\ShadowMap.h" />
+    <ClInclude Include="src\render\Frustum.h" />
+    <ClInclude Include="src\render\objects\Material.h" />
+    <ClInclude Include="src\render\objects\Object.h" />
+    <ClInclude Include="src\render\objects\Light.h" />
+    <ClInclude Include="src\render\skybox\skybox.h" />
+    <ClInclude Include="src\render\mesh\primitives.h" />
+    <ClInclude Include="src\utils\model.h" />
+    <ClInclude Include="src\render\mesh\mesh.h" />
+    <ClInclude Include="src\core\Input.h" />
+    <ClInclude Include="src\core\WindowCallbacks.h" />
+    <ClInclude Include="src\render\Scene\Scene.h" />
+    <ClInclude Include="src\camera\FirstPersonCamera.h" />
+    <ClInclude Include="src\core\Globals.h" />
+    <ClInclude Include="src\shader\shader_s.h" />
+    <ClInclude Include="src\stb_image.h" />
+    <ClInclude Include="src\utils\TextureLoader.h" />
+    <ClInclude Include="src\render\mesh\transform.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\scenes\level1.scene" />
+    <None Include="res\shaders\equirectangular_to_cubemap.fs" />
+    <None Include="res\shaders\equirectangular_to_cubemap.vs" />
+    <None Include="res\shaders\FragmentShader.fs" />
+    <None Include="res\shaders\irradiance_convolution.fs" />
+    <None Include="res\shaders\Light\point_shadow_depth.fs" />
+    <None Include="res\shaders\Light\point_shadow_depth.gs" />
+    <None Include="res\shaders\Light\point_shadow_depth.vs" />
+    <None Include="res\shaders\Light\shadow_depth.fs" />
+    <None Include="res\shaders\Light\shadow_depth.vs" />
+    <None Include="res\shaders\debug_collider.frag" />
+    <None Include="res\shaders\debug_collider.vert" />
+    <None Include="res\shaders\PostProcess\postprocess.frag" />
+    <None Include="res\shaders\PostProcess\postprocess.vert" />
+    <None Include="res\shaders\prefilter.fs" />
+    <None Include="res\shaders\skybox\skybox.fs" />
+    <None Include="res\shaders\skybox\skybox.vs" />
+    <None Include="res\shaders\VertexShader.vs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="src\render\objects\CMakeLists.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
