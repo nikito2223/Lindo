@@ -120,8 +120,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>ENCRYPT_TOOL</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>
+      </PreprocessorDefinitions>
+      <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Users\Никита\source\repos\Lindo\Lindo\src;D:\Users\Никита\source\repos\Lindo\Lindo\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -137,8 +138,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>ENCRYPT_TOOL</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>
+      </PreprocessorDefinitions>
+      <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Users\Никита\source\repos\Lindo\Lindo\src;D:\Users\Никита\source\repos\Lindo\Lindo\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -155,6 +157,7 @@
     <ClCompile Include="src\camera\CameraSettings.cpp" />
     <ClCompile Include="src\camera\FirstPersonCamera.cpp" />
     <ClCompile Include="src\camera\Player.cpp" />
+    <ClCompile Include="src\debug\DebugOverlay.cpp" />
     <ClCompile Include="src\Lindo.cpp" />
     <ClCompile Include="src\render\Collision\BoxCollider.cpp" />
     <ClCompile Include="src\render\Collision\CapsuleCollider.cpp" />
@@ -169,6 +172,10 @@
     <ClCompile Include="src\render\objects\Object.cpp" />
     <ClCompile Include="src\render\skybox\skybox.cpp" />
     <ClCompile Include="src\render\mesh\primitives.cpp" />
+    <ClCompile Include="src\render\UI\UIFont.cpp" />
+    <ClCompile Include="src\render\UI\UIRenderer.cpp" />
+    <ClCompile Include="src\render\UI\UIWidget.cpp" />
+    <ClCompile Include="src\shader\shader_s.cpp" />
     <ClCompile Include="src\utils\model.cpp" />
     <ClCompile Include="src\render\mesh\mesh.cpp" />
     <ClCompile Include="src\core\Input.cpp" />
@@ -184,6 +191,7 @@
   <ItemGroup>
     <ClInclude Include="src\antires\CryptoUtils.h" />
     <ClInclude Include="src\camera\Player.h" />
+    <ClInclude Include="src\debug\DebugOverlay.h" />
     <ClInclude Include="src\render\Collision\BoxCollider.h" />
     <ClInclude Include="src\render\Collision\CapsuleCollider.h" />
     <ClInclude Include="src\render\Collision\Collider.h" />
@@ -200,6 +208,11 @@
     <ClInclude Include="src\render\objects\Light.h" />
     <ClInclude Include="src\render\skybox\skybox.h" />
     <ClInclude Include="src\render\mesh\primitives.h" />
+    <ClInclude Include="src\render\UI\UIFont.h" />
+    <ClInclude Include="src\render\UI\UIMath.h" />
+    <ClInclude Include="src\render\UI\UIRenderer.h" />
+    <ClInclude Include="src\render\UI\UIWidget.h" />
+    <ClInclude Include="src\stb_truetype.h" />
     <ClInclude Include="src\utils\model.h" />
     <ClInclude Include="src\render\mesh\mesh.h" />
     <ClInclude Include="src\core\Input.h" />
@@ -213,7 +226,13 @@
     <ClInclude Include="src\render\mesh\transform.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\scenes\level1.scene" />
+    <None Include="include\imgui\backends\imgui_impl_metal.mm" />
+    <None Include="include\imgui\backends\imgui_impl_osx.mm" />
+    <None Include="include\imgui\backends\sdlgpu3\shader.frag" />
+    <None Include="include\imgui\backends\sdlgpu3\shader.vert" />
+    <None Include="include\imgui\backends\vulkan\generate_spv.sh" />
+    <None Include="include\imgui\backends\vulkan\glsl_shader.frag" />
+    <None Include="include\imgui\backends\vulkan\glsl_shader.vert" />
     <None Include="res\shaders\equirectangular_to_cubemap.fs" />
     <None Include="res\shaders\equirectangular_to_cubemap.vs" />
     <None Include="res\shaders\FragmentShader.fs" />
@@ -233,6 +252,8 @@
     <None Include="res\shaders\VertexShader.vs" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="include\imgui\backends\sdlgpu3\build_instructions.txt" />
+    <Text Include="include\imgui\backends\vulkan\build_instructions.txt" />
     <Text Include="src\render\objects\CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

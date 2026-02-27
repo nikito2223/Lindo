@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <core/Globals.h>
 
 static float skyboxVertices[] = {
     -1,-1, 1,  1,-1, 1,  1, 1, 1,  1, 1, 1, -1, 1, 1, -1,-1, 1,
@@ -36,6 +37,104 @@ void Skybox::setupBuffers() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glBindVertexArray(0);
 }
+
+unsigned int Skybox::loadHDRTextureFromData(const std::vector<char>& data) {
+    stbi_set_flip_vertically_on_load(true);
+    int width, height, nrComponents;
+    float* imageData = stbi_loadf_from_memory(
+        reinterpret_cast<const unsigned char*>(data.data()),
+        data.size(),
+        &width, &height, &nrComponents, 0
+    );
+    unsigned int hdrTexture = 0;
+    if (imageData) {
+        glGenTextures(1, &hdrTexture);
+        glBindTexture(GL_TEXTURE_2D, hdrTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, imageData);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        stbi_image_free(imageData);
+        std::cout << "  Loaded HDR image from memory (" << width << "x" << height << ")" << std::endl;
+    }
+    else {
+        std::cout << "  Failed to load HDR from memory: " << stbi_failure_reason() << std::endl;
+    }
+    return hdrTexture;
+}
+
+Skybox* Skybox::CreateFromHDRData(const std::vector<char>& data, unsigned int resolution) {
+    Skybox* skybox = new Skybox();  // используем приватный конструктор по умолчанию
+    skybox->isHDR = true;
+    skybox->hdrResolution = resolution;
+    skybox->setupBuffers();
+
+    unsigned int hdrTexture = loadHDRTextureFromData(data);
+    if (hdrTexture == 0) {
+        delete skybox;
+        return nullptr;
+    }
+
+    // Конвертация equirectangular в cubemap (аналогично существующему конструктору)
+    unsigned int captureFBO, captureRBO;
+    glGenFramebuffers(1, &captureFBO);
+    glGenRenderbuffers(1, &captureRBO);
+
+    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    Shader equirectangularToCubemapShader(
+        PathData + "shaders/equirectangular_to_cubemap.vs",
+        PathData + "shaders/equirectangular_to_cubemap.fs"
+    );
+
+    // Создаём cubemap
+    glGenTextures(1, &skybox->cubemapTexture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->cubemapTexture);
+    for (unsigned int i = 0; i < 6; ++i) {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
+            resolution, resolution, 0, GL_RGB, GL_FLOAT, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, resolution, resolution);
+
+    equirectangularToCubemapShader.use();
+    equirectangularToCubemapShader.setInt("equirectangularMap", 0);
+    equirectangularToCubemapShader.setMat4("projection", captureProjection);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, hdrTexture);
+
+    glViewport(0, 0, resolution, resolution);
+    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+    for (unsigned int i = 0; i < 6; ++i) {
+        equirectangularToCubemapShader.setMat4("view", captureViews[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, skybox->cubemapTexture, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glBindVertexArray(skybox->VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skybox->cubemapTexture);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    // Очистка
+    glDeleteTextures(1, &hdrTexture);
+    glDeleteFramebuffers(1, &captureFBO);
+    glDeleteRenderbuffers(1, &captureRBO);
+
+    std::cout << "HDR skybox loaded successfully from memory!" << std::endl;
+    return skybox;
+}
+
 
 Skybox::Skybox(std::vector<std::string> faces) : isHDR(false) {
     std::cout << "Loading LDR skybox with " << faces.size() << " faces..." << std::endl;
@@ -109,8 +208,8 @@ Skybox::Skybox(const std::string& hdrFile, unsigned int resolution)
 
         // Шейдер для конвертации equirectangular в cubemap
         Shader equirectangularToCubemapShader(
-            "res/shaders/equirectangular_to_cubemap.vs",
-            "res/shaders/equirectangular_to_cubemap.fs"
+            PathData + "shaders/equirectangular_to_cubemap.vs",
+            PathData + "shaders/equirectangular_to_cubemap.fs"
         );
 
         // Создаем кубическую карту

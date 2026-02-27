@@ -198,7 +198,7 @@ void initScene() {
     if (!shadowMap->Init(2048, 2048)) {
         std::cout << "Failed to initialize shadow map!" << std::endl;
     }
-    shadowDepthShader = new Shader("res/shaders/Light/shadow_depth.vs", "res/shaders/Light/shadow_depth.fs");
+    shadowDepthShader = new Shader(PathData + "shaders/Light/shadow_depth.vs", PathData + "shaders/Light/shadow_depth.fs");
 
     // ==== Освещение ====
     directionalLight = new Light(DIRECTIONAL);
@@ -223,9 +223,9 @@ void initScene() {
     pointLights[0]->linear = 0.09f;
     pointLights[0]->quadratic = 0.032f;
 
-    // Текстуры
-    diffuseMap = loadTexture("res/textures/textures.png");
-    specularMap = loadTexture("res/textures/textures.png");
+
+    diffuseMap = loadTexture(PathData + "textures/textures.png");
+    specularMap = loadTexture(PathData + "textures/textures.png");
 
     // ==== Платформа ====
     Mesh* planeMesh = new Mesh(
@@ -351,57 +351,59 @@ void initScene() {
     // Настройка слоёв коллизий
     setupCollisionLayers();
 
-    std::vector<unsigned char> key(16);
+    /*std::vector<unsigned char> key(16);*/
 
     // Используем направление directionalLight
-    key[0] = static_cast<unsigned char>(std::abs(directionalLight->direction.x) * 10) ^ 0xA5;
-    key[1] = static_cast<unsigned char>(std::abs(directionalLight->direction.y) * 10) ^ 0x5A;
+    //key[0] = static_cast<unsigned char>(std::abs(directionalLight->direction.x) * 10) ^ 0xA5;
+    //key[1] = static_cast<unsigned char>(std::abs(directionalLight->direction.y) * 10) ^ 0x5A;
 
-    // Ambient составляющая directionalLight
-    key[2] = static_cast<unsigned char>(directionalLight->ambient.r * 255) ^ 0x3C;
-    key[3] = static_cast<unsigned char>(directionalLight->ambient.g * 255) ^ 0xC3;
+    //// Ambient составляющая directionalLight
+    //key[2] = static_cast<unsigned char>(directionalLight->ambient.r * 255) ^ 0x3C;
+    //key[3] = static_cast<unsigned char>(directionalLight->ambient.g * 255) ^ 0xC3;
 
-    // Позиция и цвет первого точечного источника
-    if (pointLights[0]) {
-        key[4] = static_cast<unsigned char>(pointLights[0]->transform.position.x * 10) ^ 0x69;
-        key[5] = static_cast<unsigned char>(pointLights[0]->transform.position.y * 10) ^ 0x96;
-        key[6] = static_cast<unsigned char>(pointLights[0]->diffuse.r * 255) ^ 0x12;
-        key[7] = static_cast<unsigned char>(pointLights[0]->diffuse.g * 255) ^ 0x21;
-    }
-
-    // Параметры первого паркур-блока
-    if (!blocks.empty()) {
-        key[8] = static_cast<unsigned char>(blocks[0].position.x + 10) ^ 0x34;
-        key[9] = static_cast<unsigned char>(blocks[0].position.y * 5) ^ 0x43;
-        key[10] = static_cast<unsigned char>(blocks[0].position.z + 5) ^ 0x56;
-        key[11] = static_cast<unsigned char>(blocks[0].size.x * 10) ^ 0x65;
-    }
-
-    // Коэффициенты затухания pointLights[0]
-    key[12] = static_cast<unsigned char>(pointLights[0]->linear * 100) ^ 0x78;
-    key[13] = static_cast<unsigned char>(pointLights[0]->quadratic * 100) ^ 0x87;
-
-    // Specular составляющая directionalLight
-    key[14] = static_cast<unsigned char>(directionalLight->specular.r * 255) ^ 0x9A;
-    key[15] = static_cast<unsigned char>(directionalLight->specular.g * 255) ^ 0xBC;
-
-    // Устанавливаем ключ в CryptoUtils
-    CryptoUtils::setKey(key);
-
-    //std::cout << "=== ENCRYPTION KEY FOR ASSET TOOL ===" << std::endl;
-    //std::cout << "const std::vector<unsigned char> KEY = {" << std::endl;
-    //std::cout << "    ";
-    //for (size_t i = 0; i < key.size(); ++i) {
-    //    printf("0x%02X", key[i]);
-    //    if (i < key.size() - 1) {
-    //        std::cout << ", ";
-    //    }
-    //    if ((i + 1) % 8 == 0 && i < key.size() - 1) {
-    //        std::cout << "\n    ";
-    //    }
+    //// Позиция и цвет первого точечного источника
+    //if (pointLights[0]) {
+    //    key[4] = static_cast<unsigned char>(pointLights[0]->transform.position.x * 10) ^ 0x69;
+    //    key[5] = static_cast<unsigned char>(pointLights[0]->transform.position.y * 10) ^ 0x96;
+    //    key[6] = static_cast<unsigned char>(pointLights[0]->diffuse.r * 255) ^ 0x12;
+    //    key[7] = static_cast<unsigned char>(pointLights[0]->diffuse.g * 255) ^ 0x21;
     //}
-    //std::cout << "\n};" << std::endl;
-    //std::cout << "=====================================" << std::endl;
+
+    //// Параметры первого паркур-блока
+    //if (!blocks.empty()) {
+    //    key[8] = static_cast<unsigned char>(blocks[0].position.x + 10) ^ 0x34;
+    //    key[9] = static_cast<unsigned char>(blocks[0].position.y * 5) ^ 0x43;
+    //    key[10] = static_cast<unsigned char>(blocks[0].position.z + 5) ^ 0x56;
+    //    key[11] = static_cast<unsigned char>(blocks[0].size.x * 10) ^ 0x65;
+    //}
+
+    //// Коэффициенты затухания pointLights[0]
+    //key[12] = static_cast<unsigned char>(pointLights[0]->linear * 100) ^ 0x78;
+    //key[13] = static_cast<unsigned char>(pointLights[0]->quadratic * 100) ^ 0x87;
+
+    //// Specular составляющая directionalLight
+    //key[14] = static_cast<unsigned char>(directionalLight->specular.r * 255) ^ 0x9A;
+    //key[15] = static_cast<unsigned char>(directionalLight->specular.g * 255) ^ 0xBC;
+
+    //// Устанавливаем ключ в CryptoUtils
+    //CryptoUtils::setKey(key);
+
+    //if (useRawResources) {
+    //    std::cout << "=== ENCRYPTION KEY FOR ASSET TOOL ===" << std::endl;
+    //    std::cout << "const std::vector<unsigned char> KEY = {" << std::endl;
+    //    std::cout << "    ";
+    //    for (size_t i = 0; i < key.size(); ++i) {
+    //        printf("0x%02X", key[i]);
+    //        if (i < key.size() - 1) {
+    //            std::cout << ", ";
+    //        }
+    //        if ((i + 1) % 8 == 0 && i < key.size() - 1) {
+    //            std::cout << "\n    ";
+    //        }
+    //    }
+    //    std::cout << "\n};" << std::endl;
+    //    std::cout << "=====================================" << std::endl;
+    //}
 
     std::cout << "Scene initialized. Objects count: " << sceneObjects.size() << std::endl;
 }
@@ -531,11 +533,10 @@ void renderScene(Shader& shader, float deltaTime, Shader* debugShader) {
         if (obj == player) continue; // на случай, если player добавлен
         obj->Draw(shader);
     }
-
     // Отрисовка коллайдеров (отладка)
     static Shader* colliderShader = nullptr;
     if (!colliderShader) {
-        colliderShader = new Shader("res/shaders/debug_collider.vert", "res/shaders/debug_collider.frag");
+        colliderShader = new Shader(PathData + "shaders/debug_collider.vert", PathData + "shaders/debug_collider.frag");
     }
 
     colliderShader->use();
@@ -546,7 +547,7 @@ void renderScene(Shader& shader, float deltaTime, Shader* debugShader) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_CULL_FACE);
 
-    /*drawColliders(*colliderShader);*/
+    if(DebugMode) drawColliders(*colliderShader);
 
     glEnable(GL_CULL_FACE);
     glDisable(GL_BLEND);

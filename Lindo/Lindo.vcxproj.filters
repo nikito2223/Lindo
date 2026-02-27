@@ -111,6 +111,21 @@
     <ClCompile Include="src\antires\CryptoUtils.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="src\shader\shader_s.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\UI\UIRenderer.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\UI\UIFont.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\render\UI\UIWidget.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debug\DebugOverlay.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\shader\shader_s.h">
@@ -200,6 +215,24 @@
     <ClInclude Include="src\antires\CryptoUtils.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="src\render\UI\UIMath.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\UI\UIRenderer.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\UI\UIFont.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\render\UI\UIWidget.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\stb_truetype.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debug\DebugOverlay.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\debug_collider.vert" />
@@ -219,9 +252,17 @@
     <None Include="res\shaders\Light\point_shadow_depth.fs" />
     <None Include="res\shaders\PostProcess\postprocess.vert" />
     <None Include="res\shaders\PostProcess\postprocess.frag" />
-    <None Include="res\scenes\level1.scene" />
+    <None Include="include\imgui\backends\imgui_impl_metal.mm" />
+    <None Include="include\imgui\backends\imgui_impl_osx.mm" />
+    <None Include="include\imgui\backends\vulkan\generate_spv.sh" />
+    <None Include="include\imgui\backends\vulkan\glsl_shader.frag" />
+    <None Include="include\imgui\backends\vulkan\glsl_shader.vert" />
+    <None Include="include\imgui\backends\sdlgpu3\shader.frag" />
+    <None Include="include\imgui\backends\sdlgpu3\shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="src\render\objects\CMakeLists.txt" />
+    <Text Include="include\imgui\backends\vulkan\build_instructions.txt" />
+    <Text Include="include\imgui\backends\sdlgpu3\build_instructions.txt" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
-﻿#include "core/OGL.h"
-#include "core/Globals.h"
+﻿#pragma execution_character_set("utf-8")
+#include "core/OGL.h"
 #include "core/Input.h"
 #include "core/WindowCallbacks.h"
 
@@ -8,6 +8,14 @@
 #include <utils/model.h>
 #include <render/Scene/Scene.h>
 #include <render/skybox/skybox.h>
+#include <core/Globals.h>
+
+#include <array>
+#include <string>
+#include <render/UI/UIRenderer.h>
+#include "debug/DebugOverlay.h"
+
+static DebugOverlay g_debugOverlay;
 
 bool fileExists(const std::string& path) {
     std::ifstream file(path);
@@ -22,6 +30,125 @@ static unsigned int quadVAO = 0;
 static unsigned int quadVBO = 0;
 static Shader* postShader = nullptr;
 
+static UIRenderer g_uiRenderer;
+static UIFont* g_font = nullptr;
+static std::shared_ptr<UIPanel> g_rootPanel;
+
+void initUI() {
+    g_uiRenderer.init();
+
+    std::string charset =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
+        ".,!?-+*/=()[]{}<>:;\"'%@#&"
+        "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+        "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+
+    // Добавляем русские буквы через их UTF-8 последовательности
+    // Заглавные русские буквы А-Я (кроме Ё)
+    for (int c = 0x410; c <= 0x42F; ++c) {
+        char utf8[4] = { 0 };
+        if (c < 0x80) {
+            utf8[0] = c;
+        }
+        else if (c < 0x800) {
+            utf8[0] = 0xC0 | (c >> 6);
+            utf8[1] = 0x80 | (c & 0x3F);
+        }
+        else {
+            utf8[0] = 0xE0 | (c >> 12);
+            utf8[1] = 0x80 | ((c >> 6) & 0x3F);
+            utf8[2] = 0x80 | (c & 0x3F);
+        }
+        charset += utf8;
+    }
+    // Добавляем Ё (код 0x401)
+    charset += "\xD0\x81"; // UTF-8 для Ё
+    // Строчные русские буквы а-я (кроме ё)
+    for (int c = 0x430; c <= 0x44F; ++c) {
+        char utf8[4] = { 0 };
+        if (c < 0x80) {
+            utf8[0] = c;
+        }
+        else if (c < 0x800) {
+            utf8[0] = 0xC0 | (c >> 6);
+            utf8[1] = 0x80 | (c & 0x3F);
+        }
+        else {
+            utf8[0] = 0xE0 | (c >> 12);
+            utf8[1] = 0x80 | ((c >> 6) & 0x3F);
+            utf8[2] = 0x80 | (c & 0x3F);
+        }
+        charset += utf8;
+    }
+    // Добавляем ё (код 0x451)
+    charset += "\xD1\x91"; // UTF-8 для ё
+
+    // Загружаем шрифт (путь к ttf)
+    g_font = new UIFont();
+    if (!g_font->isLoaded()) {
+        if (!g_font->loadFromFile("C:/Windows/Fonts/arial.ttf", 24.0f, 512, 512, charset)) {
+            std::cerr << "Failed to load font!" << std::endl;
+        }
+    }
+
+    g_font->debugPrintGlyphs();
+    //// Создаём корневую панель на весь экран
+    g_rootPanel = std::make_shared<UIPanel>();
+
+    g_rootPanel->setPosition(0, 0);
+    g_rootPanel->setSize(SCR_WIDTH, SCR_HEIGHT);
+
+
+    //// Добавляем элементы
+    //auto btn = std::make_shared<UIButton>("Нажми меня><", []() {
+    //    std::cout << "Button clicked!" << std::endl;
+    //    });
+    //btn->setPosition(100, 100);
+    //btn->setSize(120, 30);
+    //btn->setTextSize(16.0f); // большой текст
+    //g_rootPanel->addChild(btn);
+
+    //auto label = std::make_shared<UILabel>("Hello, UI!");
+    //label->setPosition(100, 150);
+    //g_rootPanel->addChild(label);
+
+    g_debugOverlay.init(g_font);
+    g_debugOverlay.setVisible(false); // по умолчанию выключен
+}
+
+void renderUI() {
+    if (!g_rootPanel) return;
+    g_uiRenderer.beginFrame(SCR_WIDTH, SCR_HEIGHT);
+    g_rootPanel->render(g_uiRenderer, g_font);
+    g_uiRenderer.endFrame();
+}
+
+
+std::vector<unsigned char> generateEncryptionKey() {
+    // Стабильные факторы, не зависящие от сцены
+    const std::string gameName = "Lindo";
+    const std::string version = "1.0.0";   // меняйте только при необходимости перешифровать ресурсы
+    const std::string salt = "G4m3D3v"; // дополнительная соль
+
+    std::string combined = gameName + version + salt;
+
+    // Простой XOR-хеш для получения 16 байт
+    std::array<unsigned char, 16> key = {};
+    for (size_t i = 0; i < combined.size(); ++i) {
+        key[i % 16] ^= static_cast<unsigned char>(combined[i]);
+    }
+
+    // Дополнительное смешивание с фиксированными константами для надёжности
+    const unsigned char fixed[] = {
+        0xA5, 0x5A, 0x3C, 0xC3, 0x69, 0x96, 0x12, 0x21,
+        0x34, 0x43, 0x56, 0x65, 0x78, 0x87, 0x9A, 0xBC
+    };
+    for (int i = 0; i < 16; ++i) {
+        key[i] ^= fixed[i];
+    }
+
+    return std::vector<unsigned char>(key.begin(), key.end());
+}
 
 void initPostProcessing() {
     // Создаём FBO
@@ -72,7 +199,7 @@ void initPostProcessing() {
     glBindVertexArray(0);
 
     // Шейдер пост-обработки
-    postShader = new Shader("res/shaders/PostProcess/postprocess.vert", "res/shaders/PostProcess/postprocess.frag");
+    postShader = new Shader(PathData + "shaders/PostProcess/postprocess.vert", PathData + "shaders/PostProcess/postprocess.frag");
 }
 
 int main()
@@ -91,6 +218,9 @@ int main()
         return -1;
     }
 
+    uiActive = true;
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
     auto toggleFullscreen = [&]() {
         static bool isFullscreen = false;
         static int windowedXPos = 100, windowedYPos = 100;
@@ -105,6 +235,10 @@ int main()
             SCR_WIDTH = videoMode->width;
             SCR_HEIGHT = videoMode->height;
             isFullscreen = true;
+            if (g_rootPanel) {
+                g_rootPanel->setSize(SCR_WIDTH, SCR_HEIGHT);
+            }
+
             std::cout << "Fullscreen: " << SCR_WIDTH << "x" << SCR_HEIGHT << std::endl;
         }
         else {
@@ -129,12 +263,27 @@ int main()
         lastX = width / 2.0f;
         lastY = height / 2.0f;
         firstMouse = true;
+        if (g_rootPanel) {
+            g_rootPanel->setSize(width, height);
+        }
         });
 
-    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xpos, double ypos) {
+        mouse_callback(window, xpos, ypos); // если тебе нужно для камеры
+
+        if (uiActive && g_rootPanel) {
+            g_rootPanel->onMouseMove((float)xpos, (float)ypos);
+        }
+        });
+    glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods) {
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
+        if (uiActive && g_rootPanel) {
+            g_rootPanel->onMouseButton((float)x, (float)y, button, action == GLFW_PRESS);
+        }
+        });
     glfwSetScrollCallback(window, scroll_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    cursorMode = GLFW_CURSOR_DISABLED;
+    glfwSetInputMode(window, GLFW_CURSOR, uiActive ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         glfwTerminate();
@@ -143,35 +292,77 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    auto encryptionKey = generateEncryptionKey();
+
+    if (useRawResources) {
+        std::cout << "=== ENCRYPTION KEY FOR ASSET TOOL ===" << std::endl;
+        std::cout << "const std::vector<unsigned char> KEY = {" << std::endl;
+        std::cout << "    ";
+        for (size_t i = 0; i < encryptionKey.size(); ++i) {
+            printf("0x%02X", encryptionKey[i]);
+            if (i < encryptionKey.size() - 1) {
+                std::cout << ", ";
+            }
+            if ((i + 1) % 8 == 0 && i < encryptionKey.size() - 1) {
+                std::cout << "\n    ";
+            }
+        }
+        std::cout << "\n};" << std::endl;
+        std::cout << "=====================================" << std::endl;
+    }
+
+    CryptoUtils::setKey(encryptionKey);
 
 
-    bool debugMode = false;
     bool showLightIcons = true;
     float lightIconRadius = 0.3f;
 
     // ==== Загрузка шейдеров ====
-    Shader lightingShader("res/shaders/VertexShader.vs", "res/shaders/FragmentShader.fs");
-    Shader skyboxShader("res/shaders/skybox/skybox.vs", "res/shaders/skybox/skybox.fs");
+    Shader lightingShader(PathData + "shaders/VertexShader.vs", PathData + "shaders/FragmentShader.fs");
+    Shader skyboxShader(PathData + "shaders/skybox/skybox.vs", PathData + "shaders/skybox/skybox.fs");
+
+    std::cout << PathData << std::endl;
 
     Skybox* skybox = nullptr;
-    std::string hdrPath = "res/textures/skybox/1.hdr";
+    std::string hdrPath = PathData + "textures/skybox/1.hdr";
     if (fileExists(hdrPath)) {
-        std::cout << "Loading HDR skybox from: " << hdrPath << std::endl;
-        skybox = new Skybox(hdrPath, 512);
+        if (useRawResources) {
+            // Режим разработки: читаем файл напрямую
+            std::cout << "Loading HDR skybox from: " << hdrPath << std::endl;
+            skybox = new Skybox(hdrPath, 512);
+        }
+        else {
+            // Режим продакшена: файл должен быть зашифрован
+            std::cout << "Loading encrypted HDR skybox from: " << hdrPath << std::endl;
+            try {
+                std::vector<char> hdrData = CryptoUtils::decryptFileBinary(hdrPath);
+                skybox = Skybox::CreateFromHDRData(hdrData, 512);
+            }
+            catch (const std::exception& e) {
+                std::cout << "Failed to decrypt/load HDR: " << e.what() << std::endl;
+                // fallback на LDR
+                skybox = nullptr; // чтобы перейти к LDR
+            }
+        }
     }
     else {
         std::cout << "HDR file not found, loading LDR cubemap..." << std::endl;
         skybox = new Skybox({
-            "res/textures/skybox/right.jpg",
-            "res/textures/skybox/left.jpg",
-            "res/textures/skybox/top.jpg",
-            "res/textures/skybox/bottom.jpg",
-            "res/textures/skybox/front.jpg",
-            "res/textures/skybox/back.jpg"
+            PathData + "textures/skybox/right.jpg",
+            PathData + "textures/skybox/left.jpg",
+            PathData + "textures/skybox/top.jpg",
+            PathData + "textures/skybox/bottom.jpg",
+            PathData + "textures/skybox/front.jpg",
+            PathData + "textures/skybox/back.jpg"
             });
     }
+
     // Инициализация сцены
     initScene();
+    initUI();
     initPostProcessing();
 
     bool f11Pressed = false;
@@ -184,13 +375,13 @@ int main()
         lastFrame = time;
 
         processInput(window);
-
         // Обработка F3
         static bool f3Pressed = false;
         if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_PRESS && !f3Pressed) {
-            debugMode = !debugMode;
+            DebugMode = !DebugMode;
+            g_debugOverlay.toggle(); // Переключаем видимость оверлея
             f3Pressed = true;
-            std::cout << "Debug mode: " << (debugMode ? "ON" : "OFF") << std::endl;
+            std::cout << "Debug mode: " << (DebugMode ? "ON" : "OFF") << std::endl;
         }
         if (glfwGetKey(window, GLFW_KEY_F3) == GLFW_RELEASE) {
             f3Pressed = false;
@@ -205,18 +396,32 @@ int main()
             f11Pressed = false;
         }
 
+        static bool escapePressed = false;
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS && !escapePressed) {
+            uiActive = !uiActive;
+            if (uiActive) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }
+            else {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+            escapePressed = true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
+            escapePressed = false;
+        }
+
         // Очистка буферов
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // ==== Рендер сцены ====
         lightingShader.use();
-        lightingShader.setBool("debugMode", debugMode);
+        lightingShader.setBool("debugMode", DebugMode);
         lightingShader.setBool("showLightIcons", showLightIcons);
         lightingShader.setFloat("lightIconRadius", lightIconRadius);
 
 
         renderScene(lightingShader, deltaTime, nullptr);
-
 
 
         // ==== Рендер skybox ====
@@ -300,16 +505,29 @@ int main()
         frameCount++;
 
         glm::vec3 pos = getCharacterPosition();
-
+        
         if (fpsTimer >= 1.0f) {
-            std::string title = "Lingo - " + std::to_string(SCR_WIDTH) + "x" + std::to_string(SCR_HEIGHT) +
-                " | FPS: " + std::to_string((int)frameCount) +
-                " | Pos: (" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ", " + std::to_string(pos.z) + ")";
-            if (debugMode) title += " [DEBUG]";
-            glfwSetWindowTitle(window, title.c_str());
+            // Обновляем отладочный оверлей
+            g_debugOverlay.update(fpsTimer, frameCount, pos, DebugMode);
 
             fpsTimer = 0.0f;
             frameCount = 0;
+        }
+
+        // Сохраняем состояние
+        GLboolean depthTestEnabled;
+        glGetBooleanv(GL_DEPTH_TEST, &depthTestEnabled);
+
+        // Отключаем тест глубины для UI (или оставляем, но отключаем запись)
+        glDisable(GL_DEPTH_TEST);  // Проще всего отключить полностью
+
+        renderUI();
+
+        g_debugOverlay.render(g_uiRenderer);
+
+        // Восстанавливаем состояние, если нужно для дальнейшего рендера
+        if (depthTestEnabled) {
+            glEnable(GL_DEPTH_TEST);
         }
         
         glGenerateMipmap(GL_TEXTURE_2D);

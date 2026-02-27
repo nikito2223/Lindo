@@ -12,12 +12,19 @@ public:
     // Конструктор для загрузки HDR изображения (equirectangular map)
     Skybox(const std::string& hdrFile, unsigned int resolution = 512);
 
+    static Skybox* CreateFromHDRData(const std::vector<char>& data, unsigned int resolution);
+
     void Draw(Shader& shader);
     unsigned int getCubemapTexture() const { return cubemapTexture; }
 
 private:
     void setupBuffers();
     unsigned int loadHDRTexture(const std::string& path);
+
+    Skybox() : isHDR(false), hdrResolution(512), VAO(0), VBO(0), cubemapTexture(0) {}
+
+    // Загрузка HDR-текстуры из памяти
+    static unsigned int loadHDRTextureFromData(const std::vector<char>& data);
 
     unsigned int VAO, VBO;
     unsigned int cubemapTexture;

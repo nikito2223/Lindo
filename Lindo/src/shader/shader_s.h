@@ -11,6 +11,7 @@
 #include <vector>
 #include <unordered_map>
 #include "../antires/CryptoUtils.h"
+#include "../core/Globals.h"
 
 class Shader
 {
@@ -21,31 +22,19 @@ public:
     // ------------------------------------------------------------------------
 
     // Vertex + Fragment
-    Shader(const char* vertexPath, const char* fragmentPath)
-    {
-        compileShader(vertexPath, nullptr, fragmentPath);
+    Shader(const std::string& vertexPath, const std::string& fragmentPath) {
+        compileShader(vertexPath.c_str(), nullptr, fragmentPath.c_str());
+    }
+    Shader(const std::string& vertexPath, const std::string& geometryPath, const std::string& fragmentPath) {
+        const char* geomPtr = geometryPath.empty() ? nullptr : geometryPath.c_str();
+        compileShader(vertexPath.c_str(), geomPtr, fragmentPath.c_str());
     }
 
-    // Vertex + Geometry + Fragment
-    Shader(const char* vertexPath, const char* geometryPath, const char* fragmentPath)
-    {
-        compileShader(vertexPath, geometryPath, fragmentPath);
+    static Shader FromString(const std::string& vertexCode, const std::string& fragmentCode) {
+        return Shader(vertexCode, fragmentCode, true);   // вызываем приватный конструктор
     }
-
-    // Конструктор для загрузки из строк (для динамической генерации шейдеров)
-    Shader(const std::string& vertexCode, const std::string& fragmentCode, bool fromString = true)
-    {
-        if (fromString) {
-            compileFromString(vertexCode, "", fragmentCode);
-        }
-    }
-
-    Shader(const std::string& vertexCode, const std::string& geometryCode,
-        const std::string& fragmentCode, bool fromString = true)
-    {
-        if (fromString) {
-            compileFromString(vertexCode, geometryCode, fragmentCode);
-        }
+    static Shader FromString(const std::string& vertexCode, const std::string& geometryCode, const std::string& fragmentCode) {
+        return Shader(vertexCode, geometryCode, fragmentCode, true);
     }
 
     // Деструктор
@@ -255,58 +244,58 @@ public:
 
 private:
 
+    Shader(const std::string& vertexCode, const std::string& fragmentCode, bool /*fromString*/) {
+        compileFromString(vertexCode, "", fragmentCode);
+    }
+    Shader(const std::string& vertexCode, const std::string& geometryCode, const std::string& fragmentCode, bool /*fromString*/) {
+        compileFromString(vertexCode, geometryCode, fragmentCode);
+    }
+
     // Основная функция компиляции
-    void compileShader(const char* vertexPath, const char* geometryPath, const char* fragmentPath)
-    {
+    void compileShader(const char* vertexPath, const char* geometryPath, const char* fragmentPath) {
         std::string vertexCode;
         std::string geometryCode;
         std::string fragmentCode;
 
-        // Чтение файлов
         try {
-            if (vertexPath) {
-                vertexCode = CryptoUtils::decryptFile(vertexPath);
-            }
-            if (geometryPath) {
-                geometryCode = CryptoUtils::decryptFile(geometryPath);
-            }
-            if (fragmentPath) {
-                fragmentCode = CryptoUtils::decryptFile(fragmentPath);
-            }
-
-            // Вершинный шейдер
-            std::ifstream vShaderFile(vertexPath);
-            if (!vShaderFile.is_open()) {
-                throw std::runtime_error(std::string("Cannot open vertex shader: ") + vertexPath);
-            }
-            std::stringstream vShaderStream;
-            vShaderStream << vShaderFile.rdbuf();
-            vertexCode = vShaderStream.str();
-            vShaderFile.close();
-
-            // Геометрический шейдер (если есть)
-            if (geometryPath) {
-                std::ifstream gShaderFile(geometryPath);
-                if (!gShaderFile.is_open()) {
-                    throw std::runtime_error(std::string("Cannot open geometry shader: ") + geometryPath);
+            if (useRawResources) {
+                // Прямое чтение (raw-режим)
+                if (vertexPath) {
+                    std::ifstream vFile(vertexPath);
+                    if (!vFile.is_open())
+                        throw std::runtime_error(std::string("Cannot open vertex shader: ") + vertexPath);
+                    std::stringstream vStream;
+                    vStream << vFile.rdbuf();
+                    vertexCode = vStream.str();
                 }
-                std::stringstream gShaderStream;
-                gShaderStream << gShaderFile.rdbuf();
-                geometryCode = gShaderStream.str();
-                gShaderFile.close();
+                if (geometryPath) {
+                    std::ifstream gFile(geometryPath);
+                    if (!gFile.is_open())
+                        throw std::runtime_error(std::string("Cannot open geometry shader: ") + geometryPath);
+                    std::stringstream gStream;
+                    gStream << gFile.rdbuf();
+                    geometryCode = gStream.str();
+                }
+                if (fragmentPath) {
+                    std::ifstream fFile(fragmentPath);
+                    if (!fFile.is_open())
+                        throw std::runtime_error(std::string("Cannot open fragment shader: ") + fragmentPath);
+                    std::stringstream fStream;
+                    fStream << fFile.rdbuf();
+                    fragmentCode = fStream.str();
+                }
             }
-
-            // Фрагментный шейдер
-            std::ifstream fShaderFile(fragmentPath);
-            if (!fShaderFile.is_open()) {
-                throw std::runtime_error(std::string("Cannot open fragment shader: ") + fragmentPath);
+            else {
+                // Зашифрованное чтение (с использованием CryptoUtils)
+                if (vertexPath)
+                    vertexCode = CryptoUtils::decryptFile(vertexPath);
+                if (geometryPath)
+                    geometryCode = CryptoUtils::decryptFile(geometryPath);
+                if (fragmentPath)
+                    fragmentCode = CryptoUtils::decryptFile(fragmentPath);
             }
-            std::stringstream fShaderStream;
-            fShaderStream << fShaderFile.rdbuf();
-            fragmentCode = fShaderStream.str();
-            fShaderFile.close();
         }
-        catch (std::exception& e) {
+        catch (const std::exception& e) {
             std::cout << "ERROR::SHADER::FILE_READ_ERROR: " << e.what() << std::endl;
             return;
         }

@@ -9,6 +9,11 @@ void framebuffer_size_callback(GLFWwindow*, int width, int height)
 
 void mouse_callback(GLFWwindow*, double xposIn, double yposIn)
 {
+    if (uiActive && g_rootPanel) {
+        g_rootPanel->onMouseMove((float)xposIn, (float)yposIn);
+        return; // Не двигаем камеру, когда UI активен
+    }
+
     float xpos = (float)xposIn;
     float ypos = (float)yposIn;
 
