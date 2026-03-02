@@ -2,19 +2,19 @@
 #define GLOBALS_H
 
 #include <glm/glm.hpp>
-#include <camera/FirstPersonCamera.h>
 #include <string>
-#include <render/UI/UIWidget.h>
+#include <Graphics/ui/UIWidget.h>
+#include <Window/Camera.h>
 
-class FirstPersonCamera;
+class Camera;
 class Player;
 
-FirstPersonCamera* getActiveCamera();
+Camera* getActiveCamera();
 Player* getPlayer();
 
 extern unsigned int SCR_WIDTH;
 extern unsigned int SCR_HEIGHT;
-extern FirstPersonCamera camera;
+extern Camera camera;
 extern float deltaTime;
 extern float lastFrame;
 extern bool useRawResources;      // только объявление

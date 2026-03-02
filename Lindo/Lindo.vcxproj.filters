@@ -27,210 +27,243 @@
     <ClCompile Include="src\glad.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\stb_image.cpp">
+    <ClCompile Include="src\Graphics\core\stb_image.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\core\Globals.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Scene\Scene.cpp">
+    <ClCompile Include="src\world\Scene.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\Input.cpp">
+    <ClCompile Include="src\Window\WindowCallbacks.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\WindowCallbacks.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="src\utils\TextureLoader.cpp">
+    <ClCompile Include="src\Graphics\core\Texture.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\core\OGL.h">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\mesh\mesh.cpp">
+    <ClCompile Include="src\Graphics\core\mesh.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\utils\model.cpp">
+    <ClCompile Include="src\Graphics\core\model.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\mesh\primitives.cpp">
+    <ClCompile Include="src\Graphics\render\skybox.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\skybox\skybox.cpp">
+    <ClCompile Include="src\Objects\transform.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\mesh\transform.cpp">
+    <ClCompile Include="src\Objects\Frustum.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Frustum.cpp">
+    <ClCompile Include="src\Objects\GameObject\Object.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\objects\Object.cpp">
+    <ClCompile Include="src\Graphics\core\ShadowMap.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Light\ShadowMap.cpp">
+    <ClCompile Include="src\Graphics\core\CubeShadowMap.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Light\CubeShadowMap.cpp">
+    <ClCompile Include="src\Physics\Collider\CollisionSystem.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\CollisionSystem.cpp">
+    <ClCompile Include="src\Window\Camera.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\camera\FirstPersonCamera.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="src\camera\Player.cpp">
+    <ClCompile Include="src\Objects\Player.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\camera\CameraSettings.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\BoxCollider.cpp">
+    <ClCompile Include="src\Physics\Collider\BoxCollider.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\SphereCollider.cpp">
+    <ClCompile Include="src\Physics\Collider\SphereCollider.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\CapsuleCollider.cpp">
+    <ClCompile Include="src\Physics\Collider\CapsuleCollider.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\RigidBody.cpp">
+    <ClCompile Include="src\Physics\RigidBody.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\PhysicsSystem.cpp">
+    <ClCompile Include="src\Physics\PhysicsSystem.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\Collision\Collider.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Lindo.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\antires\CryptoUtils.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\shader\shader_s.cpp">
+    <ClCompile Include="src\Graphics\ui\UIRenderer.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\UI\UIRenderer.cpp">
+    <ClCompile Include="src\Graphics\ui\UIFont.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\UI\UIFont.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="src\render\UI\UIWidget.cpp">
+    <ClCompile Include="src\Graphics\ui\UIWidget.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\debug\DebugOverlay.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="src\Window\glfw\Window.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Input.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Graphics\render\PostProcessor.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Graphics\ui\UIManager.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\SceneManager.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Graphics\core\Renderer.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Application.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\shader\shader_s.h">
+    <ClInclude Include="src\Graphics\core\Shader.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\camera\FirstPersonCamera.h">
+    <ClInclude Include="src\Window\Camera.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\stb_image.h">
+    <ClInclude Include="src\Graphics\core\stb_image.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="src\core\Globals.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Scene\Scene.h">
+    <ClInclude Include="src\world\Scene.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\Input.h">
+    <ClInclude Include="src\Window\WindowCallbacks.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\WindowCallbacks.h">
+    <ClInclude Include="src\Graphics\core\Texture.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\TextureLoader.h">
+    <ClInclude Include="src\Graphics\core\mesh.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\mesh\mesh.h">
+    <ClInclude Include="src\Graphics\core\model.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\utils\model.h">
+    <ClInclude Include="src\Graphics\render\skybox.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\mesh\primitives.h">
+    <ClInclude Include="src\Objects\transform.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\skybox\skybox.h">
+    <ClInclude Include="src\Objects\GameObject\Object.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\mesh\transform.h">
+    <ClInclude Include="src\Objects\GameObject\Light.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\objects\Object.h">
+    <ClInclude Include="src\Objects\Frustum.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\objects\Light.h">
+    <ClInclude Include="src\Objects\GameObject\Material.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Frustum.h">
+    <ClInclude Include="src\Graphics\core\ShadowMap.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\objects\Material.h">
+    <ClInclude Include="src\Graphics\core\CubeShadowMap.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Light\ShadowMap.h">
+    <ClInclude Include="src\Physics\Collider\Collider.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Light\CubeShadowMap.h">
+    <ClInclude Include="src\Physics\Collider\BoxCollider.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Collision\Collider.h">
+    <ClInclude Include="src\Physics\Collider\SphereCollider.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Collision\BoxCollider.h">
+    <ClInclude Include="src\Physics\Collider\CollisionSystem.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Collision\SphereCollider.h">
+    <ClInclude Include="src\Physics\Collider\ColliderFactory.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Collision\CollisionSystem.h">
+    <ClInclude Include="src\Physics\Collider\CapsuleCollider.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Collision\ColliderFactory.h">
+    <ClInclude Include="src\Objects\Player.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\Collision\CapsuleCollider.h">
+    <ClInclude Include="src\Physics\RigidBody.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\camera\Player.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="src\render\Collision\RigidBody.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="src\render\Collision\PhysicsSystem.h">
+    <ClInclude Include="src\Physics\PhysicsSystem.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="src\antires\CryptoUtils.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\UI\UIMath.h">
+    <ClInclude Include="src\Graphics\ui\UIMath.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\UI\UIRenderer.h">
+    <ClInclude Include="src\Graphics\ui\UIRenderer.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\UI\UIFont.h">
+    <ClInclude Include="src\Graphics\ui\UIFont.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\UI\UIWidget.h">
+    <ClInclude Include="src\Graphics\ui\UIWidget.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\stb_truetype.h">
+    <ClInclude Include="src\Graphics\core\stb_truetype.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="src\debug\DebugOverlay.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\Version.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Physics\RaycastHit.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Window\glfw\Window.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Input.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Graphics\render\PostProcessor.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Graphics\ui\UIManager.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\SceneManager.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Graphics\core\Renderer.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Application.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
@@ -261,8 +294,12 @@
     <None Include="include\imgui\backends\sdlgpu3\shader.vert" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="src\render\objects\CMakeLists.txt" />
     <Text Include="include\imgui\backends\vulkan\build_instructions.txt" />
     <Text Include="include\imgui\backends\sdlgpu3\build_instructions.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="version.rc">
+      <Filter>Файлы ресурсов</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
