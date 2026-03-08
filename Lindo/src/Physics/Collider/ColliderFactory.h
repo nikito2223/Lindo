@@ -5,49 +5,50 @@
 #include "SphereCollider.h"
 #include "CapsuleCollider.h"
 #include <functional>
-#include <objects/GameObject/Object.h>
-
+#include <Component/GameObject/GameObject.h>
 
 class ColliderFactory {
 public:
     // Создание коллайдера по типу
     static std::shared_ptr<Collider> createCollider(ColliderType type,
-        const Transform& transform = Transform(),
         const glm::vec3& size = glm::vec3(1.0f)) {
         switch (type) {
         case ColliderType::BOX:
-            return std::make_shared<BoxCollider>(size, transform);
+            return std::make_shared<BoxCollider>(size);
         case ColliderType::SPHERE:
-            return std::make_shared<SphereCollider>(size.x, transform);
+            return std::make_shared<SphereCollider>(size.x);
         case ColliderType::CAPSULE:
-            return std::make_shared<CapsuleCollider>(size.x, size.y, transform);
+            return std::make_shared<CapsuleCollider>(size.x, size.y);
         default:
             return nullptr;
         }
     }
 
     // Создание коллайдера для объекта
-    static std::shared_ptr<Collider> createColliderForObject(Object* object,
+    static std::shared_ptr<Collider> createColliderForObject(GameObject* object,
         ColliderType type = ColliderType::BOX) {
         if (!object) return nullptr;
 
-        Transform transform = object->transform;
-
-        // Автоматическое определение размера на основе масштаба
-        glm::vec3 size = transform.scale;
+        std::shared_ptr<Collider> col;
 
         switch (type) {
         case ColliderType::BOX:
-            return std::make_shared<BoxCollider>(size, transform);
+            col = std::make_shared<BoxCollider>(object->transform.scale);
+            break;
         case ColliderType::SPHERE:
-            // Используем максимальное измерение для радиуса
-            float radius = std::max({ size.x, size.y, size.z }) * 0.5f;
-            return std::make_shared<SphereCollider>(radius, transform);
+            float radius = std::max({ object->transform.scale.x, object->transform.scale.y, object->transform.scale.z }) * 0.5f;
+            col = std::make_shared<SphereCollider>(radius);
+            break;
         case ColliderType::CAPSULE:
-            return std::make_shared<CapsuleCollider>(size.x * 0.5f, size.y, transform);
+            col = std::make_shared<CapsuleCollider>(object->transform.scale.x * 0.5f, object->transform.scale.y);
+            break;
         default:
             return nullptr;
         }
+
+        col->owner = object;
+
+        return col;
     }
 
     // Пресеты для различных объектов

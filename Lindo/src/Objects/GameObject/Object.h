@@ -1,102 +1,99 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <memory>
-#include <objects/transform.h>
 #include <Graphics/core/mesh.h>
 #include <Graphics/core/model.h>
-#include <Physics/Collider/Collider.h>
 
 class Object {
 public:
     Mesh* mesh = nullptr;
     Model* model = nullptr;
-    Transform transform;
 
-    // Bounding box для отсечения
+    // Bounding box (локальный!)
     glm::vec3 bboxMin{ 0.0f };
     glm::vec3 bboxMax{ 0.0f };
     bool hasBBox = false;
 
-    // Для сферы (альтернатива bbox)
+    // Bounding sphere
     glm::vec3 bsphereCenter{ 0.0f };
     float bsphereRadius = 0.0f;
     bool hasBSphere = false;
+
     bool castsShadows = true;
     bool receivesShadows = true;
-
-    // Коллайдер объекта (если есть)
-    std::shared_ptr<Collider> collider;
-    bool hasCollider = false;
 
     Object() = default;
     Object(Mesh* m) : mesh(m) { calculateBoundingBox(); }
     Object(Model* m) : model(m) { calculateBoundingBox(); }
 
-    virtual void Draw(Shader& shader) {
+    virtual void Draw(Shader& shader, const Transform& transform) {
+
         if (mesh) {
-            glm::mat4 objectMatrix = transform.getMatrix();
-            glm::mat4 meshMatrix = mesh->transform.getMatrix();
-            glm::mat4 combinedMatrix = objectMatrix * meshMatrix;
+            //glm::mat4 objectMatrix = transform.getMatrix();
+            ///*glm::mat4 meshMatrix = mesh.*/
+            ///*glm::mat4 combined = objectMatrix * meshMatrix;*/
 
-            shader.setMat4("model", combinedMatrix);
+            ///*shader.setMat4("model", combined);*/
 
-            glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(combinedMatrix)));
-            shader.setMat3("normalMatrix", normalMatrix);
+            //glm::mat3 normalMatrix =
+            //    glm::transpose(glm::inverse(glm::mat3(combined)));
 
-            mesh->Draw(shader);
+            //shader.setMat3("normalMatrix", normalMatrix);
+
+            //mesh->Draw(shader);
         }
         else if (model) {
-            model->transform = this->transform;
+            model->transform = transform;
             model->Draw(shader);
         }
     }
 
-    // Синхронизация коллайдера с трансформацией объекта
-    virtual void updateCollider() {
-        if (collider) {
-            collider->getTransform().position = transform.position;
-            collider->getTransform().rotation = transform.rotation;
-            collider->getTransform().scale = transform.scale;
-        }
+    // ---- Bounding Box с учётом transform GameObject ----
+    std::pair<glm::vec3, glm::vec3>
+        getTransformedBBox(const Transform& transform) const {
+
+        if (!hasBBox)
+            return { glm::vec3(0), glm::vec3(0) };
+
+        glm::mat4 matrix = transform.getMatrix();
+
+        glm::vec3 min =
+            glm::vec3(matrix * glm::vec4(bboxMin, 1.0f));
+        glm::vec3 max =
+            glm::vec3(matrix * glm::vec4(bboxMax, 1.0f));
+
+        return { min, max };
     }
 
-    void calculateBoundingBox() {
-        if (mesh) calculateMeshBoundingBox();
-        else if (model) calculateModelBoundingBox();
-    }
+    std::pair<glm::vec3, float>
+        getTransformedBSphere(const Transform& transform) const {
 
-    std::pair<glm::vec3, glm::vec3> getTransformedBBox() const {
-        if (!hasBBox) return { glm::vec3(0), glm::vec3(0) };
+        if (!hasBSphere)
+            return { glm::vec3(0), 0.0f };
 
-        glm::mat4 transformMatrix = transform.getMatrix();
-        glm::vec3 transformedMin = glm::vec3(transformMatrix * glm::vec4(bboxMin, 1.0f));
-        glm::vec3 transformedMax = glm::vec3(transformMatrix * glm::vec4(bboxMax, 1.0f));
+        glm::mat4 matrix = transform.getMatrix();
 
-        glm::vec3 size = bboxMax - bboxMin;
-        float maxSize = glm::max(glm::max(size.x, size.y), size.z);
-        glm::vec3 center = (transformedMin + transformedMax) * 0.5f;
+        glm::vec3 center =
+            glm::vec3(matrix * glm::vec4(bsphereCenter, 1.0f));
 
-        transformedMin = center - glm::vec3(maxSize * 0.5f);
-        transformedMax = center + glm::vec3(maxSize * 0.5f);
+        float scaleFactor = glm::max(
+            glm::max(transform.scale.x, transform.scale.y),
+            transform.scale.z
+        );
 
-        return { transformedMin, transformedMax };
-    }
+        float radius = bsphereRadius * scaleFactor;
 
-    std::pair<glm::vec3, float> getTransformedBSphere() const {
-        if (!hasBSphere) return { glm::vec3(0), 0.0f };
-
-        glm::mat4 transformMatrix = transform.getMatrix();
-        glm::vec3 transformedCenter = glm::vec3(transformMatrix * glm::vec4(bsphereCenter, 1.0f));
-
-        float scaleFactor = glm::max(glm::max(transform.scale.x, transform.scale.y), transform.scale.z);
-        float transformedRadius = bsphereRadius * scaleFactor;
-
-        return { transformedCenter, transformedRadius };
+        return { center, radius };
     }
 
     virtual ~Object() {}
 
 private:
+    void calculateBoundingBox() {
+        if (mesh) calculateMeshBoundingBox();
+        else if (model) calculateModelBoundingBox();
+    }
+
     void calculateMeshBoundingBox();
     void calculateModelBoundingBox();
 };

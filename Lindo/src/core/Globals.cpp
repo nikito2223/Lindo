@@ -1,7 +1,7 @@
 ﻿#include "Globals.h"
 
-unsigned int SCR_WIDTH = 1280;
-unsigned int SCR_HEIGHT = 764;
+unsigned int SCR_WIDTH = 800;
+unsigned int SCR_HEIGHT = 600;
 Camera camera;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;

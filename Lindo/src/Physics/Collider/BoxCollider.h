@@ -3,18 +3,19 @@
 
 #include "Collider.h"
 #include <vector>
+#include <Component/Component.h>
+#include <Component/GameObject/GameObject.h>
 
 class BoxCollider : public Collider {
 public:
-    BoxCollider(const glm::vec3& size = glm::vec3(1.0f),
-        const Transform& transform = Transform())
-        : Collider(ColliderType::BOX, transform), size(size) {
+    BoxCollider(const glm::vec3& size = glm::vec3(1.0f))
+        : Collider(ColliderType::BOX), size(size) {
         generateDebugMesh();
     }
 
     BoxCollider(float width, float height, float depth,
         const Transform& transform = Transform())
-        : Collider(ColliderType::BOX, transform),
+        : Collider(ColliderType::BOX),
         size(glm::vec3(width, height, depth)) {
         generateDebugMesh();
     }
@@ -46,7 +47,7 @@ public:
 
     // Геометрические данные
     glm::vec3 getCenter() const override {
-        return transform.position;
+        return getPosition();
     }
 
     glm::vec3 getExtents() const override {

@@ -2,6 +2,7 @@
 #include "core/OGL.h"
 #include "BoxCollider.h"
 #include <Physics/Collider/CapsuleCollider.h>
+#include <Component/GameObject/GameObject.h>
 
 void BoxCollider::generateDebugMesh() const {
     // Очистка старых данных
@@ -144,7 +145,7 @@ bool BoxCollider::checkRayCollision(const glm::vec3& origin,
 void BoxCollider::drawDebug(Shader& shader) const {
     if (!isVisible) return;
 
-    glm::mat4 model = transform.getMatrix();
+    glm::mat4 model = this->owner->transform.getMatrix();
     glm::vec3 halfSize = size * 0.5f;  // если size — полный размер
     model = glm::scale(model, halfSize * 2.0f);  // масштабируем до размеров коллайдера
 

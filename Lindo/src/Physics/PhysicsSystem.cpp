@@ -8,11 +8,11 @@ PhysicsSystem& PhysicsSystem::getInstance() {
     return instance;
 }
 
-void PhysicsSystem::addRigidBody(std::shared_ptr<RigidBody> body, const std::string& tag) {
+void PhysicsSystem::addRigidBody(RigidBody* body, const std::string& tag) {
     bodies.push_back({ body, tag });
 }
 
-void PhysicsSystem::removeRigidBody(std::shared_ptr<RigidBody> body) {
+void PhysicsSystem::removeRigidBody(RigidBody* body) {
     bodies.erase(std::remove_if(bodies.begin(), bodies.end(),
         [body](const RigidBodyEntry& e) { return e.body == body; }),
         bodies.end());
@@ -22,34 +22,42 @@ void PhysicsSystem::update(float deltaTime) {
     // Предварительная интеграция
     for (auto& entry : bodies) {
         entry.body->isGrounded = false;
-    }
-
-    // Предварительная интеграция
-    for (auto& entry : bodies) {
         entry.body->integrate(deltaTime, gravity);
     }
 
 
     for (int iter = 0; iter < iterations; ++iter) {
-        // Синхронизируем коллайдеры с актуальными позициями тел
+        // Синхронизируем коллайдеры
         for (auto& entry : bodies) {
             if (entry.body->collider) {
-                entry.body->collider->getTransform() = *entry.body->transform;
+                entry.body->collider->setPosition(entry.body->owner->transform.position);
             }
         }
 
-        // Обнаружение и разрешение коллизий
+        // Обнаружение коллизий
         for (size_t i = 0; i < bodies.size(); ++i) {
             for (size_t j = i + 1; j < bodies.size(); ++j) {
                 auto& bodyA = bodies[i].body;
                 auto& bodyB = bodies[j].body;
-                if (bodyA->invMass == 0.0f && bodyB->invMass == 0.0f) continue;
+
                 if (!bodyA->collider || !bodyB->collider) continue;
 
                 CollisionInfo info;
-                if (CollisionSystem::getInstance().checkCollision(
-                    bodyA->collider, bodyB->collider, &info)) {
-                    resolveCollision(bodyA, bodyB, info);
+                if (CollisionSystem::getInstance().checkCollision(bodyA->collider, bodyB->collider, &info)) {
+
+                    // ЕСЛИ ХОТЯ БЫ ОДИН ИЗ НИХ ТРИГГЕР
+                    if (bodyA->collider->getTrigger() || bodyB->collider->getTrigger()) {
+
+                        // Вызываем действия у обоих (если они назначены)
+                        bodyA->collider->fireTriggerEvent(bodyB->collider);
+                        bodyB->collider->fireTriggerEvent(bodyA->collider);
+
+                        // ВАЖНО: resolveCollision НЕ ВЫЗЫВАЕМ, чтобы не было физического отскока
+                    }
+                    else {
+                        // ОБЫЧНАЯ ФИЗИКА (отскоки)
+                        resolveCollision(bodyA, bodyB, info);
+                    }
                 }
             }
         }
@@ -58,31 +66,38 @@ void PhysicsSystem::update(float deltaTime) {
     // Финальная синхронизация (на всякий случай)
     for (auto& entry : bodies) {
         if (entry.body->collider) {
-            entry.body->collider->getTransform() = *entry.body->transform;
+            entry.body->collider->setPosition(entry.body->owner->transform.position);
         }
     }
 }
-void PhysicsSystem::resolveCollision(std::shared_ptr<RigidBody> bodyA,
-    std::shared_ptr<RigidBody> bodyB,
-    const CollisionInfo& info) {
+void PhysicsSystem::resolveCollision(RigidBody* bodyA, RigidBody* bodyB, const CollisionInfo& info) {
+    
+    // --- ЛОГИКА ТРИГГЕРОВ ---
+    // Если хотя бы один из коллайдеров — триггер, мы НЕ вычисляем физику (отскоки и депенатрацию)
+    if (bodyA->collider->getTrigger() || bodyB->collider->getTrigger()) {
+        // Здесь можно вызвать callback-систему:
+        // OnTriggerOverlap(bodyA, bodyB); 
+        return;
+    }
+    // ------------------------
+
     float totalInvMass = bodyA->invMass + bodyB->invMass;
     if (totalInvMass == 0.0f) return;
 
-    // Slop и коэффициент коррекции уменьшаем
-    const float slop = 0.02f;          // чуть больше допустимого проникновения
+    // 1. Позиционная коррекция (выталкивание объектов друг из друга)
+    const float slop = 0.02f;
     float penetration = std::max(info.depth - slop, 0.0f);
     if (penetration > 0.0f) {
-        float factor = 0.2f;
-        if (penetration > 0.1f) factor = 0.4f; // усиленная коррекция при глубоком проникновении
+        float factor = (penetration > 0.1f) ? 0.4f : 0.2f;
         glm::vec3 correction = info.normal * (penetration / totalInvMass) * factor;
+
         if (bodyA->invMass > 0.0f)
-            bodyA->transform->position += correction * bodyA->invMass;
+            bodyA->owner->transform.position += correction * bodyA->invMass;
         if (bodyB->invMass > 0.0f)
-            bodyB->transform->position -= correction * bodyB->invMass;
+            bodyB->owner->transform.position -= correction * bodyB->invMass;
     }
 
-
-
+    // 2. Расчет импульса (отскок)
     glm::vec3 relativeVelocity = bodyA->velocity - bodyB->velocity;
     float velAlongNormal = glm::dot(relativeVelocity, info.normal);
 
@@ -97,8 +112,7 @@ void PhysicsSystem::resolveCollision(std::shared_ptr<RigidBody> bodyA,
     if (bodyB->invMass > 0.0f)
         bodyB->velocity -= impulse * bodyB->invMass;
 
-    // Гашение горизонтальной скорости при контакте с поверхностью
-    // Условие смягчаем: считаем любой контакт с нормалью, направленной вверх, как пол
+    // 3. Трение и приземление (Grounding)
     if (info.normal.y > 0.7f && bodyA->invMass > 0.0f) {
         bodyA->velocity.x *= 0.9f;
         bodyA->velocity.z *= 0.9f;
@@ -116,10 +130,12 @@ bool PhysicsSystem::raycast(const glm::vec3& origin,
     float maxDistance,
     RaycastHit& hit,
     const std::string& tagFilter,
-    std::shared_ptr<RigidBody> ignoreBody) const {
+    RigidBody* ignoreBody,
+    bool ignoreTriggers) const { // Реализация
+
     float closest = maxDistance;
     bool found = false;
-    glm::vec3 normDir = glm::normalize(direction); // нормализуем направление
+    glm::vec3 normDir = glm::normalize(direction);
 
     for (const auto& entry : bodies) {
         const auto& body = entry.body;
@@ -127,7 +143,9 @@ bool PhysicsSystem::raycast(const glm::vec3& origin,
         if (ignoreBody && body == ignoreBody) continue;
         if (!tagFilter.empty() && entry.tag != tagFilter) continue;
 
-        // Проверяем пересечение луча с коллайдером
+        // ВОТ ОНО: Пропускаем, если это триггер и мы просили их игнорировать
+        if (ignoreTriggers && body->collider->getTrigger()) continue;
+
         RaycastHit tempHit;
         if (body->collider->intersectRay(origin, normDir, maxDistance, tempHit)) {
             if (tempHit.distance < closest) {
@@ -146,7 +164,7 @@ std::vector<RaycastHit> PhysicsSystem::raycastAll(const glm::vec3& origin,
     const glm::vec3& direction,
     float maxDistance,
     const std::string& tagFilter,
-    std::shared_ptr<RigidBody> ignoreBody) const {
+    RigidBody* ignoreBody) const {
     std::vector<RaycastHit> hits;
     glm::vec3 normDir = glm::normalize(direction);
 

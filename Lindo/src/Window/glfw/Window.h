@@ -1,6 +1,7 @@
 #pragma once
 #include <core/OGL.h>
 #include <string>
+#include <functional>
 
 class Input;
 class UIManager;
@@ -22,12 +23,18 @@ public:
 
     // Установка обработчиков (вызывается после создания окна)
     void setCallbacks(Input* input, UIManager* uiManager);
+    GLFWwindow* getNativeWindow() const { return m_window; }
+    static void onFramebufferResize(int width, int height);
+    void setResizeCallback(std::function<void(int, int)> callback);
+    GLFWwindow* getGLFWwindow() const { return m_window; }
 
 private:
     GLFWwindow* m_window;
     int m_width, m_height;
     int m_windowedX, m_windowedY, m_windowedW, m_windowedH;
     bool m_isFullscreen = false;
+    std::function<void(int, int)> m_resizeCallback;
+
 
     static Input* s_inputInstance;
     static UIManager* s_uiInstance;

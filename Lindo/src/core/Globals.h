@@ -9,6 +9,10 @@
 class Camera;
 class Player;
 
+namespace Globals {
+    inline float Time = 0.0f; // глобальное время в секундах
+}
+
 Camera* getActiveCamera();
 Player* getPlayer();
 
@@ -25,4 +29,5 @@ extern bool firstMouse;
 extern const std::string PathData; // только объявление
 extern bool uiActive;
 extern std::shared_ptr<UIPanel> g_rootPanel;
+
 #endif

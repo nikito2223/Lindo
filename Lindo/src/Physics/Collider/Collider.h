@@ -1,72 +1,81 @@
-// Collider.h
-#pragma once
+п»ї#pragma once
 
-#include <camera/CameraSettings.cpp>
-#include <Physics/RaycastHit.h>
+#include <glm/glm.hpp>
+#include <memory>
 #include "Objects/transform.h"
-#include <Graphics/core/Shader.h>
+#include "ColliderType.h"
+#include <Component/Component.h>
+#include <Physics/RaycastHit.h>
+#include <Component/GameObject/GameObject.h>
+#include <functional>
 
-// Предварительное объявление
 class Shader;
+class Component;
 
-// Базовый класс коллайдера
-class Collider {
+class Collider : public Component {
 public:
-    Collider(ColliderType type, const Transform& transform = Transform())
-        : type(type), transform(transform), isTrigger(false), isVisible(true),
-        debugColor(glm::vec3(0.0f, 1.0f, 0.0f)) {}
+    Collider(ColliderType type)
+        : type(type),
+        isTrigger(false),
+        isVisible(true),
+        debugColor(glm::vec3(0, 1, 0)),
+        userData(nullptr) {}
 
     virtual ~Collider() = default;
-
-    // Виртуальные методы для проверки столкновений
-    virtual bool checkCollision(const std::shared_ptr<Collider>& other,
-        CollisionInfo* info = nullptr) const {
-        return checkCollision(other.get(), info);
-    }
 
     virtual bool checkCollision(const Collider* other,
         CollisionInfo* info = nullptr) const = 0;
 
-    virtual bool checkRayCollision(const glm::vec3& origin, const glm::vec3& direction,
-        float* distance = nullptr, glm::vec3* normal = nullptr) const = 0;
+    virtual bool checkRayCollision(const glm::vec3& origin,
+        const glm::vec3& direction,
+        float* distance = nullptr,
+        glm::vec3* normal = nullptr) const = 0;
 
     virtual bool intersectRay(const glm::vec3& origin,
         const glm::vec3& dir,
         float maxDist,
         RaycastHit& hit) const = 0;
 
-    // Виртуальные методы для отладочной визуализации
     virtual void drawDebug(Shader& shader) const = 0;
 
     virtual glm::vec3 getCenter() const = 0;
     virtual glm::vec3 getExtents() const = 0;
 
-
-
-    // Геттеры и сеттеры
     ColliderType getType() const { return type; }
-    Transform& getTransform() { return transform; }
-    const Transform& getTransform() const { return transform; }
 
+    glm::vec3 getPosition() const {
+        return owner ? owner->transform.position : glm::vec3(0.0f);
+    }
 
-    void setTransform(const Transform& t) { transform = t; }
+    void setTrigger(bool trigger) { isTrigger = trigger; }
+    bool getTrigger() const { return isTrigger; }
+
     void setVisible(bool visible) { isVisible = visible; }
     bool getVisible() const { return isVisible; }
 
     void setDebugColor(const glm::vec3& color) { debugColor = color; }
     glm::vec3 getDebugColor() const { return debugColor; }
 
-    void setTrigger(bool trigger) { isTrigger = trigger; }
-    bool getTrigger() const { return isTrigger; }
-
     void setUserData(void* data) { userData = data; }
     void* getUserData() const { return userData; }
 
+    using TriggerCallback = std::function<void(Collider* other)>;
+
+    void onTriggerEnter(TriggerCallback callback) {
+        onEnter = callback;
+    }
+
+    void fireTriggerEvent(Collider* other) {
+        if (onEnter) onEnter(other);
+    }
+
 protected:
+    TriggerCallback onEnter = nullptr;
+
     ColliderType type;
-    Transform transform;
+
     bool isTrigger;
     bool isVisible;
     glm::vec3 debugColor;
-    void* userData = nullptr;
+    void* userData;
 };

@@ -4,32 +4,38 @@
 #include <Physics/Collider/CapsuleCollider.h>
 #include <Physics/PhysicsSystem.h>
 
-Player::Player(Model* model, const Transform& transform)
-    : Object(model)
-{
-    this->transform = transform;
-    createCollider(); // коллайдер создаётся и добавляется в систему
-    // rigidBody НЕ создаём здесь
-    camera.setPlayerTransform(this->transform);
-
+Player::Player(Model* model) {
+    createCollider();
 }
 
-Player::Player(Mesh* mesh, const Transform& transform)
-    : Object(mesh)
-{
-    this->transform = transform;
+Player::Player(Mesh* mesh) {
     createCollider();
-    camera.setPlayerTransform(this->transform);
 }
 
 Player::~Player() {
-    if (collider) {
-        auto& collisionSystem = CollisionSystem::getInstance();
-        collisionSystem.removeCollider(collider);
+    if (auto* col = owner->getComponent<CapsuleCollider>()) { 
+        auto& collisionSystem = CollisionSystem::getInstance(); 
+        collisionSystem.removeCollider(col);
     }
 }
 
-void Player::update(float deltaTime) {
+void Player::OnStart() {
+    std::cout << "Player::OnStart() called, owner: " << owner << std::endl;
+    if (!owner) {
+        std::cerr << "ERROR: Player owner is nullptr in OnStart!" << std::endl;
+        return;
+    }
+}
+
+void Player::OnUpdate(float deltaTime) {
+    if (!owner) {
+        std::cerr << "ERROR: Player owner is nullptr in OnUpdate!" << std::endl;
+        return;
+    }
+
+    auto* cam = owner->getComponent<Camera>();
+    if (!cam) return;
+
     // Автовставание при приседе
     if (bCrouching && blocked) {
         float oldHeight = crouchHeight;
@@ -38,7 +44,7 @@ void Player::update(float deltaTime) {
 
         float safetyMargin = 0.1f;
 
-        glm::vec3 rayOrigin = transform.position + glm::vec3(0.0f, oldHeight * 0.5f, 0.0f);
+        glm::vec3 rayOrigin = owner->transform.position + glm::vec3(0.0f, oldHeight * 0.5f, 0.0f);
         glm::vec3 rayDir = glm::vec3(0.0f, 1.0f, 0.0f);
 
         RaycastHit hit;
@@ -50,53 +56,63 @@ void Player::update(float deltaTime) {
     }
 
     // Обновляем камеру с учётом высоты капсулы
-    auto capsuleCollider = std::dynamic_pointer_cast<CapsuleCollider>(collider);
-    if (capsuleCollider) {
-        float eyeHeightFromTop = 0.2f; // расстояние от макушки до уровня глаз
+    auto capsuleCollider = owner->getComponent<CapsuleCollider>();
+    if (capsuleCollider && cam) {
+        float eyeHeightFromTop = 0.2f;
         float headHeight = capsuleCollider->getHeight() * 0.5f - eyeHeightFromTop;
-        camera.setHeightOffset(headHeight);
+        cam->setHeightOffset(headHeight);
     }
-
-    camera.update(deltaTime);
-}
-
-void Player::handleCollision(const CollisionInfo& info) {
-    // Здесь можно добавить звуки, эффекты и т.п.
-    // Физическая реакция уже обработана в PhysicsSystem
 }
 
 void Player::move(const glm::vec3& direction) {
-    if (rigidBody) {
+    auto rb = owner->getComponent<RigidBody>();
+    if (rb) {
         // Устанавливаем горизонтальную скорость
-        rigidBody->velocity.x = direction.x * movementSpeed;
-        rigidBody->velocity.z = direction.z * movementSpeed;
+        rb->velocity.x = direction.x * movementSpeed;
+        rb->velocity.z = direction.z * movementSpeed;
     }
 }
 
-void Player::jump(float force) {
-    if (rigidBody && rigidBody->isGrounded && canJump) {
-        rigidBody->velocity.y = force;
+void Player::jump(float baseForce) {
+    auto rb = owner->getComponent<RigidBody>();
+    if (!rb || !rb->isGrounded || !canJump) return;
+
+    auto* cam = owner->getComponent<Camera>();
+    if (!cam) return;
+
+    glm::vec3 jumpVelocity = glm::vec3(0.0f, baseForce, 0.0f);
+
+    // Направление взгляда камеры
+    glm::vec3 forward = cam->getFront();
+    forward.y = 0.0f;
+    if (glm::length(forward) > 0.001f) {
+        forward = glm::normalize(forward);
+        float forwardFactor = 0.5f;
+        jumpVelocity += forward * baseForce * forwardFactor;
     }
+
+    float lookUpFactor = glm::clamp(cam->getPitch() / 90.0f, 0.0f, 1.0f);
+    jumpVelocity += forward * baseForce * lookUpFactor;
+
+    rb->velocity += jumpVelocity;
+    rb->isGrounded = false;
 }
 
 void Player::createCollider() {
     Transform colTransform;
-    colTransform.position = transform.position;
+    colTransform.position = owner->transform.position;
     colTransform.rotation = glm::vec3(0.0f);
-    colTransform.scale = transform.scale;
-    // Было: CapsuleCollider(0.4f, 2.0f, colTransform)
-    Object::collider = std::make_shared<CapsuleCollider>(0.4f, standHeight, colTransform);
-    Object::collider->setDebugColor(glm::vec3(1.0f, 0.0f, 0.0f));
-    Object::collider->setVisible(true);
-    Object::hasCollider = true;
-    auto& collisionSystem = CollisionSystem::getInstance();
-    collisionSystem.addCollider(Object::collider, "player");
+    colTransform.scale = owner->transform.scale;
+    // Было: CapsuleCollider(0.4f, 2.0f, colTransform) 
+    auto* col = owner->addComponent<CapsuleCollider>(0.4f, standHeight);
+    col->setDebugColor(glm::vec3(1.0f, 0.0f, 0.0f));
+    col->setVisible(true);
+    auto& collisionSystem = CollisionSystem::getInstance(); 
+    collisionSystem.addCollider(col, "player");
 }
 
 void Player::setCrouching(bool crouch) {
-    auto capsuleCollider = std::dynamic_pointer_cast<CapsuleCollider>(collider);
-    if (!capsuleCollider) return;
-
+    auto capsuleCollider = owner->getComponent<CapsuleCollider>();
     if (crouch == bCrouching) return;
 
     if (crouch) {
@@ -106,7 +122,7 @@ void Player::setCrouching(bool crouch) {
         float heightDiff = oldHeight - newHeight;
 
         capsuleCollider->setHeight(newHeight);
-        transform.position.y -= heightDiff * 0.5f; // опускаем центр
+        owner->transform.position.y -= heightDiff * 0.5f; // опускаем центр
 
         movementSpeed = crouchSpeed;
         bCrouching = true;
@@ -120,7 +136,7 @@ void Player::setCrouching(bool crouch) {
         float newHeight = standHeight;
         float heightDiff = newHeight - oldHeight;
 
-        glm::vec3 rayOrigin = transform.position + glm::vec3(0.0f, oldHeight * 0.5f, 0.0f);
+        glm::vec3 rayOrigin = owner->transform.position + glm::vec3(0.0f, oldHeight * 0.5f, 0.0f);
         glm::vec3 rayDir = glm::vec3(0.0f, 1.0f, 0.0f);
 
         RaycastHit hit;
@@ -133,21 +149,12 @@ void Player::setCrouching(bool crouch) {
 
         // Свободно — можно вставать
         capsuleCollider->setHeight(newHeight);
-        transform.position.y += heightDiff * 0.5f;
+        owner->transform.position.y += heightDiff * 0.5f;
 
         movementSpeed = normalSpeed;
         bCrouching = false;
 
         // Включаем прыжки обратно
         canJump = true;
-    }
-}
-
-
-void Player::updateCollider() {
-    if (collider) {
-        collider->getTransform().position = transform.position;
-        collider->getTransform().scale = transform.scale;
-        // Поворот не трогаем – остаётся нулевым
     }
 }

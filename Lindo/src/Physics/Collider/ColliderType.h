@@ -1,9 +1,6 @@
-#pragma once
-
-#include <glm/glm.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <memory>
 
-// Типы коллайдеров
 enum class ColliderType {
     BOX,
     SPHERE,
@@ -11,7 +8,6 @@ enum class ColliderType {
     MESH
 };
 
-// Структура для хранения информации о столкновении
 struct CollisionInfo {
 
     float penetration;       // Проникновение/глубина столкновения

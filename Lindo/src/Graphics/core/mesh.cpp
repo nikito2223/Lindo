@@ -1,16 +1,15 @@
 // Mesh.cpp
 #include "mesh.h"
-#include <iostream>
 
 Mesh::Mesh(
     const std::vector<Vertex>& vertices,
     const std::vector<unsigned int>& indices,
-    const std::vector<Texture>& textures,
-    const Transform& transform
+    const std::vector<Texture>& textures
 )
-    : vertices(vertices), indices(indices), textures(textures), transform(transform)
+    : vertices(vertices), indices(indices), textures(textures)
 {
     setupMesh();
+    calculateBoundingBox();  // автоматически вычисляем при создании
 }
 
 void Mesh::setupMesh()
@@ -35,6 +34,7 @@ void Mesh::setupMesh()
         GL_STATIC_DRAW
     );
 
+    // Vertex attributes
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
@@ -53,12 +53,8 @@ void Mesh::setupMesh()
     glBindVertexArray(0);
 }
 
-// В Mesh.cpp
 void Mesh::Draw(Shader& shader)
 {
-    // Меш УЖЕ получил матрицу model от Object или Model
-    // Не устанавливаем ее здесь снова
-
     unsigned int diffuseNr = 1;
     unsigned int specularNr = 1;
 
@@ -80,4 +76,44 @@ void Mesh::Draw(Shader& shader)
     glBindVertexArray(0);
 
     glActiveTexture(GL_TEXTURE0);
+}
+
+void Mesh::calculateBoundingBox()
+{
+    if (vertices.empty()) {
+        hasBBox = false;
+        hasBSphere = false;
+        return;
+    }
+
+    float minX = std::numeric_limits<float>::max();
+    float minY = std::numeric_limits<float>::max();
+    float minZ = std::numeric_limits<float>::max();
+    float maxX = std::numeric_limits<float>::lowest();
+    float maxY = std::numeric_limits<float>::lowest();
+    float maxZ = std::numeric_limits<float>::lowest();
+
+    // Находим min/max координаты вершин
+    for (const auto& vertex : vertices) {
+        minX = std::min(minX, vertex.Position.x);
+        minY = std::min(minY, vertex.Position.y);
+        minZ = std::min(minZ, vertex.Position.z);
+        maxX = std::max(maxX, vertex.Position.x);
+        maxY = std::max(maxY, vertex.Position.y);
+        maxZ = std::max(maxZ, vertex.Position.z);
+    }
+
+    bboxMin = glm::vec3(minX, minY, minZ);
+    bboxMax = glm::vec3(maxX, maxY, maxZ);
+    hasBBox = true;
+
+    // Вычисляем bounding sphere
+    bsphereCenter = (bboxMin + bboxMax) * 0.5f;
+    bsphereRadius = glm::length(bboxMax - bboxMin) * 0.5f;
+    hasBSphere = true;
+
+    // Опционально: вывод отладочной информации
+    std::cout << "Mesh BBox: min(" << minX << ", " << minY << ", " << minZ
+        << "), max(" << maxX << ", " << maxY << ", " << maxZ
+        << "), radius: " << bsphereRadius << std::endl;
 }

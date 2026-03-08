@@ -155,7 +155,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     }
 
     // Создаем меш с единичной трансформацией
-    return Mesh(vertices, indices, textures, Transform());
+    return Mesh(vertices, indices, textures);
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial* mat,

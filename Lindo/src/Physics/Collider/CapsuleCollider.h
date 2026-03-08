@@ -4,6 +4,8 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <Graphics/core/Shader.h>
+#include <Component/Component.h>
+#include <Component/GameObject/GameObject.h>
 
 // Предварительные объявления (чтобы избежать циклических зависимостей)
 class BoxCollider;
@@ -11,9 +13,8 @@ struct CollisionInfo; // если не определён в Collider.h
 
 class CapsuleCollider : public Collider {
 public:
-    CapsuleCollider(float radius = 0.5f, float height = 2.0f,
-        const Transform& transform = Transform())
-        : Collider(ColliderType::CAPSULE, transform),
+    CapsuleCollider(float radius = 0.5f, float height = 2.0f)
+        : Collider(ColliderType::CAPSULE),
         radius(radius), height(height) {
         generateDebugMesh();
     }
@@ -40,7 +41,7 @@ public:
         float* distance = nullptr, glm::vec3* normal = nullptr) const override;
 
     glm::vec3 getCenter() const override {
-        return transform.position;
+        return getPosition();
     }
 
     glm::vec3 getExtents() const override {

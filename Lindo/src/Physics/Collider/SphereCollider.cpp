@@ -162,7 +162,7 @@ void SphereCollider::drawDebug(Shader& shader) const {
     if (!isVisible) return;
     if (VAO == 0) return;  // предполагается, что generateDebugMesh() уже вызван
 
-    glm::mat4 model = transform.getMatrix();
+    glm::mat4 model = owner->transform.getMatrix();
     shader.setMat4("model", model);
     shader.setVec3("color", debugColor);
 

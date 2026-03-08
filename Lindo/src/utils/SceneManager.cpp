@@ -16,16 +16,16 @@ void SceneManager::update(float deltaTime, Input * input) {
     if (!player) return;
 
     // Движение на основе ввода
-    Camera& cam = player->getCamera();
+    auto* cam = player->owner->getComponent<Camera>();
     glm::vec3 moveDir(0.0f);
     if (input->isForwardPressed())
-        moveDir += glm::vec3(cam.getFront().x, 0.0f, cam.getFront().z);
-    if (input->isBackwardPressed())
-        moveDir -= glm::vec3(cam.getFront().x, 0.0f, cam.getFront().z);
-    if (input->isLeftPressed())
-        moveDir -= glm::vec3(cam.getRight().x, 0.0f, cam.getRight().z);
-    if (input->isRightPressed())
-        moveDir += glm::vec3(cam.getRight().x, 0.0f, cam.getRight().z);
+        moveDir += glm::vec3(cam->getFront().x, 0.0f, cam->getFront().z);
+    if (input->isBackwardPressed())                     
+        moveDir -= glm::vec3(cam->getFront().x, 0.0f, cam->getFront().z);
+    if (input->isLeftPressed())                         
+        moveDir -= glm::vec3(cam->getRight().x, 0.0f, cam->getRight().z);
+    if (input->isRightPressed())                        
+        moveDir += glm::vec3(cam->getRight().x, 0.0f, cam->getRight().z);
     if (glm::length(moveDir) > 0.0f)
         moveDir = glm::normalize(moveDir);
     player->move(moveDir);
@@ -38,25 +38,15 @@ void SceneManager::update(float deltaTime, Input * input) {
     glm::vec2 mouseDelta = input->getMouseDelta();
 
     if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-        player->getCamera().processMouseMovement(mouseDelta.x, mouseDelta.y);
+        cam->processMouseMovement(mouseDelta.x, mouseDelta.y);
     }
 
     // После использования обязательно сбросить
     input->resetMouseDelta();
-
+    
     // Приседание (удержание)
     player->setCrouching(input->isCrouchPressed());
-
-    // Обновление игрока (физика, камера)
-    player->update(deltaTime);
-}
-
-void SceneManager::onResize(int width, int height) {
-    float aspectRatio = (float)width / (float)height;
-    if (m_camera) {
-        // Обновляем проекционную матрицу камеры
-        m_camera->setAspectRatio(aspectRatio);
-    }
+   
 }
 
 void SceneManager::render(Shader& lightingShader,float deltaTime, bool debugMode, bool showLightIcons, float lightIconRadius)
@@ -74,9 +64,12 @@ void SceneManager::cleanup() {
 }
 
 Player* SceneManager::getPlayer() const {
-    return ::getPlayer(); // глобальная функция
+    return ::getPlayer(); // глобальная функция из Scene.h
 }
-
+Camera& SceneManager::getCamera() const {
+    // Предполагается, что у SceneManager есть член m_camera
+    return camera;
+}
 glm::vec3 SceneManager::getCharacterPosition() const {
     return ::getCharacterPosition(); // глобальная функция
 }

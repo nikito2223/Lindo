@@ -26,6 +26,7 @@ struct PointLight {
     float constant;
     float linear;
     float quadratic;
+    float radius;  // Добавьте это поле
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
@@ -65,7 +66,7 @@ uniform float shadowBias; // передавайте из программы, н�
 // Тени (упрощаем до одной карты для направленного света)
 uniform sampler2D shadowMap;
 uniform mat4 lightSpaceMatrix;
-uniform bool shadowsEnabled = false;
+uniform bool shadowsEnabled;
 
 // Debug режим
 uniform bool debugMode;
@@ -158,7 +159,7 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     if(projCoords.z > 1.0) return 0.0;
     
     float currentDepth = projCoords.z;
-    float bias = max(shadowBias * (1.0 - dot(normal, lightDir)), shadowBias * 0.1);
+    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);  
     
     
     // Простой PCF 3x3
@@ -203,12 +204,16 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     if (!light.enabled) return vec3(0.0);
     
     vec3 lightDir = normalize(light.position - fragPos);
+    float distance = length(light.position - fragPos);
+    
+    // Проверка на радиус действия света
+    
+    
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
     
     vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
     vec3 diffuse = light.diffuse * diff * light.color * light.intensity * vec3(texture(material.diffuse, TexCoords));

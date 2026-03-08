@@ -175,19 +175,19 @@ void CapsuleCollider::generateDebugMesh() const {
 
 glm::vec3 CapsuleCollider::getTopSphereCenter() const {
     float halfCylinder = (height - 2.0f * radius) * 0.5f;
-    return transform.position + glm::vec3(0.0f, halfCylinder, 0.0f);
+    return getPosition() + glm::vec3(0.0f, halfCylinder, 0.0f);
 }
 
 glm::vec3 CapsuleCollider::getBottomSphereCenter() const {
     float halfCylinder = (height - 2.0f * radius) * 0.5f;
-    return transform.position - glm::vec3(0.0f, halfCylinder, 0.0f);
+    return getPosition() - glm::vec3(0.0f, halfCylinder, 0.0f);
 }
 
 void CapsuleCollider::drawDebug(Shader& shader) const {
     if (!isVisible) return;
     if (VAO == 0) return;
 
-    glm::mat4 model = transform.getMatrix();
+    glm::mat4 model = owner->transform.getMatrix();
     shader.setMat4("model", model);
     shader.setVec3("color", debugColor);
 

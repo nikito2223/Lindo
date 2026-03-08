@@ -6,7 +6,9 @@
 #include <string>
 #include <objects/transform.h>
 #include <Graphics/core/Shader.h>
-
+#include <limits>      // для numeric_limits
+#include <iostream>    // для вывода отладки
+#include <algorithm>   // для min/max
 
 struct Vertex {
     glm::vec3 Position;
@@ -27,23 +29,87 @@ public:
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
-    Transform transform; // Каждый меш имеет свою собственную трансформацию
+
+    // Bounding box (локальный!)
+    glm::vec3 bboxMin{ 0.0f };
+    glm::vec3 bboxMax{ 0.0f };
+    bool hasBBox = false;
+
+    // Bounding sphere
+    glm::vec3 bsphereCenter{ 0.0f };
+    float bsphereRadius = 0.0f;
+    bool hasBSphere = false;
 
     Mesh(const std::vector<Vertex>& vertices,
         const std::vector<unsigned int>& indices,
-        const std::vector<Texture>& textures,
-        const Transform& transform = Transform()); // По умолчанию пустая трансформация
+        const std::vector<Texture>& textures);
 
     void Draw(Shader& shader);
 
     int getTriangleCount() const {
         if (indices.empty()) {
-            return vertices.size() / 3; // приблизительно для треугольников без индексов
+            return vertices.size() / 3;
         }
         return indices.size() / 3;
     }
 
+    // Получить трансформированный bounding box с учетом transform объекта
+    std::pair<glm::vec3, glm::vec3>
+        getTransformedBBox(const Transform& transform) const {
+
+        if (!hasBBox) return { glm::vec3(0), glm::vec3(0) };
+
+        glm::mat4 matrix = transform.getMatrix();
+
+        // Трансформируем все 8 углов box'а и находим новые min/max
+        std::vector<glm::vec3> corners = {
+            glm::vec3(bboxMin.x, bboxMin.y, bboxMin.z),
+            glm::vec3(bboxMax.x, bboxMin.y, bboxMin.z),
+            glm::vec3(bboxMin.x, bboxMax.y, bboxMin.z),
+            glm::vec3(bboxMax.x, bboxMax.y, bboxMin.z),
+            glm::vec3(bboxMin.x, bboxMin.y, bboxMax.z),
+            glm::vec3(bboxMax.x, bboxMin.y, bboxMax.z),
+            glm::vec3(bboxMin.x, bboxMax.y, bboxMax.z),
+            glm::vec3(bboxMax.x, bboxMax.y, bboxMax.z)
+        };
+
+        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+        glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+
+        for (const auto& corner : corners) {
+            glm::vec3 transformed = glm::vec3(matrix * glm::vec4(corner, 1.0f));
+            min = glm::min(min, transformed);
+            max = glm::max(max, transformed);
+        }
+
+        return { min, max };
+    }
+
+    // Получить трансформированную bounding sphere с учетом transform объекта
+    std::pair<glm::vec3, float>
+        getTransformedBSphere(const Transform& transform) const {
+
+        if (!hasBSphere) return { glm::vec3(0), 0.0f };
+
+        glm::mat4 matrix = transform.getMatrix();
+
+        // Центр сферы трансформируется как точка
+        glm::vec3 center = glm::vec3(matrix * glm::vec4(bsphereCenter, 1.0f));
+
+        // Радиус масштабируется по максимальному масштабу
+        float scaleFactor = glm::max(
+            glm::max(transform.scale.x, transform.scale.y),
+            transform.scale.z
+        );
+
+        float radius = bsphereRadius * scaleFactor;
+
+        return { center, radius };
+    }
+
 private:
     unsigned int VAO, VBO, EBO;
+
     void setupMesh();
+    void calculateBoundingBox();  // новый метод
 };

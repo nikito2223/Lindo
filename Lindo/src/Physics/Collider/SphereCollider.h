@@ -2,12 +2,13 @@
 
 #include "Collider.h"
 #include <Graphics/core/Shader.h>
+#include <Component/Component.h>
+#include <Component/GameObject/GameObject.h>
 
 class SphereCollider : public Collider {
 public:
-    SphereCollider(float radius = 1.0f,
-        const Transform& transform = Transform())
-        : Collider(ColliderType::SPHERE, transform), radius(radius) {
+    SphereCollider(float radius = 1.0f)
+        : Collider(ColliderType::SPHERE), radius(radius) {
         generateDebugMesh();
     }
 
@@ -35,7 +36,7 @@ public:
 
     // Геометрические данные
     glm::vec3 getCenter() const override {
-        return transform.position;
+        return getPosition();
     }
 
     glm::vec3 getExtents() const override {

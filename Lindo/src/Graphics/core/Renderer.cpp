@@ -1,22 +1,22 @@
-#include "Renderer.h"
+п»ї#include "Renderer.h"
 #include "utils/SceneManager.h"
 #include "graphics/ui/UIManager.h"
-#include "graphics/render/PostProcessor.h"
 #include "debug/DebugOverlay.h"
 #include "graphics/render/skybox.h"
 #include "core/Globals.h"
 #include "Objects/Player.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <world/Scene.h>
 
-// Вспомогательная функция проверки существования файла (можно вынести в utils)
+// Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅР°СЏ С„СѓРЅРєС†РёСЏ РїСЂРѕРІРµСЂРєРё СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёСЏ С„Р°Р№Р»Р° (РјРѕР¶РЅРѕ РІС‹РЅРµСЃС‚Рё РІ utils)
 static bool fileExists(const std::string& path) {
     std::ifstream f(path);
     return f.good();
 }
 
-Renderer::Renderer(SceneManager* scene, UIManager* ui, PostProcessor* post, DebugOverlay* debug)
-    : m_sceneManager(scene), m_uiManager(ui), m_postProcessor(post), m_debugOverlay(debug) {}
+Renderer::Renderer(SceneManager* scene, UIManager* ui, DebugOverlay* debug)
+    : m_sceneManager(scene), m_uiManager(ui), m_debugOverlay(debug) {}
 
 Renderer::~Renderer() {
     delete m_lightingShader;
@@ -25,10 +25,10 @@ Renderer::~Renderer() {
 }
 
 void Renderer::init() {
-    m_lightingShader = new Shader(PathData + "shaders/VertexShader.vs", PathData + "shaders/FragmentShader.fs");
+    m_lightingShader = new Shader(PathData + "shaders/VertexShader.vert", PathData + "shaders/FragmentShader.frag");
     m_skyboxShader = new Shader(PathData + "shaders/skybox/skybox.vs", PathData + "shaders/skybox/skybox.fs");
 
-    // Загрузка skybox
+    // Р—Р°РіСЂСѓР·РєР° skybox
     std::string hdrPath = PathData + "textures/skybox/1.hdr";
     if (fileExists(hdrPath)) {
         if (useRawResources) {
@@ -61,45 +61,29 @@ void Renderer::init() {
     }
 }
 
-void Renderer::onResize(int width, int height) {
-    // Обновляем соотношение сторон для матриц проекции в шейдерах
-    m_width = width;
-    m_height = height;
-
-    // Если используете отдельные буферы для рендера, обновите их
-    if (m_postProcessor) {
-        m_postProcessor->resize(width, height);
-    }
-}
-
 void Renderer::render(float deltaTime) {
-    // Начинаем пост-обработку (если используется)
-    //if (m_postProcessor) {
-    //    m_postProcessor->begin();
-    //}
-
-    // Очистка буферов
+    // РћС‡РёСЃС‚РєР° Р±СѓС„РµСЂРѕРІ
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Рендер сцены
+    Globals::Time += deltaTime;
+
+    // Р РµРЅРґРµСЂ СЃС†РµРЅС‹
     if (m_sceneManager && m_lightingShader) {
         m_sceneManager->render(*m_lightingShader, deltaTime, m_debugOverlay->isVisible(), m_showLightIcons, m_lightIconRadius);
     }
 
     DebugMode = m_debugOverlay->isVisible();
 
-    // Рендер skybox
+    // Р РµРЅРґРµСЂ skybox
     Player* player = m_sceneManager ? m_sceneManager->getPlayer() : nullptr;
     if (!player) std::cerr << "ERROR: No player in scene!" << std::endl;
     if (player && m_skybox && m_skyboxShader) {
-        Camera& cam = player->getCamera();
-        glm::mat4 view = cam.getViewMatrix();
-        glm::mat4 skyboxView = glm::mat4(glm::mat3(view)); // убираем трансляцию
-        glm::mat4 projection = glm::perspective(glm::radians(cam.getZoom()),
-            (float)m_postProcessor->getWidth() / m_postProcessor->getHeight(),
-            0.1f, 100.0f);
-
-        // Сохраняем состояние OpenGL
+        auto* cam = player->owner->getComponent<Camera>();
+        glm::mat4 view =       cam->getViewMatrix();
+        glm::mat4 skyboxView = glm::mat4(glm::mat3(view)); // СѓР±РёСЂР°РµРј С‚СЂР°РЅСЃР»СЏС†РёСЋ
+        glm::mat4 projection = cam->getProjectionMatrix();
+        
+        // РЎРѕС…СЂР°РЅСЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ OpenGL
         GLboolean depthMask;
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
         GLint cullFace;
@@ -111,33 +95,38 @@ void Renderer::render(float deltaTime) {
         glDepthMask(GL_FALSE);
         glDisable(GL_CULL_FACE);
 
+        //if (hasDirectionalLight()) {
+        //    m_skyboxShader->use();
+        //    m_skyboxShader->setMat4("view", skyboxView);
+        //    m_skyboxShader->setMat4("projection", projection);
+        //    m_skybox->Draw(*m_skyboxShader);
+        //}
+        //else {
+        //    // РњРѕР¶РЅРѕ РѕС‡РёСЃС‚РёС‚СЊ СЌРєСЂР°РЅ С‡РµСЂРЅС‹Рј С†РІРµС‚РѕРј
+        //    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        //}
+
         m_skyboxShader->use();
         m_skyboxShader->setMat4("view", skyboxView);
         m_skyboxShader->setMat4("projection", projection);
         m_skybox->Draw(*m_skyboxShader);
 
-        // Восстанавливаем
+        // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј
         glDepthFunc(GL_LESS);
         glDepthMask(depthMask);
         if (cullEnabled) glEnable(GL_CULL_FACE);
         glCullFace(cullFace);
     }
 
-    // Завершаем пост-обработку и рендерим результат на экран
-    //if (m_postProcessor) {
-    //    m_postProcessor->end();
-    //    m_postProcessor->render(); // используем шейдер по умолчанию
-    //}
-
-    // Рендер UI (поверх всего)
+    // Р РµРЅРґРµСЂ UI (РїРѕРІРµСЂС… РІСЃРµРіРѕ)
     if (m_uiManager) {
-        // Отключаем тест глубины для UI
+        // РћС‚РєР»СЋС‡Р°РµРј С‚РµСЃС‚ РіР»СѓР±РёРЅС‹ РґР»СЏ UI
         glDisable(GL_DEPTH_TEST);
         m_uiManager->render();
         glEnable(GL_DEPTH_TEST);
     }
 
-    // Рендер дебаг-оверлея
+    // Р РµРЅРґРµСЂ РґРµР±Р°Рі-РѕРІРµСЂР»РµСЏ
     if (m_debugOverlay && m_debugOverlay->isVisible()) {
         if (m_uiManager && m_uiManager->getRenderer()) {
             m_debugOverlay->render(*m_uiManager->getRenderer());
@@ -146,4 +135,22 @@ void Renderer::render(float deltaTime) {
             std::cerr << "Warning: UIManager or its renderer is null, cannot render debug overlay" << std::endl;
         }
     }
+}
+void Renderer::onResize(int width, int height) {
+    SCR_WIDTH = width;
+    SCR_HEIGHT = height;
+
+    // Р—Р°С‰РёС‚Р° РѕС‚ РЅСѓР»СЏ
+    if (height == 0) height = 1;
+
+    if (m_sceneManager) {
+        Player* player = m_sceneManager->getPlayer();
+        if (player) {
+            auto* cam = player->owner->getComponent<Camera>();
+            cam->setAspectRatio((float)width / (float)height);
+            cam->setNearFar(0.1f, 100.0f);
+        }
+    }
+
+    glViewport(0, 0, width, height); // С‡С‚РѕР±С‹ С‚РѕС‡РЅРѕ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°С‚СЊ
 }

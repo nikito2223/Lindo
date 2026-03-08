@@ -3,54 +3,22 @@
 #include "Input.h"
 #include "utils/SceneManager.h"
 #include "Graphics/ui/UIManager.h"
-#include "Graphics/render/PostProcessor.h"
 #include "debug/DebugOverlay.h"
 #include "Graphics/core/Renderer.h"
 #include "core/Globals.h" // для SCR_WIDTH, SCR_HEIGHT
+#include <iostream>
 
 Application::Application() {
     m_window = std::make_unique<Window>(SCR_WIDTH, SCR_HEIGHT, "Lingo");
     m_input = std::make_unique<Input>();
     m_sceneManager = std::make_unique<SceneManager>();
     m_uiManager = std::make_unique<UIManager>();
-    m_postProcessor = std::make_unique<PostProcessor>();
     m_debugOverlay = std::make_unique<DebugOverlay>();
 
-    m_renderer = std::make_unique<Renderer>(m_sceneManager.get(), m_uiManager.get(),
-        m_postProcessor.get(), m_debugOverlay.get());
+    m_renderer = std::make_unique<Renderer>(m_sceneManager.get(), m_uiManager.get(), m_debugOverlay.get());
 }
 
 Application::~Application() = default;
-
-void Application::onResize(int width, int height) {
-    // Обновляем viewport
-    glViewport(0, 0, width, height);
-
-    // Обновляем соотношение сторон для проекционных матриц
-    if (m_sceneManager) {
-        m_sceneManager->onResize(width, height);
-    }
-
-    // Обновляем пост-процессор
-    if (m_postProcessor) {
-        m_postProcessor->resize(width, height);
-    }
-
-    // Обновляем UI
-    if (m_uiManager) {
-        m_uiManager->onResize(width, height);
-    }
-
-    // Обновляем дебаг-оверлей
-    if (m_debugOverlay) {
-        m_debugOverlay->onResize(width, height);
-    }
-
-    // Обновляем рендерер
-    if (m_renderer) {
-        m_renderer->onResize(width, height);
-    }
-}
 
 void Application::run() {
     // Инициализация компонентов
@@ -61,27 +29,15 @@ void Application::run() {
         throw std::runtime_error("Failed to initialize GLAD");
     }
 
-    glfwSetWindowSizeCallback(m_window->getGLFWWindow(), [](GLFWwindow* window, int width, int height) {
-        // Получаем указатель на Application из данных окна
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-        if (app) {
-            app->onResize(width, height);
-        }
-    });
-
-    glfwSetWindowUserPointer(m_window->getGLFWWindow(), this);
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
+    glEnable(GL_MULTISAMPLE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glClearColor(0.2f, 0.3f, 0.4f, 1.0f); // яркий серо-синий цвет
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     std::cout << "Initializing UI..." << std::endl;
     m_uiManager->init();
-
-    std::cout << "Initializing post-processor..." << std::endl;
-    m_postProcessor->init(SCR_WIDTH, SCR_HEIGHT);
 
     std::cout << "Initializing scene..." << std::endl;
     m_sceneManager->init();

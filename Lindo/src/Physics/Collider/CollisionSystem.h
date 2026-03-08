@@ -11,8 +11,8 @@
 
 // Тип коллизии
 struct CollisionEvent {
-    std::shared_ptr<Collider> colliderA;
-    std::shared_ptr<Collider> colliderB;
+    Collider* colliderA;
+    Collider* colliderB;
     CollisionInfo info;
     bool isEnter;     // true = вошли в коллизию, false = вышли из коллизии
     float timestamp;  // Время коллизии
@@ -30,24 +30,24 @@ public:
     }
 
     // Добавление/удаление коллайдеров
-    void addCollider(std::shared_ptr<Collider> collider, const std::string& tag = "");
-    void removeCollider(std::shared_ptr<Collider> collider);
+    void addCollider(Collider* collider, const std::string& tag = "");
+    void removeCollider(Collider* collider);
     void clearColliders();
 
     // Получение коллайдеров по тегу
-    std::vector<std::shared_ptr<Collider>> getCollidersByTag(const std::string& tag) const;
+    std::vector<Collider*> getCollidersByTag(const std::string& tag) const;
 
     // Проверка всех коллизий
     void update(float deltaTime);
 
     // Проверка конкретных коллизий
-    bool checkCollision(std::shared_ptr<Collider> a, std::shared_ptr<Collider> b,
+    bool checkCollision(Collider* a, Collider* b,
         CollisionInfo* info = nullptr) const;
 
     // Raycasting
     struct RaycastResult {
         bool hit = false;
-        std::shared_ptr<Collider> collider = nullptr;
+        Collider* collider = nullptr;
         float distance = 0.0f;
         glm::vec3 point;
         glm::vec3 normal;
@@ -79,7 +79,7 @@ private:
 
     // Внутренние структуры
     struct ColliderEntry {
-        std::shared_ptr<Collider> collider;
+        Collider* collider;
         std::string tag;
         int layer = 0;
         bool wasColliding = false;

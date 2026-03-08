@@ -154,12 +154,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\antires\CryptoUtils.cpp" />
-    <ClCompile Include="src\camera\CameraSettings.cpp" />
+    <ClCompile Include="src\Component\Component.cpp" />
+    <ClCompile Include="src\Component\GameObject\GameObject.cpp" />
+    <ClCompile Include="src\Component\Physhcs\MeshRenderer.cpp" />
     <ClCompile Include="src\core\Application.cpp" />
     <ClCompile Include="src\core\Input.cpp" />
     <ClCompile Include="src\Graphics\core\Renderer.cpp" />
-    <ClCompile Include="src\Graphics\render\PostProcessor.cpp" />
     <ClCompile Include="src\Graphics\ui\UIManager.cpp" />
+    <ClCompile Include="src\Component\Graphics\Light.cpp" />
     <ClCompile Include="src\utils\SceneManager.cpp" />
     <ClCompile Include="src\Window\Camera.cpp" />
     <ClCompile Include="src\Objects\Player.cpp" />
@@ -189,18 +191,20 @@
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\Graphics\core\stb_image.cpp" />
     <ClCompile Include="src\Graphics\core\Texture.cpp" />
-    <ClCompile Include="src\Objects\transform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\antires\CryptoUtils.h" />
+    <ClInclude Include="src\Component\Component.h" />
+    <ClInclude Include="src\Component\GameObject\GameObject.h" />
+    <ClInclude Include="src\Component\Physhcs\MeshRenderer.h" />
     <ClInclude Include="src\core\Application.h" />
     <ClInclude Include="src\core\Input.h" />
     <ClInclude Include="src\Graphics\core\Renderer.h" />
-    <ClInclude Include="src\Graphics\render\PostProcessor.h" />
     <ClInclude Include="src\Graphics\ui\UIManager.h" />
     <ClInclude Include="src\Objects\Player.h" />
     <ClInclude Include="src\debug\DebugOverlay.h" />
+    <ClInclude Include="src\Physics\Collider\ColliderType.h" />
     <ClInclude Include="src\Physics\RaycastHit.h" />
     <ClInclude Include="src\Physics\Collider\BoxCollider.h" />
     <ClInclude Include="src\Physics\Collider\CapsuleCollider.h" />
@@ -215,7 +219,7 @@
     <ClInclude Include="src\Objects\Frustum.h" />
     <ClInclude Include="src\Objects\GameObject\Material.h" />
     <ClInclude Include="src\Objects\GameObject\Object.h" />
-    <ClInclude Include="src\Objects\GameObject\Light.h" />
+    <ClInclude Include="src\Component\Graphics\Light.h" />
     <ClInclude Include="src\Graphics\render\skybox.h" />
     <ClInclude Include="src\Graphics\ui\UIFont.h" />
     <ClInclude Include="src\Graphics\ui\UIMath.h" />
@@ -246,11 +250,11 @@
     <None Include="include\imgui\backends\vulkan\glsl_shader.vert" />
     <None Include="res\shaders\equirectangular_to_cubemap.fs" />
     <None Include="res\shaders\equirectangular_to_cubemap.vs" />
-    <None Include="res\shaders\FragmentShader.fs" />
+    <None Include="res\shaders\FragmentShader.frag" />
     <None Include="res\shaders\irradiance_convolution.fs" />
+    <None Include="res\shaders\Light\point_shadows.gs" />
+    <None Include="res\shaders\Light\point_shadows.vs" />
     <None Include="res\shaders\Light\point_shadow_depth.fs" />
-    <None Include="res\shaders\Light\point_shadow_depth.gs" />
-    <None Include="res\shaders\Light\point_shadow_depth.vs" />
     <None Include="res\shaders\Light\shadow_depth.fs" />
     <None Include="res\shaders\Light\shadow_depth.vs" />
     <None Include="res\shaders\debug_collider.frag" />
@@ -260,7 +264,7 @@
     <None Include="res\shaders\prefilter.fs" />
     <None Include="res\shaders\skybox\skybox.fs" />
     <None Include="res\shaders\skybox\skybox.vs" />
-    <None Include="res\shaders\VertexShader.vs" />
+    <None Include="res\shaders\VertexShader.vert" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="include\imgui\backends\sdlgpu3\build_instructions.txt" />

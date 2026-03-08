@@ -54,9 +54,6 @@
     <ClCompile Include="src\Graphics\render\skybox.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\Objects\transform.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="src\Objects\Frustum.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
@@ -76,9 +73,6 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\Objects\Player.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
-    <ClCompile Include="src\camera\CameraSettings.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\Physics\Collider\BoxCollider.cpp">
@@ -120,9 +114,6 @@
     <ClCompile Include="src\core\Input.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\render\PostProcessor.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="src\Graphics\ui\UIManager.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
@@ -133,6 +124,18 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="src\core\Application.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Component\Graphics\Light.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Component\Component.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Component\GameObject\GameObject.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Component\Physhcs\MeshRenderer.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
@@ -173,7 +176,7 @@
     <ClInclude Include="src\Objects\GameObject\Object.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\Objects\GameObject\Light.h">
+    <ClInclude Include="src\Component\Graphics\Light.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="src\Objects\Frustum.h">
@@ -251,9 +254,6 @@
     <ClInclude Include="src\core\Input.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="src\Graphics\render\PostProcessor.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="src\Graphics\ui\UIManager.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
@@ -266,12 +266,24 @@
     <ClInclude Include="src\core\Application.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="src\Physics\Collider\ColliderType.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Component\GameObject\GameObject.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Component\Component.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Component\Physhcs\MeshRenderer.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\debug_collider.vert" />
     <None Include="res\shaders\debug_collider.frag" />
-    <None Include="res\shaders\FragmentShader.fs" />
-    <None Include="res\shaders\VertexShader.vs" />
+    <None Include="res\shaders\FragmentShader.frag" />
+    <None Include="res\shaders\VertexShader.vert" />
     <None Include="res\shaders\skybox\skybox.vs" />
     <None Include="res\shaders\skybox\skybox.fs" />
     <None Include="res\shaders\equirectangular_to_cubemap.vs" />
@@ -280,9 +292,6 @@
     <None Include="res\shaders\prefilter.fs" />
     <None Include="res\shaders\Light\shadow_depth.vs" />
     <None Include="res\shaders\Light\shadow_depth.fs" />
-    <None Include="res\shaders\Light\point_shadow_depth.vs" />
-    <None Include="res\shaders\Light\point_shadow_depth.gs" />
-    <None Include="res\shaders\Light\point_shadow_depth.fs" />
     <None Include="res\shaders\PostProcess\postprocess.vert" />
     <None Include="res\shaders\PostProcess\postprocess.frag" />
     <None Include="include\imgui\backends\imgui_impl_metal.mm" />
@@ -292,6 +301,9 @@
     <None Include="include\imgui\backends\vulkan\glsl_shader.vert" />
     <None Include="include\imgui\backends\sdlgpu3\shader.frag" />
     <None Include="include\imgui\backends\sdlgpu3\shader.vert" />
+    <None Include="res\shaders\Light\point_shadows.vs" />
+    <None Include="res\shaders\Light\point_shadows.gs" />
+    <None Include="res\shaders\Light\point_shadow_depth.fs" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="include\imgui\backends\vulkan\build_instructions.txt" />

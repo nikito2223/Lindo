@@ -1,41 +1,41 @@
-// FirstPersonCamera.cpp
 #include "Camera.h"
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
-Camera::Camera(const Transform& playerTransform)
-    : playerTransform(const_cast<Transform*>(&playerTransform)), isAttachedToPlayer(true) {
-
-    // Начальная позиция - над игроком
-    position = playerTransform.position + glm::vec3(0.0f, heightOffset, 0.0f);
-    updateCameraVectors();
-}
-
-Camera::Camera(const glm::vec3& startPosition)
-    : position(startPosition), isAttachedToPlayer(false) {
-
-    updateCameraVectors();
-}
-
-void Camera::update(float deltaTime) {
-    if (isAttachedToPlayer && playerTransform) {
-        // Позиция = позиция игрока + смещение по высоте
-        position = playerTransform->position + glm::vec3(0.0f, heightOffset, 0.0f);
+void Camera::OnStart() {
+    // Инициализация
+    if (owner) {
+        yaw = owner->transform.rotation.y;
     }
-    else {
-        // Свободное движение (как было)
+    updateCameraVectors();
+}
+
+void Camera::OnUpdate(float deltaTime) {
+    if (mode == Mode::Free) {
+        // Свободное движение камеры
         float velocity = movementSpeed * deltaTime;
-        if (movementState.forward)  position += front * velocity;
-        if (movementState.backward) position -= front * velocity;
-        if (movementState.left)     position -= right * velocity;
-        if (movementState.right)    position += right * velocity;
-        if (movementState.up)       position += worldUp * velocity;
-        if (movementState.down)     position -= worldUp * velocity;
-        if (clampToGround && position.y < groundHeight + heightOffset)
-            position.y = groundHeight + heightOffset;
+        if (movementState.forward)  owner->transform.position += front * velocity;
+        if (movementState.backward) owner->transform.position -= front * velocity;
+        if (movementState.left)     owner->transform.position -= right * velocity;
+        if (movementState.right)    owner->transform.position += right * velocity;
+        if (movementState.up)       owner->transform.position += worldUp * velocity;
+        if (movementState.down)     owner->transform.position -= worldUp * velocity;
+
+        if (clampToGround && owner->transform.position.y < groundHeight + heightOffset)
+            owner->transform.position.y = groundHeight + heightOffset;
+    }
+    else if (mode == Mode::FirstPerson && owner) {
+        // В режиме от первого лица камера следует за позицией owner
+        // Позиция owner может меняться физsикой или движением игрока
+        // Ничего не делаем, просто обновляем векторы
     }
 
+    // Обновляем эффект качания
     updateBob(deltaTime);
-    position += bobOffset;
+
+    // Визуальное смещение от эффектов (не влияет на коллизии)
+    // position += bobOffset; - теперь это делается в getViewMatrix()
+
     updateCameraVectors();
 }
 
@@ -81,41 +81,43 @@ void Camera::processMouseMovement(float xOffset, float yOffset, bool constrainPi
 
     // Ограничиваем угол наклона
     if (constrainPitch) {
-        if (pitch > maxPitch)
-            pitch = maxPitch;
-        if (pitch < minPitch)
-            pitch = minPitch;
+        if (pitch > maxPitch) pitch = maxPitch;
+        if (pitch < minPitch) pitch = minPitch;
     }
 
-    // Обновляем вращение игрока, если камера привязана
-    if (isAttachedToPlayer && playerTransform) {
-        glm::vec3 oldPos = playerTransform->position;
-        playerTransform->rotation.y = yaw;
-        glm::vec3 newPos = playerTransform->position;
-        if (oldPos != newPos) {
-            std::cout << "Position changed from ("
-                << oldPos.x << ", " << oldPos.y << ", " << oldPos.z
-                << ") to ("
-                << newPos.x << ", " << newPos.y << ", " << newPos.z
-                << ")\n";
-        }
+    // В режиме от первого лица поворачиваем игрока вместе с камерой
+    if (mode == Mode::FirstPerson && owner) {
+        owner->transform.rotation.y = yaw;
     }
-
-
 
     updateCameraVectors();
 }
 
 void Camera::processMouseScroll(float yOffset) {
     zoom -= yOffset;
-    if (zoom < 1.0f)
-        zoom = 1.0f;
-    if (zoom > 90.0f)
-        zoom = 90.0f;
+    if (zoom < 1.0f) zoom = 1.0f;
+    if (zoom > 90.0f) zoom = 90.0f;
 }
 
 glm::mat4 Camera::getViewMatrix() const {
-    return glm::lookAt(position, position + front, up);
+    glm::vec3 eyePos;
+
+    if (owner) {
+        // Базовая позиция - центр объекта + смещение по высоте
+        eyePos = owner->transform.position + glm::vec3(0.0f, heightOffset, 0.0f);
+
+        // Добавляем эффект качания (только визуально)
+        eyePos += bobOffset;
+    }
+    else {
+        eyePos = glm::vec3(0.0f); // Запасной вариант
+    }
+
+    return glm::lookAt(eyePos, eyePos + front, up);
+}
+
+glm::mat4 Camera::getProjectionMatrix() const {
+    return glm::perspective(glm::radians(zoom), m_aspect, m_near, m_far);
 }
 
 void Camera::updateCameraVectors() {
@@ -149,17 +151,9 @@ void Camera::updateBob(float deltaTime) {
     }
 }
 
-void Camera::setPlayerTransform(Transform& transform) {
-    playerTransform = &transform;
-    isAttachedToPlayer = true;
-    position = transform.position + glm::vec3(0.0f, heightOffset, 0.0f);
-    yaw = transform.rotation.y;
-}
-
-void Camera::setPosition(const glm::vec3& newPosition) {
-    position = newPosition;
-    if (isAttachedToPlayer) {
-        isAttachedToPlayer = false;
-        playerTransform = nullptr;
-    }
+void Camera::setFront(const glm::vec3& newFront) {
+    front = glm::normalize(newFront);
+    pitch = glm::degrees(asin(front.y));
+    yaw = glm::degrees(atan2(front.z, front.x));
+    updateCameraVectors();
 }

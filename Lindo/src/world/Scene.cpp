@@ -8,31 +8,56 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
+#include <iostream>
+#include <chrono>
+#include <iomanip>
 #include "Graphics/core/ShadowMap.h"
 #include "Objects/transform.h"
 #include "antires/CryptoUtils.h"
+#include <Component/GameObject/GameObject.h>
+#include <Component/Component.h>
+#include <Component/Graphics/Light.h>
+#include <Component/Physhcs/MeshRenderer.h>
 
 // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
+
 static Player* player = nullptr;
 
-static unsigned int diffuseMap;
-static unsigned int specularMap;
+static unsigned int diffuseMap = 0;
+static unsigned int specularMap = 0;
 
-static Light* directionalLight = nullptr;
 static const int NR_POINT_LIGHTS = 1;
-static Light* pointLights[NR_POINT_LIGHTS] = { nullptr };
-static Light* spotLight = nullptr;
-
-static ShadowMap* shadowMap = nullptr;
-static Shader* shadowDepthShader = nullptr;
-static bool shadowsEnabled = true;
-
-static std::vector<Light*> lights;
-static std::vector<Object*> sceneObjects;
-static Object* planeObject = nullptr;
 
 unsigned int lightVAO = 0;
-unsigned int lightVBO;
+unsigned int lightVBO = 0;
+
+static std::vector<GameObject*> sceneObjects;
+
+Light* getDirectionalLight() {
+    for (auto* obj : sceneObjects) {
+        if (!obj) continue;
+
+        auto* light = obj->getComponent<Light>();
+        if (light && light->type == LightType::Directional) {
+            return light;
+        }
+    }
+    return nullptr;
+}
+
+//Player* getPlayer() {
+//    for (auto* obj : sceneObjects) {
+//        if (!obj) continue;
+//
+//        auto* pl = obj->getComponent<Player>();
+//        if (pl) {
+//            return pl;
+//        }
+//    }
+//    return nullptr;
+//}
+
+Player* getPlayer() { return player; }
 
 // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 
@@ -61,6 +86,58 @@ void initLightCube() {
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+}
+
+Mesh* createCubeMesh(const glm::vec3& size) {
+    float w = size.x * 0.5f;
+    float h = size.y * 0.5f;
+    float d = size.z * 0.5f;
+
+    std::vector<Vertex> vertices = {
+        // передняя грань
+        { {-w, -h,  d}, { 0, 0, 1 }, {0,0} },
+        { { w, -h,  d}, { 0, 0, 1 }, {1,0} },
+        { { w,  h,  d}, { 0, 0, 1 }, {1,1} },
+        { {-w,  h,  d}, { 0, 0, 1 }, {0,1} },
+        // задняя грань
+        { {-w, -h, -d}, { 0, 0,-1 }, {0,0} },
+        { { w, -h, -d}, { 0, 0,-1 }, {1,0} },
+        { { w,  h, -d}, { 0, 0,-1 }, {1,1} },
+        { {-w,  h, -d}, { 0, 0,-1 }, {0,1} },
+        // левая грань
+        { {-w, -h, -d}, {-1, 0, 0 }, {0,0} },
+        { {-w, -h,  d}, {-1, 0, 0 }, {1,0} },
+        { {-w,  h,  d}, {-1, 0, 0 }, {1,1} },
+        { {-w,  h, -d}, {-1, 0, 0 }, {0,1} },
+        // правая грань
+        { { w, -h, -d}, { 1, 0, 0 }, {0,0} },
+        { { w, -h,  d}, { 1, 0, 0 }, {1,0} },
+        { { w,  h,  d}, { 1, 0, 0 }, {1,1} },
+        { { w,  h, -d}, { 1, 0, 0 }, {0,1} },
+        // нижняя грань
+        { {-w, -h, -d}, { 0,-1, 0 }, {0,0} },
+        { { w, -h, -d}, { 0,-1, 0 }, {1,0} },
+        { { w, -h,  d}, { 0,-1, 0 }, {1,1} },
+        { {-w, -h,  d}, { 0,-1, 0 }, {0,1} },
+        // верхняя грань
+        { {-w,  h, -d}, { 0, 1, 0 }, {0,0} },
+        { { w,  h, -d}, { 0, 1, 0 }, {1,0} },
+        { { w,  h,  d}, { 0, 1, 0 }, {1,1} },
+        { {-w,  h,  d}, { 0, 1, 0 }, {0,1} }
+    };
+
+    std::vector<unsigned int> indices = {
+        0,1,2, 2,3,0,       // перед
+        4,5,6, 6,7,4,       // зад
+        8,9,10, 10,11,8,    // лево
+        12,13,14, 14,15,12, // право
+        16,17,18, 18,19,16, // низ
+        20,21,22, 22,23,20  // верх
+    };
+
+    return new Mesh(vertices, indices, std::vector<Texture>{});
 }
 
 Mesh* createCapsuleMesh(float radius = 0.4f, float height = 1.6f, int segments = 16) {
@@ -71,7 +148,7 @@ Mesh* createCapsuleMesh(float radius = 0.4f, float height = 1.6f, int segments =
 
     // Верхняя полусфера
     for (int i = 0; i <= segments; ++i) {
-        float phi = glm::pi<float>() * 0.5f * i / segments; // от 0 до 90 градусов
+        float phi = glm::pi<float>() * 0.5f * i / segments;
         float y = halfHeight + radius * sin(phi);
         float r = radius * cos(phi);
 
@@ -104,7 +181,7 @@ Mesh* createCapsuleMesh(float radius = 0.4f, float height = 1.6f, int segments =
 
     // Нижняя полусфера
     for (int i = 0; i <= segments; ++i) {
-        float phi = -glm::pi<float>() * 0.5f * i / segments; // от -90 до 0
+        float phi = -glm::pi<float>() * 0.5f * i / segments;
         float y = -halfHeight + radius * sin(phi);
         float r = radius * cos(phi);
 
@@ -120,8 +197,8 @@ Mesh* createCapsuleMesh(float radius = 0.4f, float height = 1.6f, int segments =
         }
     }
 
-    // Индексы (для каждого квадрата два треугольника)
-    int rows = 3 * segments; // всего рядов: верх/цилиндр/низ
+    // Индексы
+    int rows = 3 * segments;
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < segments; ++j) {
             int nextRow = (i + 1) % rows;
@@ -145,24 +222,19 @@ Mesh* createCapsuleMesh(float radius = 0.4f, float height = 1.6f, int segments =
     return new Mesh(vertices, indices, std::vector<Texture>{});
 }
 
-// ===== НАСТРОЙКА КОЛЛИЗИЙ (без создания глобальных коллайдеров) =====
+// ===== НАСТРОЙКА КОЛЛИЗИЙ =====
 void setupCollisionLayers() {
     auto& collisionSystem = CollisionSystem::getInstance();
 
-    // Настраиваем слои коллизий
     collisionSystem.setCollisionLayer("platform", 1);
     collisionSystem.setCollisionLayer("player", 2);
     collisionSystem.setCollisionLayer("parkour_block", 4);
 
-    collisionSystem.setLayerCollision(1, 2, true);  // Платформа-Игрок
-    collisionSystem.setLayerCollision(2, 4, true);  // Игрок-Блоки
+    collisionSystem.setLayerCollision(1, 2, true);
+    collisionSystem.setLayerCollision(2, 4, true);
 
-    // Коллбэки для отладки
     collisionSystem.registerCollisionCallback("player", "platform",
-        [](const CollisionEvent& event) {
-            std::cout << "Player collided with platform! Enter=" << event.isEnter
-                << " depth=" << event.info.depth << std::endl;
-        });
+        [](const CollisionEvent& event) {});
 }
 
 // ===== ОТРИСОВКА КОЛЛАЙДЕРОВ =====
@@ -185,43 +257,35 @@ std::vector<ParkourBlock> blocks = {
 
 // ===== ИНИЦИАЛИЗАЦИЯ СЦЕНЫ =====
 void initScene() {
+    std::cout << "Initializing scene..." << std::endl;
+
     initLightCube();
 
-    // ==== Тени ====
-    shadowMap = new ShadowMap();
-    if (!shadowMap->Init(2048, 2048)) {
-        std::cout << "Failed to initialize shadow map!" << std::endl;
-    }
-    shadowDepthShader = new Shader(PathData + "shaders/Light/shadow_depth.vs", PathData + "shaders/Light/shadow_depth.fs");
+    // Directional Light как компонент
+    GameObject* directionalLightObj = new GameObject();
+    directionalLightObj->name = "Directional Light";
+    auto* dirLight = directionalLightObj->addComponent<Light>();
 
-    // ==== Освещение ====
-    directionalLight = new Light(LightType::Directional);
-    directionalLight->direction = glm::vec3(-0.2f, -1.0f, -0.3f);
-    directionalLight->enabled = false;
-    directionalLight->ambient = glm::vec3(0.2f, 0.2f, 0.2f);
-    directionalLight->diffuse = glm::vec3(0.5f, 0.5f, 0.5f);
-    directionalLight->specular = glm::vec3(1.0f, 1.0f, 1.0f);
-    lights.push_back(directionalLight);
+    dirLight->type = LightType::Directional;
+    dirLight->direction = glm::vec3(-0.2f, -1.0f, -0.3f);
+    dirLight->enabled = true;
+    dirLight->ambient = glm::vec3(0.2f);
+    dirLight->diffuse = glm::vec3(0.5f);
+    dirLight->specular = glm::vec3(1.0f);
 
-    for (int i = 0; i < NR_POINT_LIGHTS; i++) {
-        pointLights[i] = new Light(LightType::Point);
-        lights.push_back(pointLights[i]);
-    }
-    pointLights[0]->transform.position = glm::vec3(0.0f, 2.0f, 0.0f);
-    pointLights[0]->constant = 1.0f;
-    pointLights[0]->enabled = true;
-    pointLights[0]->ambient = glm::vec3(1, 0, 0);
-    pointLights[0]->diffuse = glm::vec3(1, 0, 0);
-    pointLights[0]->specular = glm::vec3(1, 0, 0);
-    pointLights[0]->SetBaseColor(glm::vec3(1.0f, 1.0f, 1.0f));
-    pointLights[0]->linear = 0.09f;
-    pointLights[0]->quadratic = 0.032f;
-
+    dirLight->InitShadowResources(2048, 2048);
+    sceneObjects.push_back(directionalLightObj);
 
     diffuseMap = loadTexture(PathData + "textures/textures.png");
-    specularMap = loadTexture(PathData + "textures/textures.png");
+    if (diffuseMap == 0) {
+        std::cerr << "Failed to load diffuse texture" << std::endl;
+    }
 
-    // ==== Платформа ====
+    specularMap = loadTexture(PathData + "textures/textures.png");
+    if (specularMap == 0) {
+        std::cerr << "Failed to load specular texture" << std::endl;
+    }
+
     Mesh* planeMesh = new Mesh(
         std::vector<Vertex>{
             { {-15, 0, -15}, { 0,1,0 }, { 0,0 } },
@@ -232,237 +296,157 @@ void initScene() {
         std::vector<unsigned int>{0, 1, 2, 2, 3, 0},
                 std::vector<Texture>{}
             );
-    planeObject = new Object(planeMesh);
+
+    GameObject* planeObject = new GameObject();
+    planeObject->name = "Plane";
+    planeObject->tag = "platform";
     planeObject->transform.position = glm::vec3(0.0f, 0.0f, 0.0f);
-    // Создаём коллайдер прямо у объекта
-    planeObject->collider = std::make_shared<BoxCollider>(glm::vec3(30.0f, 0.1f, 30.0f));
-    planeObject->collider->setDebugColor(glm::vec3(0.2f, 0.8f, 0.2f));
-    planeObject->hasCollider = true;
-    CollisionSystem::getInstance().addCollider(planeObject->collider, "platform");
+
+    auto* planeRenderer = planeObject->addComponent<MeshRenderer>();
+    if (planeRenderer) {
+        planeRenderer->mesh = planeMesh;
+    }
+
+    auto* planeCollider = planeObject->addComponent<BoxCollider>();
+    if (planeCollider) {
+        planeCollider->setSize(glm::vec3(30.0f, 0.1f, 30.0f));
+        planeCollider->setDebugColor(glm::vec3(0.2f, 0.8f, 0.2f));
+    }
+    CollisionSystem::getInstance().addCollider(planeCollider, "Default");
+
+    auto* planeBody = planeObject->addComponent<RigidBody>(0.0f);
+    if (planeBody) {
+        planeBody->collider = planeCollider;
+    }
+
+    PhysicsSystem::getInstance().addRigidBody(planeBody);
     sceneObjects.push_back(planeObject);
 
     Mesh* capsuleMesh = createCapsuleMesh(0.4f, 2.0f);
-    Player* playerObj = new Player(capsuleMesh);
-    playerObj->transform.position = glm::vec3(0.0f, 1.2f, 0.0f);
+
+    GameObject* playerObj = new GameObject("Player", "player");
     playerObj->castsShadows = true;
-    player = playerObj;
-    // Игрок не добавляем в sceneObjects, т.к. рисуем отдельно (или можно добавить, но тогда будет дважды)
+    playerObj->transform.position = glm::vec3(0.0f, 1.2f, 0.0f);
+    auto* playerRenderer = playerObj->addComponent<MeshRenderer>();
+    if (playerRenderer) {
+        playerRenderer->mesh = capsuleMesh;
+    }
+
+    auto* playerCollider = playerObj->addComponent<CapsuleCollider>();
+    auto* playerComponent = playerObj->addComponent<Player>();
+    if (playerCollider) {
+        playerCollider->setDebugColor(glm::vec3(0.2f, 0.2f, 0.8f));
+    }
+    CollisionSystem::getInstance().addCollider(playerCollider, "Default");
+    auto* playerCamera = playerObj->addComponent<Camera>();
+    playerCamera->heightOffset = 0.8f; // Высота глаз
+    playerCamera->setMode(Camera::Mode::FirstPerson);
+
+    player = playerObj->getComponent<Player>();
+
+    auto* playerBody = playerObj->addComponent<RigidBody>(70.0f);
+    if (playerBody) {
+        playerBody->useGravity = true;
+        playerBody->restitution = 0.0f;
+        playerBody->collider = playerCollider;
+    }
+    PhysicsSystem::getInstance().addRigidBody(playerBody);
     sceneObjects.push_back(playerObj);
 
-    Object* capsuleObject = new Object();  // без меша, только коллайдер
-    capsuleObject->transform.position = glm::vec3(3.0f, 1.0f, 5.0f); // Пример позиции
-    capsuleObject->castsShadows = true;
+    GameObject* zoneObject = new GameObject();
+    zoneObject->name = "Trigger Zone";
+    zoneObject->tag = "trigger";
+    zoneObject->transform.position = glm::vec3(5.0f, 1.0f, 0.0f);
 
-    // Создаём капсульный коллайдер: радиус 0.5, высота 2.0 (расстояние между центрами полусфер)
-    auto capsuleCollider = std::make_shared<CapsuleCollider>(0.4f, 2.0f);
-    capsuleCollider->setDebugColor(glm::vec3(0.2f, 0.5f, 0.9f)); // Синий цвет для отладки
-    capsuleObject->collider = capsuleCollider;
-    capsuleObject->hasCollider = true;
+    auto* zoneCollider = zoneObject->addComponent<BoxCollider>();
+    if (zoneCollider) {
+        zoneCollider->setSize(glm::vec3(2.0f, 2.0f, 2.0f));
+        zoneCollider->setTrigger(true);
+        zoneCollider->setDebugColor(glm::vec3(1.0f, 1.0f, 0.0f));
+    }
+    CollisionSystem::getInstance().addCollider(zoneCollider, "Default");
 
-    // Добавляем коллайдер в систему коллизий с нужным слоем (например, "parkour_block")
-    CollisionSystem::getInstance().addCollider(capsuleObject->collider, "capsule_obstacle");
+    sceneObjects.push_back(zoneObject);
 
-    // Если нужна физика, создаём тело (статическое или динамическое)
-    auto capsuleBody = std::make_shared<RigidBody>(&capsuleObject->transform, 3.0f); // масса 1 кг
-    capsuleBody->collider = capsuleObject->collider;
-    capsuleBody->useGravity = true;
-    PhysicsSystem::getInstance().addRigidBody(capsuleBody, "capsule_body");
-
-    sceneObjects.push_back(capsuleObject);
-
-    // ==== Паркур-блоки ====
     int blockIndex = 0;
     for (const auto& block : blocks) {
-        float w = block.size.x * 0.5f;
-        float h = block.size.y * 0.5f;
-        float d = block.size.z * 0.5f;
+        Mesh* blockMesh = createCubeMesh(block.size);
 
-        std::vector<Vertex> cubeVerts = {
-            // нижняя грань
-            { {-w, -h, -d}, { 0, -1, 0 }, {0,0} },
-            { { w, -h, -d}, {0, -1, 0}, {1,0} },
-            { { w, -h,  d}, {0, -1, 0}, {1,1} },
-            { {-w, -h,  d}, {0, -1, 0}, {0,1} },
-            // верхняя грань
-            { {-w,  h, -d}, {0, 1, 0}, {0,0} },
-            { { w,  h, -d}, {0, 1, 0}, {1,0} },
-            { { w,  h,  d}, {0, 1, 0}, {1,1} },
-            { {-w,  h,  d}, {0, 1, 0}, {0,1} }
-        };
-        std::vector<unsigned int> cubeIndices = {
-            0,1,2, 2,3,0,     // низ
-            4,5,6, 6,7,4,     // верх
-            3,2,6, 6,7,3,     // перед
-            0,1,5, 5,4,0,     // зад
-            0,3,7, 7,4,0,     // лево
-            1,2,6, 6,5,1      // право
-        };
-        Mesh* blockMesh = new Mesh(cubeVerts, cubeIndices, std::vector<Texture>{});
+        GameObject* blockObject = new GameObject();
+        blockObject->name = "Parkour Block " + std::to_string(blockIndex);
+        blockObject->tag = "parkour_block";
+        blockObject->castsShadows = true;
+        blockObject->transform.position = block.position;
 
-        Object* blockObj = new Object(blockMesh);
-        blockObj->transform.position = block.position;
-        blockObj->castsShadows = true;
+        auto* blockRenderer = blockObject->addComponent<MeshRenderer>();
+        if (blockRenderer) {
+            blockRenderer->mesh = blockMesh;
+        }
 
-        // Создаём коллайдер и привязываем к объекту
-        blockObj->collider = std::make_shared<BoxCollider>(block.size);
-        blockObj->collider->setDebugColor(glm::vec3(0.8f, 0.2f, 0.2f));
-        blockObj->hasCollider = true;
-        CollisionSystem::getInstance().addCollider(blockObj->collider, "parkour_block_" + std::to_string(blockIndex));
+        auto* blockCollider = blockObject->addComponent<BoxCollider>();
+        if (blockCollider) {
+            blockCollider->setSize(block.size);
+            blockCollider->setDebugColor(glm::vec3(0.8f, 0.2f, 0.2f));
+        }
+        CollisionSystem::getInstance().addCollider(blockCollider, "Default");
 
-        sceneObjects.push_back(blockObj);
+        auto* blockBody = blockObject->addComponent<RigidBody>(0.0f);
+        PhysicsSystem::getInstance().addRigidBody(blockBody);
+        if (blockBody) {
+            blockBody->collider = blockCollider;
+        }
 
-        // Физическое тело (статическое)
-        auto blockBody = std::make_shared<RigidBody>(&blockObj->transform, 0.0f);
-        blockBody->collider = blockObj->collider;
-        PhysicsSystem::getInstance().addRigidBody(blockBody, "parkour_block_body_" + std::to_string(blockIndex));
-
+        sceneObjects.push_back(blockObject);
         blockIndex++;
     }
 
-    // ==== Физические тела ====
-    // Платформа (статическое)
-    auto platformBody = std::make_shared<RigidBody>(&planeObject->transform, 0.0f);
-    platformBody->collider = planeObject->collider;
-    PhysicsSystem::getInstance().addRigidBody(platformBody, "platform");
-
-    // Игрок (динамическое)
-    player->rigidBody = std::make_shared<RigidBody>(&player->transform, 70.0f);
-    player->rigidBody->collider = player->collider;
-    player->rigidBody->useGravity = true;
-    player->rigidBody->restitution = 0.0f;
-    PhysicsSystem::getInstance().addRigidBody(player->rigidBody, "player");
-
-    // Настройка слоёв коллизий
     setupCollisionLayers();
 
-    /*std::vector<unsigned char> key(16);*/
-
-    // Используем направление directionalLight
-    //key[0] = static_cast<unsigned char>(std::abs(directionalLight->direction.x) * 10) ^ 0xA5;
-    //key[1] = static_cast<unsigned char>(std::abs(directionalLight->direction.y) * 10) ^ 0x5A;
-
-    //// Ambient составляющая directionalLight
-    //key[2] = static_cast<unsigned char>(directionalLight->ambient.r * 255) ^ 0x3C;
-    //key[3] = static_cast<unsigned char>(directionalLight->ambient.g * 255) ^ 0xC3;
-
-    //// Позиция и цвет первого точечного источника
-    //if (pointLights[0]) {
-    //    key[4] = static_cast<unsigned char>(pointLights[0]->transform.position.x * 10) ^ 0x69;
-    //    key[5] = static_cast<unsigned char>(pointLights[0]->transform.position.y * 10) ^ 0x96;
-    //    key[6] = static_cast<unsigned char>(pointLights[0]->diffuse.r * 255) ^ 0x12;
-    //    key[7] = static_cast<unsigned char>(pointLights[0]->diffuse.g * 255) ^ 0x21;
-    //}
-
-    //// Параметры первого паркур-блока
-    //if (!blocks.empty()) {
-    //    key[8] = static_cast<unsigned char>(blocks[0].position.x + 10) ^ 0x34;
-    //    key[9] = static_cast<unsigned char>(blocks[0].position.y * 5) ^ 0x43;
-    //    key[10] = static_cast<unsigned char>(blocks[0].position.z + 5) ^ 0x56;
-    //    key[11] = static_cast<unsigned char>(blocks[0].size.x * 10) ^ 0x65;
-    //}
-
-    //// Коэффициенты затухания pointLights[0]
-    //key[12] = static_cast<unsigned char>(pointLights[0]->linear * 100) ^ 0x78;
-    //key[13] = static_cast<unsigned char>(pointLights[0]->quadratic * 100) ^ 0x87;
-
-    //// Specular составляющая directionalLight
-    //key[14] = static_cast<unsigned char>(directionalLight->specular.r * 255) ^ 0x9A;
-    //key[15] = static_cast<unsigned char>(directionalLight->specular.g * 255) ^ 0xBC;
-
-    //// Устанавливаем ключ в CryptoUtils
-    //CryptoUtils::setKey(key);
-
-    //if (useRawResources) {
-    //    std::cout << "=== ENCRYPTION KEY FOR ASSET TOOL ===" << std::endl;
-    //    std::cout << "const std::vector<unsigned char> KEY = {" << std::endl;
-    //    std::cout << "    ";
-    //    for (size_t i = 0; i < key.size(); ++i) {
-    //        printf("0x%02X", key[i]);
-    //        if (i < key.size() - 1) {
-    //            std::cout << ", ";
-    //        }
-    //        if ((i + 1) % 8 == 0 && i < key.size() - 1) {
-    //            std::cout << "\n    ";
-    //        }
-    //    }
-    //    std::cout << "\n};" << std::endl;
-    //    std::cout << "=====================================" << std::endl;
-    //}
-
-    std::cout << "Scene initialized. Objects count: " << sceneObjects.size() << std::endl;
-}
-
-// ===== РЕНДЕР КАРТЫ ГЛУБИНЫ ДЛЯ ТЕНЕЙ =====
-void renderShadowDepth()
-{
-    //if (!shadowMap || !shadowDepthShader || !directionalLight || !directionalLight->enabled || !shadowsEnabled)
-    //    return;
-
-    // Вычисляем матрицы для источника света
-    glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
-    glm::mat4 lightView = glm::lookAt(
-        directionalLight->direction * -10.0f,
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
-
-    shadowMap->SetLightMatrices(lightView, lightProjection);
-    glm::mat4 lightSpaceMatrix = lightProjection * lightView;
-
-    // Начинаем рендеринг в карту теней
-    shadowMap->BeginRender();
-
-    // Рендерим все объекты для карты глубины
-    shadowDepthShader->use();
-    shadowDepthShader->setMat4("lightSpaceMatrix", lightSpaceMatrix);
-
-    for (auto* obj : sceneObjects) {
-        if (!obj->castsShadows) continue;
-
-        shadowDepthShader->setMat4("model", obj->transform.getMatrixQuat());
-
-        if (obj->mesh) {
-            obj->mesh->Draw(*shadowDepthShader);
-        }
-        else if (obj->model) {
-            obj->model->Draw(*shadowDepthShader);
-        }
-    }
-
-    shadowMap->EndRender(SCR_WIDTH, SCR_HEIGHT);
+    std::cout << "Scene initialized with " << sceneObjects.size() << " objects" << std::endl;
 }
 
 // ===== РЕНДЕР СЦЕНЫ =====
 void renderScene(Shader& shader, float deltaTime, Shader* debugShader) {
-    // Синхронизация коллайдеров с трансформацией объектов
+    PhysicsSystem::getInstance().update(deltaTime);
+
+    // Рендер теней от источников света
     for (auto* obj : sceneObjects) {
-        if (obj->hasCollider) {
-            obj->updateCollider();
+        if (!obj) continue;
+
+        auto* light = obj->getComponent<Light>();
+        if (light && light->enabled && light->castShadows) {
+            light->RenderShadows(sceneObjects, SCR_WIDTH, SCR_HEIGHT);
         }
     }
 
-    // Обновление физики и игрока
-    PhysicsSystem::getInstance().update(deltaTime);
-    if (player) player->update(deltaTime);
+    auto* player = getPlayer();
+    if (!player) return;
+    auto* cam = player->owner->getComponent<Camera>();
+    if (!cam) return;
 
-    if (shadowsEnabled) renderShadowDepth();
-
-    Camera& cam = player->getCamera();
-
-    // Матрицы проекции и вида
-    glm::mat4 projection = glm::perspective(
-        glm::radians(cam.getZoom()),
-        (float)SCR_WIDTH / SCR_HEIGHT,
-        0.1f, 100.0f
-    );
-    glm::mat4 view = cam.getViewMatrix();
+    glm::mat4 projection = cam->getProjectionMatrix();
+    glm::mat4 view = cam->getViewMatrix();
 
     shader.use();
-    if (shadowsEnabled && shadowMap && directionalLight && directionalLight->enabled) {
+
+    Light* mainShadowLight = nullptr;
+    for (auto* obj : sceneObjects) {
+        if (!obj) continue;
+
+        auto* light = obj->getComponent<Light>();
+        if (light && light->type == LightType::Directional && light->enabled && light->castShadows) {
+            mainShadowLight = light;
+            break;
+        }
+    }
+
+    if (mainShadowLight) {
         shader.setBool("shadowsEnabled", true);
-        shader.setMat4("lightSpaceMatrix", shadowMap->GetLightSpaceMatrix());
+        shader.setMat4("lightSpaceMatrix", mainShadowLight->GetLightSpaceMatrix());
+
         glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, shadowMap->GetTextureID());
+        unsigned int shadowTexID = mainShadowLight->shadowMap->GetTextureID();
+        glBindTexture(GL_TEXTURE_2D, shadowTexID);
         shader.setInt("shadowMap", 2);
     }
     else {
@@ -471,55 +455,64 @@ void renderScene(Shader& shader, float deltaTime, Shader* debugShader) {
 
     shader.setMat4("projection", projection);
     shader.setMat4("view", view);
-    shader.setVec3("viewPos", cam.getPosition());
+    shader.setVec3("viewPos", cam->getPosition());
 
     shader.setInt("material.diffuse", 0);
     shader.setInt("material.specular", 1);
     shader.setFloat("material.shininess", 32.0f);
 
+    int pointLightIndex = 0;
+    for (auto* obj : sceneObjects) {
+        if (!obj) continue;
 
-    if (directionalLight) directionalLight->ApplyToShader(shader, "dirLight");
-    for (int i = 0; i < NR_POINT_LIGHTS; i++) {
-        if (pointLights[i]) {
-            pointLights[i]->ApplyToShader(shader, "pointLights[" + std::to_string(i) + "]");
+        auto* light = obj->getComponent<Light>();
+        if (!light || !light->enabled) continue;
+
+        if (light->type == LightType::Directional) {
+            light->ApplyToShader(shader, "dirLight");
         }
-    }
-    if (spotLight) {
-        spotLight->transform.position = cam.getPosition();
-        spotLight->direction = cam.getFront();
-        spotLight->ApplyToShader(shader, "spotLight");
+        else if (light->type == LightType::Point) {
+            std::string uniformName = "pointLights[" + std::to_string(pointLightIndex++) + "]";
+            light->ApplyToShader(shader, uniformName);
+        }
+        else if (light->type == LightType::Spot) {
+            light->ApplyToShader(shader, "spotLight");
+        }
     }
 
     // Отладочная отрисовка источников света
     if (debugShader) {
         debugShader->use();
-        for (Light* light : lights) {
-            if (!light->enabled) continue;
+        for (auto* obj : sceneObjects) {
+            auto* light = obj->getComponent<Light>();
+            if (!light || !light->enabled) continue;
+
             glm::mat4 model = glm::mat4(1.0f);
             if (light->type != LightType::Directional)
-                model = glm::translate(model, light->transform.position);
+                model = glm::translate(model, light->owner->transform.position);
             model = glm::scale(model, glm::vec3(0.2f));
+
             glm::mat4 mvp = projection * view * model;
             debugShader->setMat4("MVP", mvp);
             debugShader->setVec3("lightColor", light->GetFinalColor());
+
             glBindVertexArray(lightVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
         shader.use();
     }
 
-    // Привязка текстур
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, diffuseMap);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, specularMap);
 
-    // Отрисовка объектов сцены (кроме игрока, если он не в списке)
     for (auto* obj : sceneObjects) {
-        if (obj == player) continue; // на случай, если player добавлен
+        if (!obj) continue;
+        if (obj->tag == "player") continue; // пропускаем игрока
         obj->Draw(shader);
     }
-    // Отрисовка коллайдеров (отладка)
+
     static Shader* colliderShader = nullptr;
     if (!colliderShader) {
         colliderShader = new Shader(PathData + "shaders/debug_collider.vert", PathData + "shaders/debug_collider.frag");
@@ -533,7 +526,9 @@ void renderScene(Shader& shader, float deltaTime, Shader* debugShader) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_CULL_FACE);
 
-    if(DebugMode) drawColliders(*colliderShader);
+    if (DebugMode) {
+        drawColliders(*colliderShader);
+    }
 
     glEnable(GL_CULL_FACE);
     glDisable(GL_BLEND);
@@ -541,114 +536,33 @@ void renderScene(Shader& shader, float deltaTime, Shader* debugShader) {
 
 // ===== ОЧИСТКА =====
 void cleanupScene() {
-    std::cout << "Cleaning up scene objects..." << std::endl;
+    std::cout << "Cleaning up scene..." << std::endl;
+
     for (auto* obj : sceneObjects) {
-        delete obj->mesh;
-        delete obj;
+        if (obj) {
+            delete obj;
+        }
     }
     sceneObjects.clear();
-    std::cout << "Scene objects cleared." << std::endl;
 
-    std::cout << "Deleting lights..." << std::endl;
-    for (auto* light : lights) {
-        delete light;
-    }
-    lights.clear();
-    std::cout << "Lights deleted." << std::endl;
-
-    std::cout << "Clearing colliders..." << std::endl;
     CollisionSystem::getInstance().clearColliders();
-    std::cout << "Colliders cleared." << std::endl;
-
-    directionalLight = nullptr;
-    spotLight = nullptr;
-    for (int i = 0; i < NR_POINT_LIGHTS; i++) pointLights[i] = nullptr;
-
-    if (shadowMap) {
-        delete shadowMap;
-        shadowMap = nullptr;
-    }
-    if (shadowDepthShader) {
-        delete shadowDepthShader;
-        shadowDepthShader = nullptr;
-    }
 
     glDeleteVertexArrays(1, &lightVAO);
     glDeleteBuffers(1, &lightVBO);
     glDeleteTextures(1, &diffuseMap);
     glDeleteTextures(1, &specularMap);
 
-    std::cout << "Cleanup finished." << std::endl;
-}
-
-// ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ СВЕТА =====
-void setDirectionalLight(const glm::vec3& direction, const glm::vec3& ambient,
-    const glm::vec3& diffuse, const glm::vec3& specular) {
-    if (directionalLight) {
-        directionalLight->direction = glm::normalize(direction);
-        directionalLight->ambient = ambient;
-        directionalLight->diffuse = diffuse;
-        directionalLight->specular = specular;
-    }
-}
-
-void setPointLight(int index, const glm::vec3& position, const glm::vec3& ambient,
-    const glm::vec3& diffuse, const glm::vec3& specular,
-    float constant, float linear, float quadratic) {
-    if (index >= 0 && index < NR_POINT_LIGHTS && pointLights[index]) {
-        pointLights[index]->transform.position = position;
-        pointLights[index]->ambient = ambient;
-        pointLights[index]->diffuse = diffuse;
-        pointLights[index]->specular = specular;
-        pointLights[index]->constant = constant;
-        pointLights[index]->linear = linear;
-        pointLights[index]->quadratic = quadratic;
-    }
-}
-
-void setSpotLight(const glm::vec3& position, const glm::vec3& direction,
-    float cutOff, float outerCutOff, const glm::vec3& ambient,
-    const glm::vec3& diffuse, const glm::vec3& specular) {
-    if (spotLight) {
-        spotLight->transform.position = position;
-        spotLight->direction = direction;
-        spotLight->cutOff = cutOff;
-        spotLight->outerCutOff = outerCutOff;
-        spotLight->ambient = ambient;
-        spotLight->diffuse = diffuse;
-        spotLight->specular = specular;
-    }
-}
-
-glm::vec3 getPointLightPosition(int index) {
-    if (index >= 0 && index < NR_POINT_LIGHTS && pointLights[index])
-        return pointLights[index]->transform.position;
-    return glm::vec3(0.0f);
-}
-
-void setPointLightPosition(int index, const glm::vec3& position) {
-    if (index >= 0 && index < NR_POINT_LIGHTS && pointLights[index])
-        pointLights[index]->transform.position = position;
-}
-
-void updateSpotLightWithCamera() {
-    Camera& cam = player->getCamera();
-
-    if (spotLight) {
-        spotLight->transform.position = cam.getPosition();
-        spotLight->direction = cam.getFront();
-    }
-}
-
-std::vector<Light*>& getLights() { return lights; }
-
-// ===== ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ ИГРОКОМ =====
-void setCharacterPosition(const glm::vec3& position) {
-    if (player) player->transform.position = position;
+    std::cout << "Scene cleanup completed" << std::endl;
 }
 
 glm::vec3 getCharacterPosition() {
-    return player ? player->transform.position : glm::vec3(0.0f);
-}
+    for (auto* obj : sceneObjects) {
+        if (!obj) continue;
 
-Player* getPlayer() { return player; }
+        auto* pl = obj->getComponent<Player>();
+        if (pl && pl->owner) {
+            return pl->owner->transform.position;
+        }
+    }
+    return glm::vec3(0.0f);
+}

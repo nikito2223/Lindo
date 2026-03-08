@@ -1,14 +1,14 @@
 #include "CollisionSystem.h"
+#include "Collider.h"
 #include <algorithm>
 #include <iostream>
-
 
 // =============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===============
 
 // Проверка Box-Box
 static bool checkBoxBox(const BoxCollider* a, const BoxCollider* b, CollisionInfo* info) {
-    glm::vec3 centerA = a->getTransform().position;
-    glm::vec3 centerB = b->getTransform().position;
+    glm::vec3 centerA = a->getPosition();
+    glm::vec3 centerB = b->getPosition();
     glm::vec3 extentsA = a->getExtents();
     glm::vec3 extentsB = b->getExtents();
 
@@ -54,8 +54,8 @@ static bool checkBoxBox(const BoxCollider* a, const BoxCollider* b, CollisionInf
 
 // Проверка Sphere-Sphere
 static bool checkSphereSphere(const SphereCollider* a, const SphereCollider* b, CollisionInfo* info) {
-    glm::vec3 centerA = a->getTransform().position;
-    glm::vec3 centerB = b->getTransform().position;
+    glm::vec3 centerA = a->getPosition();
+    glm::vec3 centerB = b->getPosition();
     float radiusA = a->getRadius();
     float radiusB = b->getRadius();
 
@@ -80,8 +80,8 @@ static bool checkSphereSphere(const SphereCollider* a, const SphereCollider* b, 
 
 // Проверка Sphere-Box
 static bool checkSphereBox(const SphereCollider* sphere, const BoxCollider* box, CollisionInfo* info) {
-    glm::vec3 sphereCenter = sphere->getTransform().position;
-    glm::vec3 boxCenter = box->getTransform().position;
+    glm::vec3 sphereCenter = sphere->getPosition();
+    glm::vec3 boxCenter = box->getPosition();
     glm::vec3 boxExtents = box->getExtents();
     float sphereRadius = sphere->getRadius();
 
@@ -123,7 +123,7 @@ static bool checkSphereBox(const SphereCollider* sphere, const BoxCollider* box,
 
 // =============== РЕАЛИЗАЦИЯ COLLISIONSYSTEM ===============
 
-void CollisionSystem::addCollider(std::shared_ptr<Collider> collider, const std::string& tag) {
+void CollisionSystem::addCollider(Collider* collider, const std::string& tag) {
     ColliderEntry entry;
     entry.collider = collider;
     entry.tag = tag;
@@ -140,7 +140,7 @@ void CollisionSystem::addCollider(std::shared_ptr<Collider> collider, const std:
     colliders.push_back(entry);
 }
 
-void CollisionSystem::removeCollider(std::shared_ptr<Collider> collider) {
+void CollisionSystem::removeCollider(Collider* collider) {
     // Находим коллайдер по указателю
     auto it = std::remove_if(colliders.begin(), colliders.end(),
         [collider](const ColliderEntry& entry) {
@@ -223,8 +223,8 @@ static bool checkCapsuleBox(const CapsuleCollider* capsule, const BoxCollider* b
     return true;
 }
 
-std::vector<std::shared_ptr<Collider>> CollisionSystem::getCollidersByTag(const std::string& tag) const {
-    std::vector<std::shared_ptr<Collider>> result;
+std::vector<Collider*> CollisionSystem::getCollidersByTag(const std::string& tag) const {
+    std::vector<Collider*> result;
 
     for (const auto& entry : colliders) {
         if (entry.tag == tag) {
@@ -260,7 +260,7 @@ void CollisionSystem::update(float deltaTime) {
     }
 }
 
-bool CollisionSystem::checkCollision(std::shared_ptr<Collider> a, std::shared_ptr<Collider> b,
+bool CollisionSystem::checkCollision(Collider* a, Collider* b,
     CollisionInfo* info) const {
     if (!a || !b) return false;
 
@@ -284,23 +284,23 @@ bool CollisionSystem::checkCollision(std::shared_ptr<Collider> a, std::shared_pt
     ColliderType typeB = b->getType();
 
     if (typeA == ColliderType::BOX && typeB == ColliderType::BOX) {
-        return checkBoxBox(static_cast<BoxCollider*>(a.get()),
-            static_cast<BoxCollider*>(b.get()), info);
+        return checkBoxBox(static_cast<BoxCollider*>(a),
+            static_cast<BoxCollider*>(b), info);
     }
     else if (typeA == ColliderType::CAPSULE && typeB == ColliderType::BOX) {
-        return checkCapsuleBox(static_cast<CapsuleCollider*>(a.get()),
-            static_cast<BoxCollider*>(b.get()), info);
+        return checkCapsuleBox(static_cast<CapsuleCollider*>(a),
+            static_cast<BoxCollider*>(b), info);
     }
     else if (typeA == ColliderType::BOX && typeB == ColliderType::CAPSULE) {
-        bool result = checkCapsuleBox(static_cast<CapsuleCollider*>(b.get()),
-            static_cast<BoxCollider*>(a.get()), info);
+        bool result = checkCapsuleBox(static_cast<CapsuleCollider*>(b),
+            static_cast<BoxCollider*>(a), info);
         if (result && info) info->normal = -info->normal;
         return result;
     }
     else if (typeA == ColliderType::BOX && typeB == ColliderType::SPHERE) {
         // Для пары (BOX, SPHERE) вызываем checkSphereBox с переставленными аргументами
-        bool result = checkSphereBox(static_cast<SphereCollider*>(b.get()),
-            static_cast<BoxCollider*>(a.get()), info);
+        bool result = checkSphereBox(static_cast<SphereCollider*>(b),
+            static_cast<BoxCollider*>(a), info);
         if (result && info) {
             // Инвертируем нормаль, так как порядок reversed
             info->normal = -info->normal;
@@ -310,7 +310,7 @@ bool CollisionSystem::checkCollision(std::shared_ptr<Collider> a, std::shared_pt
     // TODO: Добавить обработку CAPSULE и других типов по мере реализации
     else {
         // Если комбинация не обработана, пробуем виртуальный метод (на случай пользовательских реализаций)
-        return a->checkCollision(b.get(), info);
+        return a->checkCollision(b, info);
     }
 }
 
@@ -400,24 +400,24 @@ void CollisionSystem::checkPairCollision(size_t i, size_t j) {
     if (entryA.collider->getType() == ColliderType::BOX &&
         entryB.collider->getType() == ColliderType::BOX) {
         hasCollision = checkBoxBox(
-            static_cast<BoxCollider*>(entryA.collider.get()),
-            static_cast<BoxCollider*>(entryB.collider.get()),
+            static_cast<BoxCollider*>(entryA.collider),
+            static_cast<BoxCollider*>(entryB.collider),
             &info
         );
     }
     else if (entryA.collider->getType() == ColliderType::SPHERE &&
         entryB.collider->getType() == ColliderType::SPHERE) {
         hasCollision = checkSphereSphere(
-            static_cast<SphereCollider*>(entryA.collider.get()),
-            static_cast<SphereCollider*>(entryB.collider.get()),
+            static_cast<SphereCollider*>(entryA.collider),
+            static_cast<SphereCollider*>(entryB.collider),
             &info
         );
     }
     else if (entryA.collider->getType() == ColliderType::SPHERE &&
         entryB.collider->getType() == ColliderType::BOX) {
         hasCollision = checkSphereBox(
-            static_cast<SphereCollider*>(entryA.collider.get()),
-            static_cast<BoxCollider*>(entryB.collider.get()),
+            static_cast<SphereCollider*>(entryA.collider),
+            static_cast<BoxCollider*>(entryB.collider),
             &info
         );
     }
@@ -426,8 +426,8 @@ void CollisionSystem::checkPairCollision(size_t i, size_t j) {
         // Меняем порядок для consistency
         info.normal = -info.normal;
         hasCollision = checkSphereBox(
-            static_cast<SphereCollider*>(entryB.collider.get()),
-            static_cast<BoxCollider*>(entryA.collider.get()),
+            static_cast<SphereCollider*>(entryB.collider),
+            static_cast<BoxCollider*>(entryA.collider),
             &info
         );
         if (hasCollision && info.hasCollision) {
@@ -436,7 +436,7 @@ void CollisionSystem::checkPairCollision(size_t i, size_t j) {
     }
     else {
         // Для других типов используем общий метод
-        hasCollision = entryA.collider->checkCollision(entryB.collider.get(), &info);
+        hasCollision = entryA.collider->checkCollision(entryB.collider, &info);
     }
 
     if (hasCollision && info.hasCollision) {
