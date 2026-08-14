@@ -1,0 +1,17 @@
+.vs/
+.vscode/
+.idea/
+
+build/
+bin/
+obj/
+*.exe
+*.dll
+*.so
+
+*.log
+*.tmp
+*.swp
+
+vcpkg_installed/
+

@@ -1,0 +1,97 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "default-vs-msvc-windows",
+      "condition": {
+        "type": "equals",
+        "rhs": "${hostSystemName}",
+        "lhs": "Windows"
+      },
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "LINDOENGINE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "default-ninja-gnu-linux",
+      "condition": {
+        "type": "equals",
+        "rhs": "${hostSystemName}",
+        "lhs": "Linux"
+      },
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "LINDOENGINE_BUILD_TESTS": "ON",
+        "LINDOENGINE_BUILD_APPDIR": "ON"
+      }
+    },
+    {
+      "name": "default-ninja-clang-macos",
+      "condition": {
+        "type": "equals",
+        "rhs": "${hostSystemName}",
+        "lhs": "Darwin"
+      },
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "LINDOENGINE_BUILD_TESTS": "ON",
+        "LINDOENGINE_BUILD_APPDIR": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Debug build",
+      "configurePreset": "default-vs-msvc-windows",
+      "configuration": "Debug"
+    },
+    {
+      "name": "Release build",
+      "configurePreset": "default-vs-msvc-windows",
+      "configuration": "Release"
+    },
+    {
+      "name": "default-vs-msvc-windows",
+      "configurePreset": "default-vs-msvc-windows",
+      "configuration": "Debug"
+    },
+    {
+      "name": "default-ninja-gnu-linux",
+      "configurePreset": "default-ninja-gnu-linux",
+      "configuration": "Debug"
+    },
+    {
+      "name": "default-ninja-clang-macos",
+      "configurePreset": "default-ninja-clang-macos",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default-vs-msvc-windows",
+      "configurePreset": "default-vs-msvc-windows",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "default-ninja-gnu-linux",
+      "configurePreset": "default-ninja-gnu-linux",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "default-ninja-clang-macos",
+      "configurePreset": "default-ninja-clang-macos",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

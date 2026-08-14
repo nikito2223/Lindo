@@ -1,0 +1,75 @@
+{
+  "classes": [
+    {
+      "name": "DebugDraw",
+      "file_h": "src/Graphics/core/DebugDraw.h",
+      "file_cpp": "src/Graphics/core/DebugDraw.cpp",
+      "description": "Рисует отладочные линии (GL_LINES). Хранит массив вершин {position,color}, загружает в VBO и рисует шейдером с uniform view/projection.",
+      "methods": ["init()", "begin(view, projection)", "DrawLine(start,end,color)", "render()", "clear()"]
+    },
+    {
+      "name": "DebugOverlay",
+      "file_h": "src/Debug/DebugOverlay.h",
+      "file_cpp": "src/Debug/DebugOverlay.cpp",
+      "description": "UI-оверлей с отладочной информацией (FPS, tri count и т.д.). Использует UIFont и UIRenderer для вывода текстов.",
+      "methods": ["init(font)", "update(...)", "render(renderer)"]
+    },
+    {
+      "name": "UIRenderer",
+      "file_h": "src/Graphics/ui/UIRenderer.h",
+      "file_cpp": "src/Graphics/ui/UIRenderer.cpp",
+      "description": "Рендерер UI: собирает вершины, управляет шейдером и текстурами, отрисовывает прямоугольники и тексты.",
+      "methods": ["init()", "beginFrame(width,height)", "drawRect(...)", "drawTexturedRect(...)", "endFrame()"]
+    },
+    {
+      "name": "Renderer",
+      "file_cpp": "src/Graphics/core/Renderer.cpp",
+      "description": "Главный рендерер сцены — вызывает `m_debugDraw->begin(...)`, вызывает `DrawLine` для gizmos/коллайдеров и в конце `render()` для отладочных линий.",
+      "methods": ["Render(shader, deltaTime)"]
+    },
+    {
+      "name": "Collider",
+      "file_h": "src/Physics/Collider/Collider.h",
+      "file_cpp": "src/Physics/Collider/Collider.cpp",
+      "description": "Базовый класс для всех коллайдеров. Регистрация в PhysicsSystem, управление Enter/Stay/Exit событиями, callback-система. Хранит физические свойства (friction, restitution, density).",
+      "methods": ["OnStart()", "OnDestroy()", "SetTrigger(bool)", "IsTrigger()", "GetWorldPosition()", "GetWorldScale()", "SetFriction(float)", "SetRestitution(float)", "CheckCollision(Collider*, CollisionInfo&)"],
+      "key_fields": ["isTrigger", "isEnabled", "offset", "colliderScale", "material", "currentCollisions", "currentTriggers"]
+    },
+    {
+      "name": "BoxCollider",
+      "file_h": "src/Physics/Collider/BoxCollider.h",
+      "file_cpp": "src/Physics/Collider/BoxCollider.cpp",
+      "description": "Ориентированный прямоугольный коллайдер (OBB). Следует трансформации owner (position, rotation, scale). Использует SAT для Box vs Box коллизий.",
+      "methods": ["SetSize(vec3)", "GetSize()", "GetWorldHalfExtents()", "GetWorldRotationMatrix()", "GetAABB()", "GetWorldVertices()", "CheckCollision(...)"],
+      "collision_types": ["Box vs Box (SAT)", "Box vs Sphere", "Box vs Capsule"],
+      "key_fields": ["size"]
+    },
+    {
+      "name": "SphereCollider",
+      "file_h": "src/Physics/Collider/SphereCollider.h",
+      "file_cpp": "src/Physics/Collider/SphereCollider.cpp",
+      "description": "Сферический коллайдер. Радиус масштабируется по максимальному компоненту owner.scale. Быстрый O(1) для всех типов коллизий.",
+      "methods": ["SetRadius(float)", "GetRadius()", "GetWorldRadius()", "GetWorldCenter()", "GetAABB()", "CheckCollision(...)"],
+      "collision_types": ["Sphere vs Sphere", "Sphere vs Box", "Sphere vs Capsule"],
+      "key_fields": ["radius"]
+    },
+    {
+      "name": "CapsuleCollider",
+      "file_h": "src/Physics/Collider/CapsuleCollider.h",
+      "file_cpp": "src/Physics/Collider/CapsuleCollider.cpp",
+      "description": "Капсульный коллайдер (цилиндр с полусферическими шапками). Ориентирован вдоль оси (X, Y, Z). Идеален для персонажей и удлиненных объектов.",
+      "methods": ["SetRadius(float)", "SetHeight(float)", "SetDirection(Direction)", "GetWorldRadius()", "GetEndpoints(vec3&, vec3&)", "GetAABB()", "CheckCollision(...)"],
+      "collision_types": ["Capsule vs Capsule", "Capsule vs Sphere", "Capsule vs Box"],
+      "key_fields": ["radius", "height", "direction"]
+    },
+    {
+      "name": "MeshCollider",
+      "file_h": "src/Physics/Collider/MeshCollider.h",
+      "file_cpp": "src/Physics/Collider/MeshCollider.cpp",
+      "description": "Коллайдер на основе сетки (наследуется от BoxCollider). Автоматически вычисляет AABB из bounds MeshRenderer. Используется для static объектов.",
+      "methods": ["OnStart()", "SetLocalBounds(vec3, vec3)", "UpdateFromMeshRenderer()", "UpdateBounds()"],
+      "inherits_from": "BoxCollider",
+      "key_fields": ["localMin", "localMax"]
+    }
+  ]
+}
