@@ -11,8 +11,8 @@ namespace Lindo {
         namespace Physics {
 
             glm::vec3 Collider::GetWorldPosition() const {
-                if (owner) {
-                    return owner->getWorldPosition() + offset;
+                if (gameObject) {
+                    return gameObject->getWorldPosition() + offset;
                 }
                 return offset;
             }
@@ -22,9 +22,9 @@ namespace Lindo {
             }
 
             glm::vec3 Collider::GetWorldScale() const {
-                if (useOwnerScale && owner) {
-                    glm::vec3 ownerScale = owner->transform.scale;
-                    return ownerScale * colliderScale;
+                if (usegameObjectScale && gameObject) {
+                    glm::vec3 gameObjectScale = gameObject->transform.scale;
+                    return gameObjectScale * colliderScale;
                 }
                 return colliderScale;
             }

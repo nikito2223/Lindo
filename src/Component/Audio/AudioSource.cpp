@@ -66,11 +66,11 @@ namespace Lindo {
                 clearSource();
             }
 
-            void AudioSource::OnUpdate(float deltaTime) {
+            void AudioSource::OnUpdate() {
                 if (!m_sourceId || !m_spatial) return;
 
                 // Обновляем позицию только если объект двигается
-                glm::vec3 currentPos = owner->transform.position;
+                glm::vec3 currentPos = gameObject->transform.position;
                 if (currentPos != m_lastPosition) {
                     updatePosition();
                     m_lastPosition = currentPos;
@@ -255,9 +255,9 @@ namespace Lindo {
             }
 
             void AudioSource::updatePosition() {
-                if (!m_sourceId || !owner) return;
+                if (!m_sourceId || !gameObject) return;
 
-                glm::vec3 pos = owner->transform.position;
+                glm::vec3 pos = gameObject->transform.position;
                 alSource3f(m_sourceId, AL_POSITION, pos.x, pos.y, pos.z);
             }
 

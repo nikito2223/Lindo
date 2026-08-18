@@ -52,10 +52,10 @@ namespace Lindo {
                 // Автоматически рассчитывает radius и height из AABB модели
                 void FitToAABB(const Lindo::Math::AABB& aabb);
 
-                // World-space radius (scaled by the owner's scale).
+                // World-space radius (scaled by the gameObject's scale).
                 float GetWorldRadius() const;
 
-                // World-space rotation as a 3x3 matrix (from the owner).
+                // World-space rotation as a 3x3 matrix (from the gameObject).
                 glm::mat3 GetWorldRotationMatrix() const;
 
                 // World-space endpoints of the capsule's central segment.

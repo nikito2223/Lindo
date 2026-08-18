@@ -10,7 +10,7 @@
 - **Хранение физических свойств** — плотность (density), трение (friction), упругость (restitution).
 - **Управление коллизиями и триггерами** — отслеживание Enter/Stay/Exit событий.
 - **Callback-система** — регистрация функций обратного вызова для коллизий и триггеров.
-- **Трансформация в мировых координатах** — преобразование локального пространства коллайдера в мировое (через owner).
+- **Трансформация в мировых координатах** — преобразование локального пространства коллайдера в мировое (через gameObject).
 
 ## Ключевые компоненты
 
@@ -42,9 +42,9 @@ struct CollisionInfo {
 |------|-----|---------|
 | `isTrigger` | bool | Является ли триггером (не физический, только уведомления) |
 | `isEnabled` | bool | Включен ли коллайдер |
-| `offset` | vec3 | Локальное смещение относительно позиции owner |
+| `offset` | vec3 | Локальное смещение относительно позиции gameObject |
 | `colliderScale` | vec3 | Локальный масштаб коллайдера |
-| `useOwnerScale` | bool | Использовать масштаб owner или свой |
+| `usegameObjectScale` | bool | Использовать масштаб gameObject или свой |
 | `material` | PhysicsMaterial | Физические свойства материала |
 | `currentCollisions` | vector<Collider*> | Активные коллизии (для отслеживания Enter/Exit) |
 | `currentTriggers` | vector<Collider*> | Активные триггеры |
@@ -84,7 +84,7 @@ glm::vec3 GetOffset() const;
 ```cpp
 void SetColliderScale(const glm::vec3& scale);   // Свой масштаб
 glm::vec3 GetColliderScale() const;
-void SetUseOwnerScale(bool use);                 // Использовать owner scale
+void SetUsegameObjectScale(bool use);                 // Использовать gameObject scale
 ```
 
 **Физические свойства:**
@@ -99,9 +99,9 @@ float GetDensity() const;
 
 **Мировые координаты:**
 ```cpp
-glm::vec3 GetWorldPosition() const;     // owner.position + offset
+glm::vec3 GetWorldPosition() const;     // gameObject.position + offset
 glm::vec3 GetWorldCenter() const;       // То же (может быть переопределено)
-glm::vec3 GetWorldScale() const;        // owner.scale * colliderScale или colliderScale
+glm::vec3 GetWorldScale() const;        // gameObject.scale * colliderScale или colliderScale
 ```
 
 **Callback система:**

@@ -24,9 +24,9 @@ namespace Lindo {
             void init(Lindo::Graphics::UI::UIFont* font);
             
             // Основные обновления
-            void update(float deltaTime, int fps, const glm::vec3& playerPos, bool debugMode);
+            void update(int fps, const glm::vec3& playerPos, bool debugMode);
             void updatePosition(const glm::vec3& playerPos);
-            void updateStats(float deltaTime, int fps, bool debugMode);
+            void updateStats(int fps, bool debugMode);
             void setTriangleCount(int count);
             void onResize(int width, int height);
 

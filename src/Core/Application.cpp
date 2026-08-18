@@ -1,13 +1,20 @@
 #include "Application.h"
 #include "Window/Window.h"
-#include "Input.h"
-#include "SceneManager.h"
-#include "Graphics/ui/UIManager.h"
-#include "debug/DebugOverlay.h"
-#include "Graphics/core/Renderer.h"
-#include "core/Globals.h"
+#include <debug/Console.h>
 #include <Physics/PhysicsSystem.h>
 #include <Component/Audio/AudioSystem.h>
+#include "Types/Settings.h"
+#include "Core/OGL.h"
+#include "Core/Time/Time.h"
+#include "Core/FrameManager.h" // Подключаем менеджер кадров
+
+#include "Debug/DebugSystem.h"
+#include "Debug/DebugOverlay.h"
+#include "Debug/ConsoleCommands.h"
+
+#include <algorithm>
+#include <thread>
+#include <GLFW/glfw3.h>
 
 #ifdef _WIN32
 extern "C" {
@@ -20,25 +27,18 @@ namespace Lindo {
 
     Application::Application() {
         Lindo::Core::DebugLogger::Init("engine_log.txt");
-
-        // Выводим красивую шапку при запуске
         logAppHeader();
 
-        // Window создаёт OpenGL контекст и задает заголовок с версией
+        LOG_INFO("[Application] Creating application window...");
+        DisplaySettings& displaySettings = DisplaySettings::getInstance();
+
         m_window = std::make_unique<Lindo::Window>(
-            Globals::screenWidth, 
-            Globals::screenHeight, 
+            displaySettings.windowWidth,
+            displaySettings.windowHeight,
             AppInfo::GetFormattedTitle().c_str()
         );
 
-        m_input = std::make_unique<Lindo::Input::Input>();
-        m_sceneManager = &Lindo::SceneManager::getInstance();
-        m_uiManager = std::make_unique<Lindo::Graphics::UI::UIManager>();
-        m_debugOverlay = std::make_unique<Lindo::Debug::DebugOverlay>();
-
-        m_renderer = std::make_unique<Lindo::Graphics::Renderer>(
-            m_sceneManager, m_uiManager.get(), m_debugOverlay.get()
-        );
+        m_context = std::make_unique<Lindo::EngineContext>();
     }
 
     Application::~Application() {
@@ -50,11 +50,11 @@ namespace Lindo {
 
     void Application::logAppHeader() {
         LOG_INFO("==================================================");
-        LOG_INFO("  _     _           _          ");
-        LOG_INFO(" | |   (_)_ __   __| | ___     ");
-        LOG_INFO(" | |   | | '_ \\ / _` |/ _ \\  ");
-        LOG_INFO(" | |___| | | | | (_| | (_) |   ");
-        LOG_INFO(" |_____|_|_| |_|\\__,_|\\___/  ");
+        LOG_INFO("  _        _             ");
+        LOG_INFO(" | |  _   | | ___  ___   ");
+        LOG_INFO(" | | | | _| |/ _ \\/ _ \\  ");
+        LOG_INFO(" | |_| |/ |_|  __/ (_) | ");
+        LOG_INFO(" |____/\\__,_|\\___|\\___/  ");
         LOG_INFO("==================================================");
         LOG_INFO(" Engine:   " + std::string(AppInfo::Name));
         LOG_INFO(" Version:  " + AppInfo::GetVersionString());
@@ -67,152 +67,94 @@ namespace Lindo {
         LOG_INFO("==================================================");
     }
 
+    void Application::logGPUInfo() {
+        const char* vendorRaw = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+        const char* rendererRaw = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+        const char* versionRaw = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+
+        std::string vendor = vendorRaw ? vendorRaw : "Unknown Vendor";
+        std::string renderer = rendererRaw ? rendererRaw : "Unknown GPU";
+        std::string version = versionRaw ? versionRaw : "Unknown GL Version";
+
+        LOG_INFO("==================================================");
+        LOG_INFO(" GPU Vendor:   " + vendor);
+        LOG_INFO(" GPU Model:    " + renderer);
+        LOG_INFO(" OpenGL Ver:   " + version);
+        LOG_INFO("--------------------------------------------------");
+    }
+
     void Application::run() {
-        LOG_INFO("Initializing window callbacks...");
-        m_window->setCallbacks(m_input.get(), m_uiManager.get());
-    
-        // Audio
-        if (!Lindo::Components::Audio::AudioSystem::getInstance().init()) {
-            LOG_ERROR("Failed to initialize audio system");
-        }
-    
-        // OpenGL state
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-        // MSAA должен быть включён в контексте GLFW,
-        // а не обязательно здесь.
-        glEnable(GL_MULTISAMPLE);
-    
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    
-        LOG_INFO("Initializing subsystems...");
-    
-        m_uiManager->init();
-        m_sceneManager->Init();
-        m_sceneManager->LoadScene("Game");
-    
-        m_debugOverlay->init(m_uiManager->getFont());
-        m_renderer->init();
-    
-        LOG_INFO("Entering main loop...");
-    
-        double lastTime = glfwGetTime();
-    
-        float fpsTimer = 0.0f;
-        int frameCount = 0;
-    
+        m_context->init(m_window.get());
+        Lindo::ConsoleCommands::RegisterAll(m_context.get(), m_window.get());
+        logGPUInfo();
+
+        LOG_INFO("[Application] Entering main loop...");
+
+        DisplaySettings& displaySettings = DisplaySettings::getInstance();
+
+        // Инициализируем FrameManager значением из настроек экрана
+        Lindo::FrameManager::Init(displaySettings.targetFPS);
+
+        auto* input = m_context->getInput();
+        auto* ui = m_context->getUI();
+        auto* renderer = m_context->getRenderer();
+        auto* debugSystem = m_context->getDebugSystem();
+        auto* sceneManager = m_context->getSceneManager();
+
         while (!m_window->shouldClose()) {
-        
-            // -----------------------------------------
-            // TIME
-            // -----------------------------------------
-        
-            const double currentTime = glfwGetTime();
-        
-            float deltaTime =
-                static_cast<float>(currentTime - lastTime);
-        
-            lastTime = currentTime;
-        
-            // Защита от огромного dt после сворачивания окна
-            deltaTime = std::min(deltaTime, 0.05f);
-        
-        
-            // -----------------------------------------
-            // EVENTS
-            // -----------------------------------------
-        
+            // 1. Фиксируем старт кадра для точной синхронизации
+            Lindo::FrameManager::BeginFrame();
+
+            // 2. Обновляем глобальное время игрового движка
+            Lindo::Time::Update();
+
             m_window->pollEvents();
-        
-        
-            // -----------------------------------------
-            // INPUT
-            // -----------------------------------------
-        
-            m_input->update(m_window.get());
-        
-            if (m_input->consumeF3()) {
-                const bool debugMode =
-                    m_debugOverlay->toggle();
-            
-                LOG_INFO(
-                    std::string("Debug mode: ") +
-                    (debugMode ? "ON" : "OFF")
-                );
+            input->update(m_window.get());
+
+            if (input->consumeF3()) {
+                debugSystem->getOverlay()->toggle();
             }
-        
-            if (m_input->consumeF4()) {
-                Globals::renderPhysicsDebug =
-                    !Globals::renderPhysicsDebug;
-            
-                LOG_INFO(
-                    std::string("Physics debug: ") +
-                    (Globals::renderPhysicsDebug ? "ON" : "OFF")
-                );
+
+            if (input->consumeF4()) {
+                auto& settings = Lindo::Settings::getInstance();
+                bool newState = !settings.isDebugDrawEnabled();
+                settings.setDebugDrawEnabled(newState);
+
+                LOG_INFO(std::string("[Input] Physics debug draw toggled: ") + (newState ? "ON" : "OFF"));
             }
-        
-            if (m_input->consumeF11()) {
+
+            if (input->consumeF11()) {
                 m_window->toggleFullscreen();
             }
-        
-            if (m_input->consumeEscape()) {
-                m_input->setUIActive(
-                    !m_input->isUIActive()
-                );
+
+            if (input->consumeEscape()) {
+                input->setUIActive(!input->isUIActive());
             }
-        
-        
-            // -----------------------------------------
-            // UPDATE
-            // -----------------------------------------
-        
-            m_sceneManager->Update(
-                deltaTime,
-                m_input.get()
+
+            // --- UPDATE ---
+            ui->update();
+            sceneManager->Update(input);
+
+            auto& physics = Lindo::Components::Physics::PhysicsSystem::GetInstance();
+            physics.Step();
+
+            Lindo::Components::Audio::AudioSystem::getInstance().update();
+
+            // Передаем точный средний FPS и фреймтайм в оверлей отладки
+            debugSystem->getOverlay()->updateStats(
+                static_cast<int>(Lindo::FrameManager::GetFPS()),
+                debugSystem->getOverlay()->isVisible()
             );
-        
-            auto& physics =
-                Lindo::Components::Physics::PhysicsSystem::GetInstance();
-        
-            physics.Step(deltaTime);
-        
-            auto& audio =
-                Lindo::Components::Audio::AudioSystem::getInstance();
-        
-            audio.update(deltaTime);
-        
-        
-            // -----------------------------------------
-            // FPS
-            // -----------------------------------------
-        
-            fpsTimer += deltaTime;
-            ++frameCount;
-        
-            if (fpsTimer >= 1.0f) {
-            
-                m_debugOverlay->updateStats(
-                    fpsTimer,
-                    frameCount,
-                    m_debugOverlay->isVisible()
-                );
-            
-                fpsTimer -= 1.0f;
-                frameCount = 0;
-            }
-        
-        
-            // -----------------------------------------
-            // RENDER
-            // -----------------------------------------
-        
-            m_renderer->render(deltaTime);
-        
+
+            // --- RENDER ---
+            renderer->render();
             m_window->swapBuffers();
+
+            // 3. Завершаем кадр: ограничиваем FPS и рассчитываем метрики нагрузки
+            Lindo::FrameManager::EndFrame();
         }
-    
-        m_sceneManager->Cleanup();
+
+        m_context->cleanup();
     }
+
 }

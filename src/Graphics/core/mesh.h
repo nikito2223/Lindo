@@ -8,7 +8,6 @@
 #include <iostream>    // для вывода отладки
 #include <algorithm>   // для min/max
 #include <Component/GameObject/transform.h>
-#include <Component\GameObject\transform.h>
 #include "Shader.h"
 
 namespace Lindo {

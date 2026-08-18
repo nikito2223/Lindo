@@ -1,6 +1,7 @@
 ﻿#include "Player.h"
 #include <Component/GameObject/GameObject.h>
 #include <Component/PlayerController/CharacterController.h>
+#include <Core/Time/Time.h>
 
 namespace Lindo {
     namespace Components {
@@ -16,7 +17,7 @@ namespace Lindo {
 
             void Player::OnStart() {
                 // Добавляем CharacterController как компонент
-                characterController = owner->addComponent<Lindo::Components::Character::CharacterController>();
+                characterController = gameObject->addComponent<Lindo::Components::Character::CharacterController>();
 
                 if (characterController) {
                     // Настраиваем параметры персонажа
@@ -41,7 +42,7 @@ namespace Lindo {
                 }
                 
                 // Добавляем камеру как компонент
-                camera = owner->addComponent<Lindo::Components::Rendering::Camera>();
+                camera = gameObject->addComponent<Lindo::Components::Rendering::Camera>();
 
                 if (camera) {
                     // Настраиваем камеру для от первого лица
@@ -59,18 +60,19 @@ namespace Lindo {
                 lastFramePosition = getPosition();
             }
 
-            void Player::OnUpdate(float deltaTime) {
+            void Player::OnUpdate() {
                 if (!isAlive || !characterController) return;
+                float dt = Lindo::Time::GetDeltaTime();
 
                 // Обновляем инвульнерабельность
                 if (isInvulnerable) {
-                    invulnerabilityTimer -= deltaTime;
+                    invulnerabilityTimer -= dt;
                     if (invulnerabilityTimer <= 0.0f) {
                         isInvulnerable = false;
                     }
                 }
 
-                ProcessInput(deltaTime);
+                ProcessInput();
                 UpdateCamera();
                 UpdateInputState();
 
@@ -81,7 +83,7 @@ namespace Lindo {
 
                 // Обработка качания головы
                 if (settings.enableHeadBob && isMoving && characterController->IsGrounded() && !isCrouching) {
-                    HandleHeadBob(deltaTime);
+                    HandleHeadBob();
                 }
                 else {
                     headBobTimer = 0.0f;
@@ -91,9 +93,9 @@ namespace Lindo {
             void Player::OnDestroy() {
             }
 
-            void Player::ProcessInput(float deltaTime) {
+            void Player::ProcessInput() {
                 if (!characterController) return;
-
+                float dt = Lindo::Time::GetDeltaTime();
                 // Собираем направление движения
                 glm::vec3 moveDirection = glm::vec3(0.0f);
 
@@ -232,7 +234,7 @@ namespace Lindo {
             }
 
             void Player::SyncCameraWithCharacter() {
-                if (!camera || !owner) return;
+                if (!camera || !gameObject) return;
             }
 
             void Player::UpdateInputState() {
@@ -247,14 +249,15 @@ namespace Lindo {
                 }
             }
 
-            void Player::HandleHeadBob(float deltaTime) {
+            void Player::HandleHeadBob() {
                 if (!camera || !characterController) return;
+                float dt = Lindo::Time::GetDeltaTime();
 
                 // Скорость качания зависит от текущей скорости
                 float speed = characterController->GetCurrentSpeed();
                 float bobSpeedFactor = std::min(speed / 5.0f, 1.5f);
 
-                headBobTimer += deltaTime * camera->bobSpeed * bobSpeedFactor;
+                headBobTimer += dt * camera->bobSpeed * bobSpeedFactor;
 
                 // Эффект качания
                 float bobY = std::sin(headBobTimer * 2.0f) * camera->bobAmount * (isRunning ? 1.5f : 1.0f);

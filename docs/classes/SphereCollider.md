@@ -28,8 +28,8 @@ float GetRadius() const;              // Получить локальный р�
 
 **Мировые координаты:**
 ```cpp
-float GetWorldRadius() const override;        // Мировой радиус (с учетом owner scale)
-glm::vec3 GetWorldCenter() const override;    // Центр сферы (owner.position + offset)
+float GetWorldRadius() const override;        // Мировой радиус (с учетом gameObject scale)
+glm::vec3 GetWorldCenter() const override;    // Центр сферы (gameObject.position + offset)
 Lindo::Math::AABB GetAABB() const override;   // Axis-aligned bounding box
 ```
 
@@ -146,7 +146,7 @@ triggerSphere->SetTrigger(true);
 triggerSphere->SetTriggerCallback(
     CollisionEvent::Enter,
     [](Collider* other) {
-        if (auto* player = dynamic_cast<Player*>(other->owner)) {
+        if (auto* player = dynamic_cast<Player*>(other->gameObject)) {
             player->TakeDamage(10);
         }
     }

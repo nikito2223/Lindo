@@ -109,10 +109,10 @@ std::cout << "Collider offset: " << glm::to_string(rockCollider->GetOffset()) <<
 
 ```cpp
 void MeshCollider::UpdateFromMeshRenderer() {
-    if (!owner) return;
+    if (!gameObject) return;
     
     // 1. Получить компонент MeshRenderer
-    auto* meshRenderer = owner->getComponent<MeshRenderer>();
+    auto* meshRenderer = gameObject->getComponent<MeshRenderer>();
     if (!meshRenderer || !meshRenderer->hasBBox) {
         return;  // Нет mesh данных
     }

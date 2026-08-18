@@ -18,7 +18,7 @@ namespace Lindo {
 
             float CapsuleCollider::GetWorldRadius() const {
                 // Получаем масштаб объекта в мировых координатах
-                glm::vec3 worldScale = owner ? owner->transform.scale : glm::vec3(1.0f);
+                glm::vec3 worldScale = gameObject ? gameObject->transform.scale : glm::vec3(1.0f);
             
                 switch (direction) {
                 case Direction::X:
@@ -35,8 +35,8 @@ namespace Lindo {
             }
 
             glm::mat3 CapsuleCollider::GetWorldRotationMatrix() const {
-                if (owner) {
-                    glm::vec3 r = owner->transform.rotation; // Euler degrees
+                if (gameObject) {
+                    glm::vec3 r = gameObject->transform.rotation; // Euler degrees
                     glm::mat3 rotX = glm::mat3(glm::rotate(glm::mat4(1.0f), glm::radians(r.x), glm::vec3(1, 0, 0)));
                     glm::mat3 rotY = glm::mat3(glm::rotate(glm::mat4(1.0f), glm::radians(r.y), glm::vec3(0, 1, 0)));
                     glm::mat3 rotZ = glm::mat3(glm::rotate(glm::mat4(1.0f), glm::radians(r.z), glm::vec3(0, 0, 1)));
@@ -46,7 +46,7 @@ namespace Lindo {
             }
 
             void CapsuleCollider::GetEndpoints(glm::vec3& outTop, glm::vec3& outBottom) const {
-                glm::vec3 worldScale = owner ? owner->transform.scale : glm::vec3(1.0f);
+                glm::vec3 worldScale = gameObject ? gameObject->transform.scale : glm::vec3(1.0f);
             
                 // Берем масштаб именно вдоль центральной оси капсулы
                 float axisScale = 1.0f;

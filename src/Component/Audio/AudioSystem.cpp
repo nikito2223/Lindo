@@ -71,7 +71,7 @@ namespace Lindo {
                 m_currentListener = nullptr;
             }
 
-            void AudioSystem::update(float deltaTime) {
+            void AudioSystem::update() {
                 if (!m_initialized) return;
 
                 if (alcGetCurrentContext() != m_context) {

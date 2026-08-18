@@ -8,9 +8,10 @@
 #include <functional> 
 #include <glm/glm.hpp>
 
+#include <world/Scene.h>
+
 namespace Lindo {
     namespace World {
-        class Scene;
         class GameObject;
         class Component;
     }
@@ -38,8 +39,8 @@ namespace Lindo {
 
         // Инициализация и очистка
         void Init();
-        void Update(float deltaTime, Input::Input* input);
-        void Render(Graphics::Shader& shader, float deltaTime);
+        void Update(Input::Input* input);
+        void Render(Graphics::Shader& shader);
         void Cleanup();
 
         // Управление сценами

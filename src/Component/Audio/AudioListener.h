@@ -11,7 +11,7 @@ namespace Lindo {
                 AudioListener() = default;
                 virtual ~AudioListener();
 
-                void OnUpdate(float deltaTime) override;
+                void OnUpdate() override;
                 void OnDestroy() override;
 
                 // Настройки слушателя

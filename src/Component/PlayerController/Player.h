@@ -29,11 +29,11 @@ namespace Lindo {
 
                 // Component overrides
                 void OnStart() override;
-                void OnUpdate(float deltaTime) override;
+                void OnUpdate() override;
                 void OnDestroy() override;
 
                 // Управление
-                void ProcessInput(float deltaTime);
+                void ProcessInput();
                 void MoveForward(float value);
                 void MoveRight(float value);
                 void Look(float deltaX, float deltaY);
@@ -63,7 +63,7 @@ namespace Lindo {
                 void UpdateCamera();
                 void SyncCameraWithCharacter();
                 void UpdateInputState();
-                void HandleHeadBob(float deltaTime);
+                void HandleHeadBob();
 
                 // Компоненты
                 Lindo::Components::Character::CharacterController* characterController = nullptr;

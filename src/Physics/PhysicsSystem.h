@@ -69,7 +69,7 @@ namespace Lindo {
                 // Advances the entire simulation by deltaTime seconds, applying
                 // gravity fields, integrating rigid bodies, detecting collisions,
                 // and resolving them with an impulse solver.
-                void Step(float deltaTime);
+                void Step();
 
                 // ----- Spatial queries -----
                 bool Raycast(const glm::vec3& origin, const glm::vec3& direction,
@@ -97,7 +97,7 @@ namespace Lindo {
                 bool NarrowPhase(Collider* a, Collider* b, Contact& outContact) const;
 
 // Resolution: applies impulses to resolve overlapping bodies.
-                void ResolveContacts(std::vector<Contact>& contacts, float deltaTime);
+                void ResolveContacts(std::vector<Contact>& contacts);
 
                 // Compute the effective gravity at a body's position.
                 glm::vec3 ComputeGravityAt(const glm::vec3& worldPos) const;

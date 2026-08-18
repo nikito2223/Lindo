@@ -31,8 +31,8 @@ namespace Lindo {
                 void OnStart() override;
                 void OnDestroy() override;
 
-                void OnUpdate(float deltaTime, const glm::vec3& gravity);
-                void OnUpdate(float deltaTime) override;
+                void OnUpdate(const glm::vec3& gravity);
+                void OnUpdate() override;
 
                 // ----- Force / impulse API -----
                 void applyForce(const glm::vec3& force);
@@ -43,7 +43,7 @@ namespace Lindo {
                 void clearForces();
 
                 // ----- Integration -----
-                void integrate(float deltaTime, const glm::vec3& gravity);
+                void integrate(const glm::vec3& gravity);
 
                 // ----- Configuration (fully exposed & configurable) -----
                 float mass = 1.0f;
@@ -88,9 +88,9 @@ namespace Lindo {
 
             private:
                 void ClearAccumulators();
-                void ApplyDamping(float deltaTime);
+                void ApplyDamping();
                 void ClampVelocity(float maxSpeed = 25.0f);
-                void UpdateSleepState(float deltaTime);
+                void UpdateSleepState();
 
                 // Accumulators cleared each step.
                 glm::vec3 forceAccumulator{ 0.0f };

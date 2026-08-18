@@ -15,10 +15,10 @@ namespace Lindo {
 
                 // �������������� ������ Component
                 void OnStart() override;
-                void OnUpdate(float deltaTime) override;
+                void OnUpdate() override;
 
                 // ��������� �����
-                void processKeyboardInput(int key, int action, float deltaTime);
+                void processKeyboardInput(int key, int action);
                 void processMouseMovement(float xOffset, float yOffset, bool constrainPitch = true);
                 void processMouseScroll(float yOffset);
 
@@ -26,10 +26,10 @@ namespace Lindo {
                 glm::mat4 getViewMatrix() const;
                 glm::mat4 getProjectionMatrix() const;
 
-                // ��������: getPosition() ������ ���������� owner �� Component
-                // owner - ��� ��������� �� GameObject, ������� ���� � ���� �����������
+                // ��������: getPosition() ������ ���������� gameObject �� Component
+                // gameObject - ��� ��������� �� GameObject, ������� ���� � ���� �����������
                 glm::vec3 getPosition() const {
-                    return owner ? (owner->transform.position + glm::vec3(0.0f, heightOffset, 0.0f)) : glm::vec3(0.0f);
+                    return gameObject ? (gameObject->transform.position + glm::vec3(0.0f, heightOffset, 0.0f)) : glm::vec3(0.0f);
                 }
 
                 glm::vec3 getFront() const { return front; }
@@ -38,6 +38,8 @@ namespace Lindo {
                 float getZoom() const { return zoom; }
                 float getYaw() const { return yaw; }
                 float getPitch() const { return pitch; }
+                float getNearPlane() { return m_near; }
+                float getFarPlane() { return m_far; }
 
                 // �������
                 void setHeightOffset(float offset) { heightOffset = offset; }
@@ -47,24 +49,27 @@ namespace Lindo {
                 void setFront(const glm::vec3& newFront);
                 void setAspectRatio(float aspect) { m_aspect = aspect; }
                 void setNearFar(float nearPlane, float farPlane) { m_near = nearPlane; m_far = farPlane; }
+                void setGamma(float g) { gamma = g; }
 
-                // ���������
+
                 float movementSpeed = 5.0f;
                 float mouseSensitivity = 0.1f;
                 float zoom = 90.0f;
                 float maxPitch = 89.0f;
                 float minPitch = -89.0f;
                 bool invertY = false;
-                float heightOffset = 1.8f;      // ������ ���� �� ������ �������
+                float heightOffset = 1.8f; 
                 bool clampToGround = false;
                 float groundHeight = 0.0f;
-                float bobAmount = 0.05f;         // ��������� ������� ������
-                float bobSpeed = 10.0f;           // �������� �������
+                float bobAmount = 0.05f;   
+                float bobSpeed = 10.0f;    
+                float gamma = 2.2f;
 
-                // ������ ������
+
+
                 enum class Mode {
-                    FirstPerson,   // �� ������� ���� (������� �� �������)
-                    Free           // ��������� ������
+                    FirstPerson,
+                    Free        
                 };
 
                 void setMode(Mode newMode) { mode = newMode; }
@@ -72,7 +77,7 @@ namespace Lindo {
 
             private:
                 void updateCameraVectors();
-                void updateBob(float deltaTime);
+                void updateBob();
 
                 // ��������� ������
                 glm::vec3 front = glm::vec3(0.0f, 0.0f, -1.0f);

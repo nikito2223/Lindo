@@ -188,7 +188,7 @@ swordCollider->SetTrigger(true);  // Триггер для урона
 swordCollider->SetTriggerCallback(
     CollisionEvent::Enter,
     [](Collider* other) {
-        if (auto* enemy = dynamic_cast<Enemy*>(other->owner)) {
+        if (auto* enemy = dynamic_cast<Enemy*>(other->gameObject)) {
             enemy->TakeDamage(20);
         }
     }

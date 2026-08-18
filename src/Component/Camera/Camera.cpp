@@ -1,41 +1,51 @@
 #include "Camera.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include "core/Types/Settings.h"
 #include <iostream>
+#include <Core/Time/Time.h>
 
 namespace Lindo {
     namespace Components {
         namespace Rendering {
 
             void Camera::OnStart() {
-                // �������������
-                if (owner) {
-                    yaw = owner->transform.rotation.y;
+                auto& settings = Lindo::Settings::getInstance();
+
+                // Подтягиваем параметры из глобальных настроек
+                zoom = settings.fov;
+                m_near = settings.nearPlane;
+                m_far = settings.farPlane;
+                gamma = settings.gamma;
+
+                if (gameObject) {
+                    yaw = gameObject->transform.rotation.y;
                 }
                 updateCameraVectors();
             }
 
-            void Camera::OnUpdate(float deltaTime) {
+            void Camera::OnUpdate() {
                 if (mode == Mode::Free) {
-                    // ��������� �������� ������
-                    float velocity = movementSpeed * deltaTime;
-                    if (movementState.forward)  owner->transform.position += front * velocity;
-                    if (movementState.backward) owner->transform.position -= front * velocity;
-                    if (movementState.left)     owner->transform.position -= right * velocity;
-                    if (movementState.right)    owner->transform.position += right * velocity;
-                    if (movementState.up)       owner->transform.position += worldUp * velocity;
-                    if (movementState.down)     owner->transform.position -= worldUp * velocity;
+                    float dt = Lindo::Time::GetDeltaTime();
 
-                    if (clampToGround && owner->transform.position.y < groundHeight + heightOffset)
-                        owner->transform.position.y = groundHeight + heightOffset;
+                    float velocity = movementSpeed * dt;
+                    if (movementState.forward)  gameObject->transform.position += front * velocity;
+                    if (movementState.backward) gameObject->transform.position -= front * velocity;
+                    if (movementState.left)     gameObject->transform.position -= right * velocity;
+                    if (movementState.right)    gameObject->transform.position += right * velocity;
+                    if (movementState.up)       gameObject->transform.position += worldUp * velocity;
+                    if (movementState.down)     gameObject->transform.position -= worldUp * velocity;
+
+                    if (clampToGround && gameObject->transform.position.y < groundHeight + heightOffset)
+                        gameObject->transform.position.y = groundHeight + heightOffset;
                 }
-                else if (mode == Mode::FirstPerson && owner) {
-                    // � ������ �� ������� ���� ������ ������� �� �������� owner
-                    // ������� owner ����� �������� ���s���� ��� ��������� ������
+                else if (mode == Mode::FirstPerson && gameObject) {
+                    // � ������ �� ������� ���� ������ ������� �� �������� gameObject
+                    // ������� gameObject ����� �������� ���s���� ��� ��������� ������
                     // ������ �� ������, ������ ��������� �������
                 }
 
                 // ��������� ������ �������
-                updateBob(deltaTime);
+                updateBob();
 
                 // ���������� �������� �� �������� (�� ������ �� ��������)
                 // position += bobOffset; - ������ ��� �������� � getViewMatrix()
@@ -43,7 +53,7 @@ namespace Lindo {
                 updateCameraVectors();
             }
 
-            void Camera::processKeyboardInput(int key, int action, float deltaTime) {
+            void Camera::processKeyboardInput(int key, int action) {
                 bool pressed = (action == GLFW_PRESS || action == GLFW_REPEAT);
 
                 switch (key) {
@@ -90,8 +100,8 @@ namespace Lindo {
                 }
 
                 // � ������ �� ������� ���� ������������ ������ ������ � �������
-                if (mode == Mode::FirstPerson && owner) {
-                    owner->transform.rotation.y = yaw;
+                if (mode == Mode::FirstPerson && gameObject) {
+                    gameObject->transform.rotation.y = yaw;
                 }
 
                 updateCameraVectors();
@@ -106,9 +116,9 @@ namespace Lindo {
             glm::mat4 Camera::getViewMatrix() const {
                 glm::vec3 eyePos;
 
-                if (owner) {
+                if (gameObject) {
                     // ������� ������� - ����� ������� + �������� �� ������
-                    eyePos = owner->transform.position + glm::vec3(0.0f, heightOffset, 0.0f);
+                    eyePos = gameObject->transform.position + glm::vec3(0.0f, heightOffset, 0.0f);
 
                     // ��������� ������ ������� (������ ���������)
                     eyePos += bobOffset;
@@ -137,10 +147,13 @@ namespace Lindo {
                 up = glm::normalize(glm::cross(right, front));
             }
 
-            void Camera::updateBob(float deltaTime) {
+
+            void Camera::updateBob() {
+                float dt = Lindo::Time::GetDeltaTime();
+
                 if (isBobbing && (movementState.forward || movementState.backward ||
                     movementState.left || movementState.right)) {
-                    bobTimer += deltaTime * bobSpeed;
+                    bobTimer += dt * bobSpeed;
 
                     // ������� �������������� �������
                     float bobX = sin(bobTimer * 2.0f) * bobAmount;
@@ -150,7 +163,7 @@ namespace Lindo {
                 }
                 else {
                     // ������� ����������� � �������� ���������
-                    bobOffset = glm::mix(bobOffset, glm::vec3(0.0f), deltaTime * 5.0f);
+                    bobOffset = glm::mix(bobOffset, glm::vec3(0.0f), dt * 5.0f);
                     bobTimer = 0.0f;
                 }
             }

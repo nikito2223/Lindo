@@ -2,6 +2,7 @@
 #include "../Core/Application.h" // Для доступа к AppInfo
 #include <sstream>
 #include <iomanip>
+#include <Core/Time/Time.h>
 
 namespace Lindo {
     namespace Debug {
@@ -12,9 +13,10 @@ namespace Lindo {
             m_font = font;
         }
 
-        void DebugOverlay::update(float deltaTime, int fps, const glm::vec3& playerPos, bool debugMode) {
+        void DebugOverlay::update(int fps, const glm::vec3& playerPos, bool debugMode) {
+            float dt = Lindo::Time::GetDeltaTime();
             m_currentPos = playerPos;
-            updateStats(deltaTime, fps, debugMode);
+            updateStats(fps, debugMode);
         }
 
         void DebugOverlay::updatePosition(const glm::vec3& playerPos) {
@@ -24,9 +26,10 @@ namespace Lindo {
             }
         }
 
-        void DebugOverlay::updateStats(float deltaTime, int fps, bool debugMode) {
-            m_updateTimer += deltaTime;
-            m_totalTime += deltaTime;
+        void DebugOverlay::updateStats(int fps, bool debugMode) {
+            float dt = Lindo::Time::GetDeltaTime();
+            m_updateTimer += dt;
+            m_totalTime += dt;
             m_currentFPS = fps;
             m_debugMode = debugMode;
 

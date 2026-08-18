@@ -1,206 +1,206 @@
 #include "AssetManager.h"
-#include "core/Globals.h"
-#include "debug/DebugLogger.h"  // Добавляем подключение логгера
+#include "debug/DebugLogger.h"
+#include <fstream>
+#include <vector>
+#include <cstring>
 
 namespace Lindo {
-    // ===== SINGLETON =====
+
     AssetManager& AssetManager::get() {
         static AssetManager instance;
         return instance;
     }
 
-    // ===== TEXTURES =====
-    unsigned int AssetManager::loadTexture(const std::string& path) {
-        LOG_DEBUG("Loading texture: " + path);
-        
-        if (textures.count(path)) {
-            LOG_DEBUG("Texture already loaded: " + path + ", returning cached");
-            return textures[path];
+    std::string AssetManager::resolvePath(const std::string& relativePath, const std::string& subDir) const {
+        std::filesystem::path path(relativePath);
+
+        if (path.is_absolute() || (path.has_parent_path() && path.begin()->string() == m_basePath.string())) {
+            return path.string();
         }
 
-        unsigned int tex = Lindo::Graphics::loadTexture(path);
+        if (!subDir.empty() && path.parent_path().string().find(subDir) == std::string::npos) {
+            return (m_basePath / subDir / path).lexically_normal().string();
+        }
+
+        return (m_basePath / path).lexically_normal().string();
+    }
+
+    std::string AssetManager::getShaderPath(const std::string& shaderName) const {
+        std::string path = resolvePath(shaderName, "shaders");
+        LOG_DEBUG("[AssetManager] Resolved shader path for '" + shaderName + "': " + path);
+        return path;
+    }
+
+    // ===== TEXTURES =====
+    unsigned int AssetManager::loadTexture(const std::string& path) {
+        std::string fullPath = resolvePath(path, "textures");
+
+        if (textures.count(fullPath)) {
+            LOG_DEBUG("[AssetManager] Texture already cached: " + fullPath);
+            return textures[fullPath];
+        }
+
+        LOG_DEBUG("[AssetManager] Requesting texture load: " + fullPath);
+        unsigned int tex = Lindo::Graphics::loadTexture(fullPath);
         if (tex != 0) {
-            textures[path] = tex;
-            LOG_INFO("Texture loaded successfully: " + path + " (ID: " + std::to_string(tex) + ")");
-        } else {
-            LOG_ERROR("Failed to load texture: " + path);
+            textures[fullPath] = tex;
+            LOG_INFO("[AssetManager] Texture cached successfully: " + fullPath + " [ID: " + std::to_string(tex) + "]");
+        }
+        else {
+            LOG_ERROR("[AssetManager] Failed to load texture through loader: " + fullPath);
         }
         return tex;
     }
 
     unsigned int AssetManager::getTexture(const std::string& path) {
-        if (textures.count(path)) {
-            LOG_DEBUG("Texture found in cache: " + path);
-            return textures[path];
+        std::string fullPath = resolvePath(path, "textures");
+        if (textures.count(fullPath)) {
+            LOG_DEBUG("[AssetManager] Fetching texture from cache: " + fullPath);
+            return textures[fullPath];
         }
-
-        LOG_DEBUG("Texture not in cache, loading: " + path);
+        LOG_WARN("[AssetManager] Texture not found in cache, triggering load: " + fullPath);
         return loadTexture(path);
     }
 
     // ===== MODELS =====
     Lindo::Graphics::Model* AssetManager::loadModel(const std::string& path) {
-        LOG_DEBUG("Loading model: " + path);
-        
-        if (models.count(path)) {
-            LOG_DEBUG("Model already loaded: " + path + ", returning cached");
-            return models[path].get();
+        std::string fullPath = resolvePath(path, "models");
+
+        if (models.count(fullPath)) {
+            LOG_DEBUG("[AssetManager] Model already cached: " + fullPath);
+            return models[fullPath].get();
         }
 
+        LOG_INFO("[AssetManager] Loading 3D model: " + fullPath);
         try {
-            models[path] = std::make_unique<Lindo::Graphics::Model>(path);
-            LOG_INFO("Model loaded successfully: " + path);
-            return models[path].get();
-        } catch (const std::exception& e) {
-            LOG_ERROR("Failed to load model: " + path + " - " + e.what());
+            models[fullPath] = std::make_unique<Lindo::Graphics::Model>(fullPath);
+            LOG_INFO("[AssetManager] Model loaded and cached successfully: " + fullPath);
+            return models[fullPath].get();
+        }
+        catch (const std::exception& e) {
+            LOG_ERROR("[AssetManager] Exception caught while loading model " + fullPath + " - " + e.what());
             return nullptr;
         }
     }
 
     Lindo::Graphics::Model* AssetManager::getModel(const std::string& path) {
-        if (models.count(path)) {
-            LOG_DEBUG("Model found in cache: " + path);
-            return models[path].get();
+        std::string fullPath = resolvePath(path, "models");
+        if (models.count(fullPath)) {
+            return models[fullPath].get();
         }
-
-        LOG_DEBUG("Model not in cache, loading: " + path);
+        LOG_WARN("[AssetManager] Model missing in cache, loading: " + fullPath);
         return loadModel(path);
     }
 
     // ===== AUDIO =====
     ALuint AssetManager::loadSound(const std::string& path) {
-        LOG_INFO("Loading sound: " + path);
+        std::string fullPath = resolvePath(path, "sounds");
+        LOG_INFO("[AssetManager] Loading audio file (WAV): " + fullPath);
 
-        std::ifstream file(path, std::ios::binary);
+        std::ifstream file(fullPath, std::ios::binary);
         if (!file.is_open()) {
-            LOG_ERROR("Cannot open sound file: " + path);
+            LOG_ERROR("[AssetManager] Cannot open sound file stream: " + fullPath);
             return 0;
         }
 
-        // Чтение и проверка заголовка WAV
-        char riff[4]; 
+        char riff[4];
         file.read(riff, 4);
-        if (strncmp(riff, "RIFF", 4) != 0) {
-            LOG_ERROR("Invalid RIFF header in: " + path);
+        if (std::strncmp(riff, "RIFF", 4) != 0) {
+            LOG_ERROR("[AssetManager] Invalid RIFF header in audio file: " + fullPath);
             return 0;
         }
 
-        // Пропуск размера файла
         file.seekg(8);
-        char wave[4]; 
+        char wave[4];
         file.read(wave, 4);
-        if (strncmp(wave, "WAVE", 4) != 0) {
-            LOG_ERROR("Invalid WAVE header in: " + path);
+        if (std::strncmp(wave, "WAVE", 4) != 0) {
+            LOG_ERROR("[AssetManager] Invalid WAVE header in audio file: " + fullPath);
             return 0;
         }
 
-        // Чтение параметров аудио
-        file.seekg(22); // numChannels
-        short channels; 
+        file.seekg(22);
+        short channels;
         file.read(reinterpret_cast<char*>(&channels), sizeof(short));
-        LOG_DEBUG("  Sound channels: " + std::to_string(channels));
 
-        file.seekg(24); // sampleRate
-        int sampleRate; 
+        file.seekg(24);
+        int sampleRate;
         file.read(reinterpret_cast<char*>(&sampleRate), sizeof(int));
-        LOG_DEBUG("  Sample rate: " + std::to_string(sampleRate) + " Hz");
 
-        file.seekg(34); // bitsPerSample
-        short bitsPerSample; 
+        file.seekg(34);
+        short bitsPerSample;
         file.read(reinterpret_cast<char*>(&bitsPerSample), sizeof(short));
-        LOG_DEBUG("  Bits per sample: " + std::to_string(bitsPerSample));
 
-        file.seekg(40); // data size
-        int dataSize; 
+        file.seekg(40);
+        int dataSize;
         file.read(reinterpret_cast<char*>(&dataSize), sizeof(int));
-        LOG_DEBUG("  Data size: " + std::to_string(dataSize) + " bytes");
 
-        // Чтение аудиоданных
         std::vector<char> buffer(dataSize);
         file.read(buffer.data(), dataSize);
 
-        // Определение формата OpenAL
         ALenum format = 0;
         if (channels == 1 && bitsPerSample == 16) {
             format = AL_FORMAT_MONO16;
-            LOG_DEBUG("  Format: MONO16");
-        } else if (channels == 2 && bitsPerSample == 16) {
+        }
+        else if (channels == 2 && bitsPerSample == 16) {
             format = AL_FORMAT_STEREO16;
-            LOG_DEBUG("  Format: STEREO16");
-        } else {
-            LOG_ERROR("Unsupported audio format: channels=" + std::to_string(channels) +
-                     ", bitsPerSample=" + std::to_string(bitsPerSample) + " in: " + path);
+        }
+        else {
+            LOG_ERROR("[AssetManager] Unsupported audio format (Channels: " + std::to_string(channels) + ", Bits: " + std::to_string(bitsPerSample) + ") in: " + fullPath);
             return 0;
         }
 
-        // Создание буфера OpenAL
         ALuint alBuffer;
         alGenBuffers(1, &alBuffer);
-        ALenum error = alGetError();
-        if (error != AL_NO_ERROR) {
-            LOG_ERROR("Failed to generate OpenAL buffer for: " + path + 
-                     ", error code: " + std::to_string(error));
+        if (alGetError() != AL_NO_ERROR) {
+            LOG_ERROR("[AssetManager] OpenAL error generated during buffer creation for: " + fullPath);
             return 0;
         }
 
-        // Загрузка данных в буфер
         alBufferData(alBuffer, format, buffer.data(), dataSize, sampleRate);
-        error = alGetError();
-        if (error != AL_NO_ERROR) {
-            LOG_ERROR("Failed to set OpenAL buffer data for: " + path + 
-                     ", error code: " + std::to_string(error));
+        if (alGetError() != AL_NO_ERROR) {
+            LOG_ERROR("[AssetManager] OpenAL error while uploading buffer data for: " + fullPath);
             alDeleteBuffers(1, &alBuffer);
             return 0;
         }
 
-        sounds[path] = alBuffer;
-        LOG_INFO("Sound loaded successfully: " + path + " (Buffer ID: " + std::to_string(alBuffer) + ")");
+        sounds[fullPath] = alBuffer;
+        LOG_INFO("[AssetManager] Sound loaded successfully: " + fullPath + " [Buffer ID: " + std::to_string(alBuffer) + "]");
         return alBuffer;
     }
 
     ALuint AssetManager::getSound(const std::string& path) {
-        if (sounds.count(path)) {
-            LOG_DEBUG("Sound found in cache: " + path);
-            return sounds[path];
+        std::string fullPath = resolvePath(path, "sounds");
+        if (sounds.count(fullPath)) {
+            return sounds[fullPath];
         }
-
-        LOG_DEBUG("Sound not in cache, loading: " + path);
         return loadSound(path);
     }
 
     // ===== CLEAR =====
     void AssetManager::clear() {
-        LOG_INFO("Clearing all assets...");
-        
-        // Очистка текстур
+        LOG_INFO("[AssetManager] Clearing and releasing all cached assets...");
+
         if (!textures.empty()) {
-            LOG_DEBUG("Deleting " + std::to_string(textures.size()) + " textures");
+            LOG_DEBUG("[AssetManager] Deleting " + std::to_string(textures.size()) + " textures from GPU memory.");
             for (auto& [path, tex] : textures) {
                 glDeleteTextures(1, &tex);
-                LOG_DEBUG("Deleted texture: " + path + " (ID: " + std::to_string(tex) + ")");
             }
             textures.clear();
-            LOG_INFO("All textures cleared");
         }
 
-        // Очистка моделей
         if (!models.empty()) {
-            LOG_DEBUG("Clearing " + std::to_string(models.size()) + " models");
+            LOG_DEBUG("[AssetManager] Unloading " + std::to_string(models.size()) + " 3D models.");
             models.clear();
-            LOG_INFO("All models cleared");
         }
 
-        // Очистка звуков
         if (!sounds.empty()) {
-            LOG_DEBUG("Deleting " + std::to_string(sounds.size()) + " sounds");
+            LOG_DEBUG("[AssetManager] Deleting " + std::to_string(sounds.size()) + " OpenAL audio buffers.");
             for (auto& [path, buf] : sounds) {
                 alDeleteBuffers(1, &buf);
-                LOG_DEBUG("Deleted sound: " + path + " (Buffer ID: " + std::to_string(buf) + ")");
             }
             sounds.clear();
-            LOG_INFO("All sounds cleared");
         }
 
-        LOG_INFO("Asset cleanup completed");
+        LOG_INFO("[AssetManager] All assets successfully cleared.");
     }
 }

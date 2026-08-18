@@ -14,9 +14,9 @@ namespace Lindo {
         public:
             void OnCreate() override;
             void OnActivate() override;
-            void Update(float deltaTime) override;
-            void Render(Graphics::Shader& shader, float deltaTime) override;
-            void ProcessInput(Input::Input* input, float deltaTime) override;
+            void Update() override;
+            void Render(Graphics::Shader& shader) override;
+            void ProcessInput(Input::Input* input) override;
             void OnDestroy() override;
 
         private:

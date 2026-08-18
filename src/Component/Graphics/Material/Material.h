@@ -16,7 +16,7 @@ namespace Lindo {
 
             Material(unsigned int diffuse, unsigned int specular, float shiny = 32.0f, bool doubleSided = false)
                 : diffuseMap(diffuse), specularMap(specular), shininess(shiny),
-                color(1.0f), twoSided(doubleSided), useTexture(true) { // По умолчанию true
+                color(1.0f), twoSided(doubleSided), useTexture(diffuse != 0) { // <-- Автоматически вкл/выкл в зависимости от наличия текстуры
             }
 
             void apply(Shader& shader) {

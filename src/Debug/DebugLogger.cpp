@@ -2,11 +2,26 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include <functional>
 
 namespace Lindo::Core {
 
     std::ofstream DebugLogger::logFile;
+    std::function<void(LogLevel, const std::string&)> DebugLogger::s_ConsoleCallback = nullptr;
+    std::vector<std::pair<LogLevel, std::string>> DebugLogger::s_EarlyLogBuffer;
 
+    void DebugLogger::SetConsoleCallback(std::function<void(LogLevel, const std::string&)> callback) {
+        s_ConsoleCallback = callback;
+
+        // Сразу выводим все логи, собранные до инициализации UI
+        if (s_ConsoleCallback) {
+            for (const auto& [level, msg] : s_EarlyLogBuffer) {
+                s_ConsoleCallback(level, msg);
+            }
+            s_EarlyLogBuffer.clear();
+            s_EarlyLogBuffer.shrink_to_fit();
+        }
+    }
     void DebugLogger::Init(const std::string& filename) {
         logFile.open(filename, std::ios::out | std::ios::trunc);
         LOG_INFO("--- Logger Initialized ---");
@@ -28,7 +43,7 @@ namespace Lindo::Core {
         case LogLevel::Warning:  levelStr = "[WARN]"; break;
         case LogLevel::Error:    levelStr = "[ERROR]"; break;
         case LogLevel::Critical: levelStr = "[CRIT]"; break;
-        case LogLevel::Debug:    levelStr = "[DEBUG]"; break;  // Добавляем обработку Debug
+        case LogLevel::Debug:    levelStr = "[DEBUG]"; break;
         }
 
         std::stringstream ss;
@@ -38,13 +53,22 @@ namespace Lindo::Core {
             ss << " | File: " << file << " Line: " << line;
         }
 
-        // ����� � �������
+        // Вывод в системную консоль Windows/Linux
         std::cout << ss.str() << std::endl;
-
-        // ������ � ����
         if (logFile.is_open()) {
             logFile << ss.str() << std::endl;
-            logFile.flush(); // ���������� ����� �����, ����� ��� ������ ��� ����������
+            logFile.flush();
+        }
+
+        // Отправка строго в вашу внутреннюю консоль движка (Console.h/cpp)
+        if (s_ConsoleCallback) {
+            s_ConsoleCallback(level, ss.str());
+        }
+        else {
+            // Если UI еще не загрузился — сохраняем во временный буфер (до 200 строк)
+            if (s_EarlyLogBuffer.size() < 200) {
+                s_EarlyLogBuffer.push_back({ level, ss.str() });
+            }
         }
 
         ResetConsoleColor();
@@ -61,11 +85,11 @@ namespace Lindo::Core {
 #ifdef _WIN32
         HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
         switch (level) {
-        case LogLevel::Info:     SetConsoleTextAttribute(hConsole, 10); break; // зеленый
-        case LogLevel::Warning:  SetConsoleTextAttribute(hConsole, 14); break; // желтый
-        case LogLevel::Error:    SetConsoleTextAttribute(hConsole, 12); break; // красный
-        case LogLevel::Critical: SetConsoleTextAttribute(hConsole, 79); break; // белый на красном
-        case LogLevel::Debug:    SetConsoleTextAttribute(hConsole, 8); break;  // серый (для отладочных сообщений)
+        case LogLevel::Info:     SetConsoleTextAttribute(hConsole, 10); break;
+        case LogLevel::Warning:  SetConsoleTextAttribute(hConsole, 14); break;
+        case LogLevel::Error:    SetConsoleTextAttribute(hConsole, 12); break;
+        case LogLevel::Critical: SetConsoleTextAttribute(hConsole, 79); break;
+        case LogLevel::Debug:    SetConsoleTextAttribute(hConsole, 8); break;
         }
 #endif
     }
@@ -73,7 +97,7 @@ namespace Lindo::Core {
     void DebugLogger::ResetConsoleColor() {
 #ifdef _WIN32
         HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, 7); // ����������� ����� (белый)
+        SetConsoleTextAttribute(hConsole, 7);
 #endif
     }
 }

@@ -45,6 +45,7 @@ namespace Lindo {
                 unsigned int m_vao, m_vbo;
                 unsigned int m_shaderProgram;
                 glm::mat4 m_projection;
+                unsigned int m_whiteTexture = 0;
 
                 void flush(); // отправить накопленные вершины в OpenGL
                 void addVertex(const Vertex& v);

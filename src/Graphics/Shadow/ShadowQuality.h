@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <Core/Types/Settings.h>
 
 namespace Lindo {
 namespace Graphics {
@@ -8,13 +9,6 @@ namespace Graphics {
 //==============================================================================
 // Runtime-adjustable shadow quality. Higher tiers trade GPU cost for fidelity.
 //==============================================================================
-enum class ShadowQuality {
-    Off,    // no shadow rendering at all
-    Low,    // single map, 1024, PCF 3x3
-    Medium, // 2 cascades, 2048, PCF 5x5
-    High,   // 3 cascades, 2048, PCSS
-    Ultra   // 4 cascades, 4096, PCSS, tighter bias
-};
 
 // Aggregated, CPU-side settings that drive both the shadow passes and the
 // forward shader uniform block. Kept decoupled from any single light type.

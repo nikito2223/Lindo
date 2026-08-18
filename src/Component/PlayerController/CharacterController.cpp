@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <Component/Physhcs/RigidBody.h>
+#include <Core/Time/Time.h>
 
 namespace Lindo {
     namespace Components {
@@ -28,29 +29,36 @@ namespace Lindo {
                 lastSafePosition = getPosition();
 
                 // Set up the internal capsule collider as a physical collider.
-                collider.owner = owner;
+                collider.gameObject = gameObject;
                 collider.SetOffset(glm::vec3(0.0f, collider.GetHeight() * 0.5f, 0.0f));
                 collider.OnStart();
             }
 
-            void CharacterController::OnUpdate(float deltaTime) {
-                if (deltaTime <= 0.0f) return;
+            void CharacterController::OnUpdate() {
+                float dt = Lindo::Time::GetDeltaTime();
+
+                if (dt <= 0.0f) return;
+
+                if (gameObject->transform.position.y <= -100.0f) {
+                    // 1. Возвращаем позицию
+                    gameObject->transform.position = { 0.0f, 10.0f, 0.0f };
+                }
 
                 UpdateGroundStatus();
-                ApplyMovement(currentInput, deltaTime);
-                UpdatePhysics(deltaTime);
+                ApplyMovement(currentInput);
+                UpdatePhysics();
                 UpdateCurrentSpeed();
 
                 glm::vec3 oldPosition = getPosition();
-                glm::vec3 newPosition = oldPosition + state.velocity * deltaTime;
+                glm::vec3 newPosition = oldPosition + state.velocity * dt;
                 setPosition(newPosition);
 
-                ResolveCollisions(deltaTime);
+                ResolveCollisions();
 
                 // TODO: Check collision with world
                 lastSafePosition = getPosition();
 
-                HandleAutoOrientation(deltaTime);
+                HandleAutoOrientation();
 
                 if (!state.wasGrounded && state.isGrounded && onLand) {
                     onLand();
@@ -59,14 +67,14 @@ namespace Lindo {
             }
 
             void CharacterController::OnDestroy() {
-                // �������, �������� ���������� �� ����������� ����
+                // Очистка, физическая подсистема все обработает сама
             }
 
             void CharacterController::Move(glm::vec3 inputDirection, bool isRunning) {
                 currentInput = inputDirection;
                 isRunningInput = isRunning;
 
-                // ��������� ����� �������� �� ������ �����
+                // Изменение стейта движения на основе ввода
                 if (state.isGrounded) {
                     if (isRunningInput && movementMode != MovementMode::Running && movementMode != MovementMode::Crouching) {
                         SetMovementMode(MovementMode::Running);
@@ -79,10 +87,9 @@ namespace Lindo {
 
             void CharacterController::Rotate(glm::vec3 lookDirection) {
                 if (orientationMode == AutoOrientationMode::CameraDirection) {
-                    // ������������ ������ � ������� ������
+                    // Поворачиваем объект к вектору взгляда
                     if (glm::length(lookDirection) > 0.1f) {
-                        // ����� ��������� ������� � owner->transform
-                        // owner->SetRotation(quaternion);
+                        // Здесь установка поворота в gameObject->transform
                     }
                 }
             }
@@ -150,7 +157,7 @@ namespace Lindo {
                 if (movementMode == mode) return;
                 movementMode = mode;
 
-                // ������������� ������ ��� �������
+                // Специфические настройки для режимов
                 switch (mode) {
                 case MovementMode::Flying:
                     state.velocity.y = 0;
@@ -185,28 +192,31 @@ namespace Lindo {
                 // The actual grounded state is determined during collision resolution.
             }
 
-            void CharacterController::UpdatePhysics(float deltaTime) {
+            void CharacterController::UpdatePhysics() {
                 if (!state.isGrounded) {
-                    ApplyGravity(deltaTime);
+                    ApplyGravity();
                 }
             }
 
-            void CharacterController::ApplyGravity(float deltaTime) {
+            void CharacterController::ApplyGravity() {
                 if (movementMode == MovementMode::Flying || movementMode == MovementMode::Swimming) {
                     return;
                 }
 
+                float dt = Lindo::Time::GetDeltaTime();
+
                 float gravity = 9.81f * settings.gravityScale;
-                state.velocity.y -= gravity * deltaTime;
+                state.velocity.y -= gravity * dt;
 
                 float maxFallSpeed = 50.0f;
                 state.velocity.y = std::max(state.velocity.y, -maxFallSpeed);
             }
 
-            void CharacterController::ApplyMovement(glm::vec3 inputDirection, float deltaTime) {
-                if (deltaTime <= 0.0f) return;
+            void CharacterController::ApplyMovement(glm::vec3 inputDirection) {
+                float dt = Lindo::Time::GetDeltaTime();
+                if (dt <= 0.0f) return;
 
-                // ����������� ����
+                // Нормализуем ввод
                 float inputLength = glm::length(inputDirection);
                 if (inputLength > 0.001f) {
                     inputDirection /= inputLength;
@@ -215,27 +225,27 @@ namespace Lindo {
                 float maxSpeed = GetCurrentMaxSpeed();
 
                 if (state.isGrounded) {
-                    // �������� �� �����
+                    // Движение по земле
                     glm::vec3 targetVelocity = inputDirection * maxSpeed;
                     glm::vec3 velocityDiff = targetVelocity - glm::vec3(state.velocity.x, 0.0f, state.velocity.z);
 
                     float accelRate = settings.acceleration;
-                    state.velocity.x += velocityDiff.x * accelRate * deltaTime;
-                    state.velocity.z += velocityDiff.z * accelRate * deltaTime;
+                    state.velocity.x += velocityDiff.x * accelRate * dt;
+                    state.velocity.z += velocityDiff.z * accelRate * dt;
 
-                    // ������
-                    ApplyFriction(deltaTime);
+                    // Трение
+                    ApplyFriction();
                 }
                 else {
-                    // �������� � �������
+                    // Движение в прыжке
                     if (settings.airControl > 0.0f && inputLength > 0.0f) {
                         glm::vec3 airAccel = inputDirection * maxSpeed * settings.airControl;
-                        state.velocity.x += airAccel.x * deltaTime;
-                        state.velocity.z += airAccel.z * deltaTime;
+                        state.velocity.x += airAccel.x * dt;
+                        state.velocity.z += airAccel.z * dt;
                     }
                 }
 
-                // ������������ �������������� ��������
+                // Ограничиваем горизонтальную скорость
                 glm::vec3 horizontalVel = glm::vec3(state.velocity.x, 0.0f, state.velocity.z);
                 float horizontalSpeed = glm::length(horizontalVel);
                 if (horizontalSpeed > maxSpeed) {
@@ -245,7 +255,8 @@ namespace Lindo {
                 }
             }
 
-            void CharacterController::ApplyFriction(float deltaTime) {
+            void CharacterController::ApplyFriction() {
+                float dt = Lindo::Time::GetDeltaTime();
                 if (!state.isGrounded) return;
 
                 glm::vec3 horizontalVel = glm::vec3(state.velocity.x, 0.0f, state.velocity.z);
@@ -253,7 +264,7 @@ namespace Lindo {
 
                 if (speed > 0.001f) {
                     float friction = settings.groundFriction;
-                    float decrease = friction * deltaTime;
+                    float decrease = friction * dt;
                     if (decrease > speed) decrease = speed;
 
                     horizontalVel *= (speed - decrease) / speed;
@@ -262,14 +273,13 @@ namespace Lindo {
                 }
             }
 
-            void CharacterController::HandleAutoOrientation(float deltaTime) {
+            void CharacterController::HandleAutoOrientation() {
                 if (!isAutoOrientationEnabled) return;
 
-                if (orientationMode == AutoOrientationMode::MovementDirection && owner) {
+                if (orientationMode == AutoOrientationMode::MovementDirection && gameObject) {
                     if (glm::length(state.velocity) > 0.1f) {
-                        // ������������ GameObject � ������� ��������
                         float angle = atan2(state.velocity.x, state.velocity.z);
-                        // owner->SetRotation(angle);
+                        // gameObject->SetRotation(angle);
                     }
                 }
             }
@@ -295,88 +305,103 @@ namespace Lindo {
                 state.currentSpeed = glm::length(state.velocity);
             }
 
-            void CharacterController::ResolveCollisions(float deltaTime) {
+            void CharacterController::ResolveCollisions() {
                 auto& physics = Lindo::Components::Physics::PhysicsSystem::GetInstance();
                 bool foundGroundContact = false;
-            
+                float dt = Lindo::Time::GetDeltaTime();
+
                 for (int pass = 0; pass < 3; ++pass) {
                     bool anyCorrection = false;
-                
+
                     for (auto* other : physics.GetColliders()) {
                         if (!other || other == &collider || !other->IsEnabled()) continue;
-                        if (other->owner == owner) continue;
-                    
+                        if (other->gameObject == gameObject) continue;
+
                         Lindo::Components::Physics::CollisionInfo info;
                         if (!collider.CheckCollision(other, info)) continue;
-                    
+
                         glm::vec3 normal = info.contactNormal;
                         if (glm::length(normal) < 1e-6f) continue;
                         normal = glm::normalize(normal);
-                    
+
+                        // --- ИСПРАВЛЕНИЕ: ГАРАНТИЯ ВЫТАЛКИВАНИЯ ---
+                        // Защита от инверсии нормалей в Double Dispatch коллайдеров.
+                        // Если нормаль указывает вглубь препятствия (толкает нас в пол), 
+                        // мы её принудительно разворачиваем в сторону центра игрока.
+                        glm::vec3 dirToPlayer = collider.GetWorldCenter() - other->GetWorldCenter();
+                        if (glm::dot(normal, dirToPlayer) < 0.0f) {
+                            normal = -normal;
+                        }
+                        // ------------------------------------------
+
                         if (normal.y > 0.5f) {
                             foundGroundContact = true;
                         }
-                    
+
                         float penetration = info.penetrationDepth;
                         if (penetration <= 0.0f) continue;
-                    
+
                         glm::vec3 correction = normal * (penetration + 0.001f);
-                    
-                        // Запоминаем скорость до её обрезания коллизией для толкания
                         glm::vec3 pushVelocity = state.velocity;
-                    
+
                         float velocityIntoNormal = glm::dot(state.velocity, normal);
                         if (velocityIntoNormal < 0.0f) {
                             state.velocity -= normal * velocityIntoNormal;
                         }
-                    
-                        if (other->owner) {
-                            auto* rb = other->owner->getComponent<Lindo::Components::Physics::RigidBody>();
-                        
+
+                        if (other->gameObject) {
+                            auto* rb = other->gameObject->getComponent<Lindo::Components::Physics::RigidBody>();
+
                             if (rb && !rb->isKinematic) {
-                                // 1. ДИНАМИЧЕСКИЙ ОБЪЕКТ: делим выталкивание по массам (убирает дёргания и проваливания)
-                                float charMass = 80.0f; // Условный вес персонажа в кг
+                                // 1. ДИНАМИЧЕСКИЙ ОБЪЕКТ: делим выталкивание по массам
+                                float charMass = 80.0f;
                                 float totalInvMass = (1.0f / charMass) + rb->GetInvMass();
-                            
+
                                 if (totalInvMass > 0.0f) {
                                     float charRatio = rb->GetInvMass() / totalInvMass;
                                     float boxRatio = (1.0f / charMass) / totalInvMass;
-                                
-                                    // Персонаж и коробка отступают друг от друга пропорционально весу
+
                                     setPosition(getPosition() + correction * charRatio);
-                                    rb->owner->transform.position -= correction * boxRatio;
-                                    
+                                    rb->gameObject->transform.position -= correction * boxRatio;
+
                                     collider.SetOffset(glm::vec3(0.0f, collider.GetHeight() * 0.5f, 0.0f));
                                 }
-                            
-                                // 2. Импульс от толкания персонажем вперед
+
+                                // 2. Импульс от толкания
                                 glm::vec3 pushDir = pushVelocity;
                                 pushDir.y = 0.0f;
                                 if (glm::length(pushDir) > 0.01f) {
                                     pushDir = glm::normalize(pushDir);
-                                    float pushForce = 4.0f;
-                                    rb->applyImpulse(pushDir * pushForce * deltaTime);
+                                    float pushForce = 2.0f;
+                                    rb->applyImpulse(pushDir * pushForce);
                                 }
-                            } else {
-                                // Статичный объект (пол, стены) — выталкиваем только персонажа на 100%
+                            }
+                            else {
+                                // Статичный объект
                                 setPosition(getPosition() + correction);
                                 collider.SetOffset(glm::vec3(0.0f, collider.GetHeight() * 0.5f, 0.0f));
                             }
-                        } else {
+                        }
+                        else {
                             setPosition(getPosition() + correction);
                             collider.SetOffset(glm::vec3(0.0f, collider.GetHeight() * 0.5f, 0.0f));
                         }
-                    
+
                         anyCorrection = true;
                     }
-                
+
                     if (!anyCorrection) break;
                 }
-            
+
                 state.isGrounded = foundGroundContact;
                 if (state.isGrounded) {
                     state.isJumping = false;
                     state.isSliding = false;
+
+                    // Сбрасываем накопление падения при нахождении на земле
+                    if (state.velocity.y < 0.0f) {
+                        state.velocity.y = -0.1f;
+                    }
                 }
             }
 

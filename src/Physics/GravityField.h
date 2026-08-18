@@ -40,7 +40,7 @@ void SetStrength(float newStrength) { strength = newStrength; }
                 float GetStrength() const { return strength; }
 
                 void SetFocalPoint(const glm::vec3& focal) { focalPoint = focal; }
-                void SetFocalPointFromOwner() { if (owner) focalPoint = owner->transform.position; }
+                void SetFocalPointFromgameObject() { if (gameObject) focalPoint = gameObject->transform.position; }
                 glm::vec3 GetFocalPoint() const { return focalPoint; }
 
 void SetRadius(float newRadius) { radius = std::max(0.0f, newRadius); }

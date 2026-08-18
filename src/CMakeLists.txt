@@ -5,7 +5,7 @@ file(GLOB_RECURSE sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 list(REMOVE_ITEM sources ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/core/DebugDraw.cpp)
 
-add_library(LindoSrc STATIC ${sources} ${headers})
+add_library(LindoSrc STATIC ${sources} ${headers}  "Debug/ConsoleCommands.cpp")
 
 find_package(OpenGL REQUIRED)
 find_package(glad CONFIG REQUIRED)
@@ -38,9 +38,13 @@ target_link_libraries(
             OpenAL::OpenAL
             Freetype::Freetype
             PNG::PNG
+            $<$<PLATFORM_ID:Windows>:d3d11 dxgi dxguid>
     PUBLIC glm::glm # Need public for src/delegates.hpp, which including to
                     # main.cpp
 )
+
+add_definitions(-DNOMINMAX)
+
 
 target_link_options(
     LindoSrc

@@ -1,12 +1,13 @@
 #include "skybox.h"
-#include <glm/glm.hpp>
+#include "core/AssetManager.h"
+#include "debug/DebugLogger.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include <core/Globals.h>
+#include <filesystem>
 #include <png.h>
 
 namespace Lindo {
@@ -22,15 +23,14 @@ namespace Lindo {
         };
 
         static glm::mat4 captureViews[] = {
-            glm::lookAt(glm::vec3(0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+            glm::lookAt(glm::vec3(0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
             glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-            glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
-            glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
-            glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-            glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+            glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+            glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+            glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+            glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
         };
 
-        // Загрузка PNG через libpng для 6 граней скайбокса
         static bool loadPNGFace(const std::string& path, int& width, int& height, int& channels, std::vector<unsigned char>& outData) {
             FILE* fp = fopen(path.c_str(), "rb");
             if (!fp) return false;
@@ -85,12 +85,10 @@ namespace Lindo {
             return true;
         }
 
-        // Полноценный декодер Radiance .hdr с поддержкой RLE сжатия
         static float* parseRGBEStream(std::istream& stream, int& width, int& height) {
             std::string line;
             bool headerOk = false;
 
-            // Читаем заголовок до пустой строки (разделителя)
             while (std::getline(stream, line)) {
                 if (!line.empty() && line.back() == '\r') line.pop_back();
                 if (line.empty()) break;
@@ -99,7 +97,6 @@ namespace Lindo {
                 }
             }
 
-            // Следующая строка сразу после пустой строки обязана содержать разрешение
             if (!std::getline(stream, line)) return nullptr;
             if (!line.empty() && line.back() == '\r') line.pop_back();
 
@@ -145,14 +142,16 @@ namespace Lindo {
                                 for (int j = 0; j < count; ++j) {
                                     scanline[ptr++ * 4 + i] = val;
                                 }
-                            } else {
+                            }
+                            else {
                                 for (int j = 0; j < count; ++j) {
                                     scanline[ptr++ * 4 + i] = stream.get();
                                 }
                             }
                         }
                     }
-                } else {
+                }
+                else {
                     stream.unget(); stream.unget(); stream.unget(); stream.unget();
                     stream.read(reinterpret_cast<char*>(scanline.data()), width * 4);
                 }
@@ -169,13 +168,27 @@ namespace Lindo {
                         pixels[idx * 3 + 0] = rgbe[0] * f;
                         pixels[idx * 3 + 1] = rgbe[1] * f;
                         pixels[idx * 3 + 2] = rgbe[2] * f;
-                    } else {
+                    }
+                    else {
                         pixels[idx * 3 + 0] = pixels[idx * 3 + 1] = pixels[idx * 3 + 2] = 0.0f;
                     }
                 }
             }
 
             return pixels;
+        }
+
+        void Skybox::initShader() {
+            auto& assets = AssetManager::get();
+            std::string vs = assets.getShaderPath("skybox/skybox.vs");
+            std::string fs = assets.getShaderPath("skybox/skybox.fs");
+
+            if (!std::filesystem::exists(vs) || !std::filesystem::exists(fs)) {
+                LOG_ERROR("Skybox shaders not found: " + vs + " | " + fs);
+            }
+
+            m_shader = std::make_unique<Shader>(vs.c_str(), fs.c_str());
+            LOG_INFO("Skybox shader loaded internally.");
         }
 
         void Skybox::setupBuffers() {
@@ -199,14 +212,19 @@ namespace Lindo {
 
         Skybox::Skybox(std::vector<std::string> faces) : isHDR(false) {
             setupBuffers();
+            initShader();
+
             glGenTextures(1, &cubemapTexture);
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
+            auto& assets = AssetManager::get();
             for (unsigned int i = 0; i < faces.size(); i++) {
                 int w, h, ch;
                 std::vector<unsigned char> data;
-                if (loadPNGFace(faces[i], w, h, ch, data)) {
+                std::string resolvedPath = assets.resolvePath(faces[i], "textures");
+
+                if (loadPNGFace(resolvedPath, w, h, ch, data)) {
                     GLenum format = (ch == 4) ? GL_RGBA : GL_RGB;
                     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, w, h, 0, format, GL_UNSIGNED_BYTE, data.data());
                 }
@@ -225,17 +243,24 @@ namespace Lindo {
             glGenRenderbuffers(1, &captureRBO);
 
             glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-            Shader equirectangularToCubemapShader(
-                std::string(Globals::pathData) + "shaders/equirectangular_to_cubemap.vs",
-                std::string(Globals::pathData) + "shaders/equirectangular_to_cubemap.fs"
-            );
+
+            auto& assets = AssetManager::get();
+            std::string vsPath = assets.getShaderPath("equirectangular_to_cubemap.vs");
+            std::string fsPath = assets.getShaderPath("equirectangular_to_cubemap.fs");
+
+            if (!std::filesystem::exists(vsPath) || !std::filesystem::exists(fsPath)) {
+                vsPath = assets.getShaderPath("skybox/equirectangular_to_cubemap.vs");
+                fsPath = assets.getShaderPath("skybox/equirectangular_to_cubemap.fs");
+            }
+
+            Shader equirectangularToCubemapShader(vsPath.c_str(), fsPath.c_str());
 
             unsigned int cubemap;
             glGenTextures(1, &cubemap);
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
             for (unsigned int i = 0; i < 6; ++i) {
                 glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F,
-                             resolution, resolution, 0, GL_RGB, GL_FLOAT, nullptr);
+                    resolution, resolution, 0, GL_RGB, GL_FLOAT, nullptr);
             }
             glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -257,7 +282,7 @@ namespace Lindo {
             for (unsigned int i = 0; i < 6; ++i) {
                 equirectangularToCubemapShader.setMat4("view", captureViews[i]);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                       GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap, 0);
+                    GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap, 0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 glBindVertexArray(VAO);
@@ -278,9 +303,11 @@ namespace Lindo {
         Skybox::Skybox(const std::string& hdrFile, unsigned int resolution)
             : isHDR(true), hdrResolution(resolution) {
             setupBuffers();
+            initShader();
 
-            unsigned int hdrTexture = loadHDRTexture(hdrFile);
-            if (hdrTexture == 0) throw std::runtime_error("Failed to load HDR texture: " + hdrFile);
+            std::string resolvedHdrPath = AssetManager::get().resolvePath(hdrFile, "textures");
+            unsigned int hdrTexture = loadHDRTexture(resolvedHdrPath);
+            if (hdrTexture == 0) throw std::runtime_error("Failed to load HDR texture: " + resolvedHdrPath);
 
             cubemapTexture = generateCubemapFromEquirectangular(hdrTexture, resolution);
             glDeleteTextures(1, &hdrTexture);
@@ -291,6 +318,7 @@ namespace Lindo {
             skybox->isHDR = true;
             skybox->hdrResolution = resolution;
             skybox->setupBuffers();
+            skybox->initShader();
 
             unsigned int hdrTexture = loadHDRTextureFromData(data);
             if (hdrTexture == 0) {
@@ -347,17 +375,33 @@ namespace Lindo {
             return hdrTexture;
         }
 
-        void Skybox::Draw(Shader& shader) {
+        void Skybox::Draw(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix, float time, const glm::vec3& cameraPos) {
+            if (!m_shader) return;
+
             glDepthFunc(GL_LEQUAL);
             glDepthMask(GL_FALSE);
-            shader.use();
+            glDisable(GL_CULL_FACE);
+
+            m_shader->use();
+
+            // Убираем смещение из матрицы вида, оставляя только вращение
+            glm::mat4 skyboxView = glm::mat4(glm::mat3(viewMatrix));
+            skyboxView = glm::rotate(skyboxView, time * 0.015f, glm::vec3(0.0f, 1.0f, 0.0f));
+
+            m_shader->setMat4("view", skyboxView);
+            m_shader->setMat4("projection", projectionMatrix);
+            m_shader->setFloat("u_time", time);
+            m_shader->setVec3("u_cameraPos", cameraPos);
+
             glBindVertexArray(VAO);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
             glDrawArrays(GL_TRIANGLES, 0, 36);
             glBindVertexArray(0);
-            glDepthFunc(GL_LESS);
+
             glDepthMask(GL_TRUE);
+            glEnable(GL_CULL_FACE);
+            glDepthFunc(GL_LESS);
         }
     }
 }

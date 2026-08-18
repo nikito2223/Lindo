@@ -9,7 +9,7 @@ namespace Lindo {
         namespace Physics {
 
             // A sphere collider. The radius is the local-space radius;
-            // the world-space radius is scaled by the owner's transform scale.
+            // the world-space radius is scaled by the gameObject's transform scale.
             // A local center offset is supported via the base Collider::offset.
             class SphereCollider : public Collider {
             private:
@@ -18,12 +18,12 @@ namespace Lindo {
             public:
                 SphereCollider() = default;
                 explicit SphereCollider(float radius) : radius(std::max(0.0001f, radius)) {}
-
+                void FitToAABB(const Lindo::Math::AABB& aabb);
                 // ----- Configuration -----
                 void SetRadius(float newRadius) { radius = std::max(0.0001f, newRadius); }
                 float GetRadius() const { return radius; }
 
-                // World-space radius (scaled by the owner's scale).
+                // World-space radius (scaled by the gameObject's scale).
                 float GetWorldRadius() const;
 
                 // World-space center of the sphere.

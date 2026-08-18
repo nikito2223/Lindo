@@ -37,9 +37,9 @@ namespace Lindo {
             virtual void OnDestroy() {}     // ��� ����������� �����
 
             // �������� ������
-            virtual void Update(float deltaTime) {}
-            virtual void Render(Graphics::Shader& shader, float deltaTime) {}
-            virtual void ProcessInput(Input::Input* input, float deltaTime) {}
+            virtual void Update() {}
+            virtual void Render(Graphics::Shader& shader) {}
+            virtual void ProcessInput(Input::Input* input) {}
 
             // ���������� GameObject
             Lindo::World::GameObject* CreateGameObject(const std::string& name = "GameObject");
@@ -76,6 +76,7 @@ namespace Lindo {
         template<typename T>
         T* Scene::FindComponentOfType() const {
             for (const auto& obj : gameObjects) {
+                if (!obj) continue;
                 auto* component = obj->getComponent<T>();
                 if (component) return component;
             }

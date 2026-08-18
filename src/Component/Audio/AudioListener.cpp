@@ -13,8 +13,8 @@ namespace Lindo {
                 }
             }
 
-            void AudioListener::OnUpdate(float deltaTime) {
-                if (!m_enabled || !owner) return;
+            void AudioListener::OnUpdate() {
+                if (!m_enabled || !gameObject) return;
 
                 // Убеждаемся, что этот слушатель активен
                 if (AudioSystem::getInstance().getListener() != this) {
@@ -22,15 +22,15 @@ namespace Lindo {
                 }
 
                 // Получаем позицию из Transform
-                glm::vec3 pos = owner->transform.position;
+                glm::vec3 pos = gameObject->transform.position;
                 alListener3f(AL_POSITION, pos.x, pos.y, pos.z);
 
                 // Скорость (пока 0)
                 alListener3f(AL_VELOCITY, 0.0f, 0.0f, 0.0f);
 
                 // Ориентация: forward и up
-                glm::vec3 forward = owner->transform.getForward();
-                glm::vec3 up = owner->transform.getUp();
+                glm::vec3 forward = gameObject->transform.getForward();
+                glm::vec3 up = gameObject->transform.getUp();
 
                 ALfloat orientation[] = {
                     forward.x, forward.y, forward.z,

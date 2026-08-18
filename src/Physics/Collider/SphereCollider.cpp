@@ -21,6 +21,16 @@ namespace Lindo {
                 return radius * std::max(maxScale, 0.0001f);
             }
 
+            void Lindo::Components::Physics::SphereCollider::FitToAABB(const Lindo::Math::AABB& aabb) {
+                glm::vec3 extents = aabb.max - aabb.min;
+
+                // Чтобы сфера полностью охватывала объект, берем самую длинную сторону AABB и делим на 2
+                this->radius = std::max({ extents.x, extents.y, extents.z }) * 0.5f;
+
+                // Смещаем центр сферы в центр меша
+                this->offset = (aabb.max + aabb.min) * 0.5f;
+            }
+
             Lindo::Math::AABB SphereCollider::GetAABB() const {
                 glm::vec3 center = GetWorldCenter();
                 float r = GetWorldRadius();

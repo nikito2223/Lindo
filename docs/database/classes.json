@@ -39,7 +39,7 @@
       "name": "BoxCollider",
       "file_h": "src/Physics/Collider/BoxCollider.h",
       "file_cpp": "src/Physics/Collider/BoxCollider.cpp",
-      "description": "Ориентированный прямоугольный коллайдер (OBB). Следует трансформации owner (position, rotation, scale). Использует SAT для Box vs Box коллизий.",
+      "description": "Ориентированный прямоугольный коллайдер (OBB). Следует трансформации gameObject (position, rotation, scale). Использует SAT для Box vs Box коллизий.",
       "methods": ["SetSize(vec3)", "GetSize()", "GetWorldHalfExtents()", "GetWorldRotationMatrix()", "GetAABB()", "GetWorldVertices()", "CheckCollision(...)"],
       "collision_types": ["Box vs Box (SAT)", "Box vs Sphere", "Box vs Capsule"],
       "key_fields": ["size"]
@@ -48,7 +48,7 @@
       "name": "SphereCollider",
       "file_h": "src/Physics/Collider/SphereCollider.h",
       "file_cpp": "src/Physics/Collider/SphereCollider.cpp",
-      "description": "Сферический коллайдер. Радиус масштабируется по максимальному компоненту owner.scale. Быстрый O(1) для всех типов коллизий.",
+      "description": "Сферический коллайдер. Радиус масштабируется по максимальному компоненту gameObject.scale. Быстрый O(1) для всех типов коллизий.",
       "methods": ["SetRadius(float)", "GetRadius()", "GetWorldRadius()", "GetWorldCenter()", "GetAABB()", "CheckCollision(...)"],
       "collision_types": ["Sphere vs Sphere", "Sphere vs Box", "Sphere vs Capsule"],
       "key_fields": ["radius"]

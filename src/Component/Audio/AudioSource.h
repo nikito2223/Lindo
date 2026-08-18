@@ -11,7 +11,7 @@ namespace Lindo {
                 void printDebugInfo() const;
                 virtual ~AudioSource();
 
-                void OnUpdate(float deltaTime) override;
+                void OnUpdate() override;
                 void OnDestroy() override;
 
                 // Загрузка звука

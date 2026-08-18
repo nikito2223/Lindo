@@ -1,6 +1,6 @@
 #include "UIManager.h"
-#include <debug/DebugLogger.h> // Подключаем твой логгер
-#include <core/Globals.h>
+#include <debug/DebugLogger.h>
+#include <debug/Console.h>
 #include <vector>
 
 namespace Lindo {
@@ -8,18 +8,38 @@ namespace Lindo {
         namespace UI {
 
             static std::string generateCharset() {
-                // Базовая латиница и знаки
-                std::string charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-+*/=()[]{}<>:;\"'%@#&";
+                std::string charset;
+                charset.reserve(512);
 
-                // Добавляем кириллицу (А-Я, а-я, Ё, ё) через UTF-8
                 auto addCP = [&](uint32_t cp) {
-                    if (cp <= 0x7FF) {
-                        charset += (char)(0xC0 | (cp >> 6));
-                        charset += (char)(0x80 | (cp & 0x3F));
+                    if (cp <= 0x7F) {
+                        charset += static_cast<char>(cp);
+                    }
+                    else if (cp <= 0x7FF) {
+                        charset += static_cast<char>(0xC0 | (cp >> 6));
+                        charset += static_cast<char>(0x80 | (cp & 0x3F));
+                    }
+                    else if (cp <= 0xFFFF) {
+                        charset += static_cast<char>(0xE0 | (cp >> 12));
+                        charset += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                        charset += static_cast<char>(0x80 | (cp & 0x3F));
                     }
                     };
 
-                for (uint32_t i = 0x0410; i <= 0x044F; ++i) addCP(i);
+                // 1. Все стандартные ASCII символы (английский алфавит, цифры, знаки препинания от 32 до 126)
+                for (uint32_t i = 32; i <= 126; ++i) {
+                    addCP(i);
+                }
+
+                // 2. Знак номера (№)
+                addCP(0x2116);
+
+                // 3. Кириллица (А-Я и а-я)
+                for (uint32_t i = 0x0410; i <= 0x044F; ++i) {
+                    addCP(i);
+                }
+
+                // 4. Буквы Ё и ё
                 addCP(0x0401);
                 addCP(0x0451);
 
@@ -29,66 +49,80 @@ namespace Lindo {
             UIManager::UIManager() = default;
             UIManager::~UIManager() = default;
 
-            void UIManager::init() {
+            void UIManager::init(int width, int height) {
                 LOG_INFO("UIManager::init() started");
 
-                LOG_INFO("Creating UIRenderer...");
                 m_renderer = std::make_unique<UIRenderer>();
-
-                LOG_INFO("Initializing UIRenderer...");
                 m_renderer->init();
-                LOG_INFO("UIRenderer initialized successfully");
 
-                LOG_INFO("Creating UIFont...");
                 m_font = std::make_unique<UIFont>();
 
                 std::string charset = generateCharset();
-                LOG_INFO("Loading font: C:/Windows/Fonts/arial.ttf (Size: 24.0, Atlas: 1024x1024)");
 
-                bool fontLoaded = m_font->loadFromFile("C:/Windows/Fonts/arial.ttf", 24.0f, 1024, 1024, charset);
+                // Для размера 24px берём 512x512 атлас как отправную точку (можно увеличить)
+                bool fontLoaded = m_font->loadFromFile("C:/Windows/Fonts/arial.ttf", 24.0f, 512, 512, charset);
 
                 if (!fontLoaded) {
-                    LOG_ERROR("Font loading failed! Check if file exists or atlas size is sufficient.");
+                    LOG_ERROR("Font loading failed!");
                 }
                 else {
                     LOG_INFO("Font loaded successfully");
-                    // Можно раскомментировать для проверки атласа, если "кубики" не исчезнут
-                    // m_font->saveAtlas("debug_font_atlas.ppm");
                 }
 
-                LOG_INFO("Creating UI root panel...");
                 m_rootPanel = std::make_shared<UIPanel>();
-
-                // Устанавливаем прозрачный фон для корневой панели
                 m_rootPanel->SetColor(Color(0.0f, 0.0f, 0.0f, 0.0f));
-                m_rootPanel->setSize(static_cast<float>(Globals::screenWidth), static_cast<float>(Globals::screenHeight));
+                m_rootPanel->setSize(static_cast<float>(width), static_cast<float>(height));
                 m_rootPanel->setPosition(0, 0);
+
+                // Внутриигровая консоль - использует тот же шрифт, что и остальной UI
+                m_console = std::make_unique<Lindo::Debug::Console>();
+                m_console->init(m_font.get(), width, height);
+                Lindo::Debug::Console::hookLogger(m_console.get()); // все LOG_INFO/LOG_WARN/... теперь видны и в консоли
 
                 m_initialized = true;
                 LOG_INFO("UIManager::init() finished");
             }
 
+            void UIManager::update() {
+                if (m_console) {
+                    m_console->update();
+                }
+            }
+
             void UIManager::render() {
                 if (!m_initialized) return;
-                m_renderer->beginFrame(m_rootPanel->getWidth(), m_rootPanel->getHeight());
+                m_renderer->beginFrame(static_cast<int>(m_rootPanel->getWidth()), static_cast<int>(m_rootPanel->getHeight()));
                 m_rootPanel->render(*m_renderer, m_font.get());
+
+                // Консоль рисуется последней - поверх всего остального UI
+                if (m_console) {
+                    m_console->render(*m_renderer);
+                }
+
                 m_renderer->endFrame();
             }
 
             void UIManager::onResize(int width, int height) {
                 if (m_rootPanel) {
-                    LOG_INFO("UI Resizing to: " + std::to_string(width) + "x" + std::to_string(height));
                     m_rootPanel->setSize(static_cast<float>(width), static_cast<float>(height));
+                }
+                if (m_console) {
+                    m_console->onResize(width, height);
                 }
             }
 
             void UIManager::onMouseMove(float x, float y) {
+                // Пока консоль открыта - она перехватывает ввод, под ней ничего не должно реагировать
+                if (m_console && m_console->isVisible()) return;
+
                 if (m_rootPanel) {
                     m_rootPanel->onMouseMove(x, y);
                 }
             }
 
             void UIManager::onMouseButton(float x, float y, int button, bool pressed) {
+                if (m_console && m_console->isVisible()) return;
+
                 if (m_rootPanel) {
                     m_rootPanel->onMouseButton(x, y, button, pressed);
                 }

@@ -61,15 +61,15 @@ namespace Lindo {
                 }
 
                 void OnDraw(Lindo::Graphics::Shader& shader) override {
-                    if (!owner || !IsEnabled()) return;
+                    if (!gameObject || !IsEnabled()) return;
 
                     if (!mesh && !model) {
-                        LOG_WARN("MeshRenderer on '" + owner->getName() + "' has no mesh/model assigned - skipping draw!");
+                        LOG_WARN("MeshRenderer on '" + gameObject->getName() + "' has no mesh/model assigned - skipping draw!");
                         return;
                     }
 
                     // Получаем мировую матрицу GameObject'а (с учётом родителей)
-                    glm::mat4 worldMatrix = owner->getWorldMatrix();
+                    glm::mat4 worldMatrix = gameObject->getWorldMatrix();
 
                     Lindo::Graphics::Material* currentMaterial = material ? material : GetDefaultMaterial();
                     currentMaterial->apply(shader);
@@ -97,8 +97,8 @@ namespace Lindo {
                 }
 
                 std::pair<glm::vec3, glm::vec3> getTransformedBBox() const {
-                    if (!hasBBox || !owner) return { glm::vec3(0), glm::vec3(0) };
-                    glm::mat4 transformMatrix = owner->transform.getMatrix();
+                    if (!hasBBox || !gameObject) return { glm::vec3(0), glm::vec3(0) };
+                    glm::mat4 transformMatrix = gameObject->transform.getMatrix();
 
                     glm::vec3 transformedMin = glm::vec3(transformMatrix * glm::vec4(bboxMin, 1.0f));
                     glm::vec3 transformedMax = glm::vec3(transformMatrix * glm::vec4(bboxMax, 1.0f));
@@ -114,13 +114,13 @@ namespace Lindo {
                 }
 
                 std::pair<glm::vec3, float> getTransformedBSphere() const {
-                    if (!hasBSphere || !owner) return { glm::vec3(0), 0.0f };
-                    glm::mat4 transformMatrix = owner->transform.getMatrix();
+                    if (!hasBSphere || !gameObject) return { glm::vec3(0), 0.0f };
+                    glm::mat4 transformMatrix = gameObject->transform.getMatrix();
                     glm::vec3 transformedCenter = glm::vec3(transformMatrix * glm::vec4(bsphereCenter, 1.0f));
 
-                    float scaleFactor = glm::max(glm::max(owner->transform.scale.x,
-                        owner->transform.scale.y),
-                        owner->transform.scale.z);
+                    float scaleFactor = glm::max(glm::max(gameObject->transform.scale.x,
+                        gameObject->transform.scale.y),
+                        gameObject->transform.scale.z);
 
                     float transformedRadius = bsphereRadius * scaleFactor;
                     return { transformedCenter, transformedRadius };

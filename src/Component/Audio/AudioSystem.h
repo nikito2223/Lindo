@@ -23,7 +23,7 @@ namespace Lindo {
 
                 bool init();
                 void shutdown();
-                void update(float deltaTime);
+                void update();
 
                 // Управление слушателем
                 void setListener(AudioListener* listener);

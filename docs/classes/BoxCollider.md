@@ -5,10 +5,10 @@
 - [src/Physics/Collider/BoxCollider.cpp](../../src/Physics/Collider/BoxCollider.cpp)
 
 ## Назначение
-Коллайдер в форме ориентированного прямоугольного параллелепипеда (Oriented Bounding Box, OBB). Следует трансформации owner (позиция, вращение, масштаб). Поддерживает:
+Коллайдер в форме ориентированного прямоугольного параллелепипеда (Oriented Bounding Box, OBB). Следует трансформации gameObject (позиция, вращение, масштаб). Поддерживает:
 - **Собственный размер** — определяется в локальном пространстве.
 - **Вращение** — полностью ориентирован в пространстве.
-- **Локальное смещение** — смещение центра коллайдера относительно owner.
+- **Локальное смещение** — смещение центра коллайдера относительно gameObject.
 
 ## Ключевые компоненты
 
@@ -29,7 +29,7 @@ glm::vec3 GetSize() const;                // Получить локальный
 **Мировые координаты:**
 ```cpp
 glm::vec3 GetWorldHalfExtents() const;    // Мировые полуразмеры (с учетом scale и offset)
-glm::mat3 GetWorldRotationMatrix() const; // Матрица вращения 3x3 из owner
+glm::mat3 GetWorldRotationMatrix() const; // Матрица вращения 3x3 из gameObject
 void GetAABB(glm::vec3& outMin, glm::vec3& outMax) const;  // Axis-aligned bounds
 Lindo::Math::AABB GetAABB() const override;
 std::vector<glm::vec3> GetWorldVertices() const;  // 8 угловых точек в мировом пространстве
@@ -104,7 +104,7 @@ auto* box = gameObject->addComponent<BoxCollider>();
 box->SetSize(glm::vec3(2.0f, 3.0f, 1.5f));  // 2м × 3м × 1.5м
 
 // Смещение центра
-box->SetOffset(glm::vec3(0.0f, 1.0f, 0.0f));  // На 1м выше owner
+box->SetOffset(glm::vec3(0.0f, 1.0f, 0.0f));  // На 1м выше gameObject
 
 // Физика
 box->SetFriction(0.7f);
@@ -130,7 +130,7 @@ trigger->SetTriggerCallback(
    ```cpp
    auto colliders = currentScene->FindComponentsOfType<BoxCollider>();
    for (auto* collider : colliders) {
-       glm::mat4 world = collider->owner->getWorldMatrix();
+       glm::mat4 world = collider->gameObject->getWorldMatrix();
        std::vector<glm::vec3> corners = collider->GetWorldVertices();  // 8 углов
        
        // Рисуются 12 рёбер (edge indices в коде)
@@ -154,7 +154,7 @@ trigger->SetTriggerCallback(
 **Рекомендации:**
 - Если объект static → оставьте коллайдер включенным, но в `Rigidbody` (если есть) установите массу = ∞.
 - Для сложных mesh-форм используйте `MeshCollider` вместо ручного создания множества `BoxCollider`.
-- Вращение `BoxCollider` бесплатно (просто используется owner-rotation), поэтому не бойтесь ротировать объекты.
+- Вращение `BoxCollider` бесплатно (просто используется gameObject-rotation), поэтому не бойтесь ротировать объекты.
 
 ## Взаимосвязь с другими классами
 

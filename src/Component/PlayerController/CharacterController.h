@@ -70,7 +70,7 @@ namespace Lindo {
 
                 // Component overrides
                 void OnStart() override;
-                void OnUpdate(float deltaTime) override;
+                void OnUpdate() override;
                 void OnDestroy() override;
 
                 // �������� ������ ��������
@@ -110,14 +110,14 @@ namespace Lindo {
 
             private:
                 void UpdateGroundStatus();
-                void UpdatePhysics(float deltaTime);
-                void ApplyGravity(float deltaTime);
-                void ApplyMovement(glm::vec3 inputDirection, float deltaTime);
-                void ApplyFriction(float deltaTime);
-                void HandleAutoOrientation(float deltaTime);
+                void UpdatePhysics();
+                void ApplyGravity();
+                void ApplyMovement(glm::vec3 inputDirection);
+                void ApplyFriction();
+                void HandleAutoOrientation();
                 float GetCurrentMaxSpeed() const;
                 void UpdateCurrentSpeed();
-                void ResolveCollisions(float deltaTime);
+                void ResolveCollisions();
                 bool CheckCapsuleCollision(const Physics::CapsuleCollider& other) const;
 
                 // ����������

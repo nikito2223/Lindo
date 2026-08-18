@@ -5,6 +5,7 @@
 #include <Physics/Collider/CapsuleCollider.h>
 #include <Physics/GravityField.h>
 #include <Component/Physhcs/RigidBody.h>
+#include "Core/Time/Time.h"
 #include <Component/GameObject/GameObject.h>
 #include <algorithm>
 #include <cmath>
@@ -101,7 +102,7 @@ namespace Lindo {
                     for (size_t j = i + 1; j < colliders.size(); ++j) {
                         Collider* b = colliders[j];
                         if (!b || !b->IsEnabled()) continue;
-                        if (a->owner && (a->owner == b->owner)) continue;
+                        if (a->gameObject && (a->gameObject == b->gameObject)) continue;
 
                         Lindo::Math::AABB aabbB = b->GetAABB();
                         if (aabbA.intersectAABB(aabbB)) {
@@ -142,19 +143,33 @@ namespace Lindo {
                 outRestitution = std::max(reA, reB);
             }
 
-            void PhysicsSystem::ResolveContacts(std::vector<Contact>& contacts, float deltaTime) {
-                for (int iter = 0; iter < solverIterations; ++iter) {
-                    bool anyCorrection = false;
+            void PhysicsSystem::ResolveContacts(std::vector<Contact>& contacts) {
+                if (contacts.empty()) return;
 
+                // 1. Установка флагов заземления
+                for (Contact& contact : contacts) {
+                    if (!contact.colliderA || !contact.colliderB) continue;
+                    if (contact.colliderA->IsTrigger() || contact.colliderB->IsTrigger()) continue;
+
+                    RigidBody* bodyA = contact.colliderA->gameObject ? contact.colliderA->gameObject->getComponent<RigidBody>() : nullptr;
+                    RigidBody* bodyB = contact.colliderB->gameObject ? contact.colliderB->gameObject->getComponent<RigidBody>() : nullptr;
+
+                    glm::vec3 normal = contact.normal;
+                    if (glm::length(normal) < 1e-6f) continue;
+                    normal = glm::normalize(normal);
+
+                    if (bodyA && normal.y < -0.5f) bodyA->isGrounded = true;
+                    if (bodyB && normal.y > 0.5f) bodyB->isGrounded = true;
+                }
+
+                // 2. Решение скоростей (Velocity Solver)
+                for (int iter = 0; iter < solverIterations; ++iter) {
                     for (Contact& contact : contacts) {
                         if (!contact.colliderA || !contact.colliderB) continue;
                         if (contact.colliderA->IsTrigger() || contact.colliderB->IsTrigger()) continue;
 
-                        // Перепроверяем наложение для текущей итерации после предыдущих сдвигов
-                        if (!NarrowPhase(contact.colliderA, contact.colliderB, contact)) continue;
-
-                        RigidBody* bodyA = contact.colliderA->owner ? contact.colliderA->owner->getComponent<RigidBody>() : nullptr;
-                        RigidBody* bodyB = contact.colliderB->owner ? contact.colliderB->owner->getComponent<RigidBody>() : nullptr;
+                        RigidBody* bodyA = contact.colliderA->gameObject ? contact.colliderA->gameObject->getComponent<RigidBody>() : nullptr;
+                        RigidBody* bodyB = contact.colliderB->gameObject ? contact.colliderB->gameObject->getComponent<RigidBody>() : nullptr;
 
                         float invMassA = (bodyA && !bodyA->IsKinematic()) ? bodyA->GetInvMass() : 0.0f;
                         float invMassB = (bodyB && !bodyB->IsKinematic()) ? bodyB->GetInvMass() : 0.0f;
@@ -166,58 +181,77 @@ namespace Lindo {
                         if (glm::length(normal) < 1e-6f) continue;
                         normal = glm::normalize(normal);
 
-                        // Установка флага земли для стоящих тел
-                        if (bodyA && normal.y < -0.5f) bodyA->isGrounded = true;
-                        if (bodyB && normal.y > 0.5f) bodyB->isGrounded = true;
-
-                        float penetration = contact.penetration;
-
-                        // 1. Полная коррекция позиции (выталкивание на 100% с небольшим запасом)
-                        if (penetration > 0.0f) {
-                            glm::vec3 correction = normal * (penetration + 0.001f);
-                            if (bodyA && !bodyA->IsKinematic() && bodyA->owner) {
-                                bodyA->owner->transform.position -= correction * (invMassA / invMassSum);
-                            }
-                            if (bodyB && !bodyB->IsKinematic() && bodyB->owner) {
-                                bodyB->owner->transform.position += correction * (invMassB / invMassSum);
-                            }
-                            anyCorrection = true;
-                        }
-
-                        // 2. Гашение скорости и отскок (Импульс)
                         glm::vec3 velA = bodyA ? bodyA->GetVelocity() : glm::vec3(0.0f);
                         glm::vec3 velB = bodyB ? bodyB->GetVelocity() : glm::vec3(0.0f);
                         glm::vec3 relVel = velB - velA;
+
                         float velAlongNormal = glm::dot(relVel, normal);
 
                         if (velAlongNormal < 0.0f) {
-                            // При малой скорости сближения (покой) убираем отскок e = 0
                             float e = (std::abs(velAlongNormal) < 0.2f) ? 0.0f : contact.restitution;
-
                             float j = -(1.0f + e) * velAlongNormal / invMassSum;
                             glm::vec3 impulse = j * normal;
 
                             if (bodyA && !bodyA->IsKinematic()) bodyA->applyImpulse(-impulse);
                             if (bodyB && !bodyB->IsKinematic()) bodyB->applyImpulse(impulse);
 
-                            // Трение (касательный импульс)
+                            // Трение
                             relVel = (bodyB ? bodyB->GetVelocity() : glm::vec3(0.0f)) -
-                                     (bodyA ? bodyA->GetVelocity() : glm::vec3(0.0f));
+                                (bodyA ? bodyA->GetVelocity() : glm::vec3(0.0f));
                             glm::vec3 tangent = relVel - glm::dot(relVel, normal) * normal;
                             if (glm::length(tangent) > 1e-6f) {
                                 tangent = glm::normalize(tangent);
                                 float jt = -glm::dot(relVel, tangent) / invMassSum;
                                 float maxFriction = contact.friction * std::fabs(j);
-
-                                glm::vec3 frictionImpulse = tangent * std::max(-maxFriction, std::min(jt, maxFriction));
+                                glm::vec3 frictionImpulse = tangent * std::clamp(jt, -maxFriction, maxFriction);
 
                                 if (bodyA && !bodyA->IsKinematic()) bodyA->applyImpulse(-frictionImpulse);
                                 if (bodyB && !bodyB->IsKinematic()) bodyB->applyImpulse(frictionImpulse);
                             }
                         }
                     }
+                }
 
-                    if (!anyCorrection) break;
+                // 3. Коррекция проникновения (Position Projection)
+                const float slop = 0.01f;   // Допустимый зазор для предотвращения тряски
+                const float percent = 0.8f; // Процент выталкивания за один кадр
+
+                for (Contact& contact : contacts) {
+                    if (!contact.colliderA || !contact.colliderB) continue;
+                    if (contact.colliderA->IsTrigger() || contact.colliderB->IsTrigger()) continue;
+
+                    RigidBody* bodyA = contact.colliderA->gameObject ? contact.colliderA->gameObject->getComponent<RigidBody>() : nullptr;
+                    RigidBody* bodyB = contact.colliderB->gameObject ? contact.colliderB->gameObject->getComponent<RigidBody>() : nullptr;
+
+                    float invMassA = (bodyA && !bodyA->IsKinematic()) ? bodyA->GetInvMass() : 0.0f;
+                    float invMassB = (bodyB && !bodyB->IsKinematic()) ? bodyB->GetInvMass() : 0.0f;
+                    float invMassSum = invMassA + invMassB;
+
+                    if (invMassSum <= 0.0f) continue;
+
+                    glm::vec3 normal = contact.normal;
+                    if (glm::length(normal) < 1e-6f) continue;
+                    normal = glm::normalize(normal);
+
+                    // Clamp how much penetration we correct for in a single
+                    // step. Without this, a body that ends up deeply
+                    // overlapping another (e.g. after a hitch, or briefly
+                    // tunneling through on a fast/short-lived contact) gets
+                    // shoved all the way back out to the surface instantly,
+                    // which looks like a teleport. maxPenetration was already
+                    // exposed via SetMaxPenetration() but never actually used
+                    // here.
+                    float penetration = std::min(contact.penetration, maxPenetration);
+                    if (penetration > slop) {
+                        glm::vec3 correction = normal * ((penetration - slop) / invMassSum) * percent;
+
+                        if (bodyA && !bodyA->IsKinematic() && bodyA->gameObject) {
+                            bodyA->gameObject->transform.position -= correction * invMassA;
+                        }
+                        if (bodyB && !bodyB->IsKinematic() && bodyB->gameObject) {
+                            bodyB->gameObject->transform.position += correction * invMassB;
+                        }
+                    }
                 }
             }
 
@@ -242,7 +276,8 @@ namespace Lindo {
                     if (!aHasB) {
                         a->OnTriggerEnter(b);
                         b->OnTriggerEnter(a);
-                    } else {
+                    }
+                    else {
                         a->OnTriggerStay(b);
                         b->OnTriggerStay(a);
                     }
@@ -263,18 +298,21 @@ namespace Lindo {
 
                 if (!aHasB) {
                     a->OnCollisionEnter(b, info);
-                } else {
+                }
+                else {
                     a->OnCollisionStay(b, info);
                 }
                 if (!bHasA) {
                     b->OnCollisionEnter(a, info);
-                } else {
+                }
+                else {
                     b->OnCollisionStay(a, info);
                 }
             }
 
-            void PhysicsSystem::Step(float deltaTime) {
-                if (deltaTime <= 0.0f) return;
+            void PhysicsSystem::Step() {
+                float dt = Lindo::Time::GetFixedDeltaTime();
+                if (dt <= 0.0f) return;
 
                 // Сброс флага земли
                 for (auto* body : rigidBodies) {
@@ -284,7 +322,7 @@ namespace Lindo {
                 // 1. Интеграция физических тел
                 for (auto* body : rigidBodies) {
                     if (!body || body->isSleeping || body->IsKinematic()) continue;
-                    body->integrate(deltaTime, ComputeGravityAt(body->owner ? body->owner->transform.position : glm::vec3(0.0f)));
+                    body->integrate(ComputeGravityAt(body->gameObject ? body->gameObject->transform.position : glm::vec3(0.0f)));
                 }
 
                 // 2. Broad phase
@@ -302,7 +340,7 @@ namespace Lindo {
 
                 // 4. Солвер импульсов и выталкивания
                 if (useSolver) {
-                    ResolveContacts(contacts, deltaTime);
+                    ResolveContacts(contacts);
                 }
             }
 
@@ -325,10 +363,11 @@ namespace Lindo {
                     outHit = collider;
                     outDistance = tmin;
                     outPoint = origin + dir * tmin;
-                    outNormal = collider->GetWorldCenter() - outPoint;
+                    outNormal = outPoint - collider->GetWorldCenter();
                     if (glm::length(outNormal) > 1e-6f) {
                         outNormal = glm::normalize(outNormal);
-                    } else {
+                    }
+                    else {
                         outNormal = -dir;
                     }
                     hit = true;

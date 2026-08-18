@@ -54,12 +54,12 @@ namespace Lindo {
                 bool isTrigger = false;
                 bool isEnabled = true;
 
-                // Local-space offset of the collider relative to its owner.
+                // Local-space offset of the collider relative to its gameObject.
                 glm::vec3 offset = glm::vec3(0.0f);
 
-                // Local-space scale override (defaults to owner transform scale).
+                // Local-space scale override (defaults to gameObject transform scale).
                 glm::vec3 colliderScale = glm::vec3(1.0f);
-                bool useOwnerScale = true;
+                bool usegameObjectScale = true;
 
                 // Physics material properties.
                 PhysicsMaterial material;
@@ -97,10 +97,10 @@ namespace Lindo {
                 glm::vec3 GetOffset() const { return offset; }
 
                 // ----- Local scale -----
-                void SetColliderScale(const glm::vec3& scale) { colliderScale = scale; useOwnerScale = false; }
+                void SetColliderScale(const glm::vec3& scale) { colliderScale = scale; usegameObjectScale = false; }
                 glm::vec3 GetColliderScale() const;
-                void SetUseOwnerScale(bool use) { useOwnerScale = use; }
-                bool GetUseOwnerScale() const { return useOwnerScale; }
+                void SetUsegameObjectScale(bool use) { usegameObjectScale = use; }
+                bool GetUsegameObjectScale() const { return usegameObjectScale; }
 
                 // ----- Physics material -----
                 void SetFriction(float friction) { material.friction = glm::clamp(friction, 0.0f, 1.0f); }
@@ -113,11 +113,11 @@ namespace Lindo {
                 void SetMaterial(const PhysicsMaterial& mat) { material = mat; }
 
                 // ----- World-space state -----
-                // World-space center of the collider (owner position + offset).
+                // World-space center of the collider (gameObject position + offset).
                 virtual glm::vec3 GetWorldCenter() const;
-                // World-space scale (owner scale * collider scale when configured).
+                // World-space scale (gameObject scale * collider scale when configured).
                 virtual glm::vec3 GetWorldScale() const;
-                // World-space position (owner world position + offset).
+                // World-space position (gameObject world position + offset).
                 virtual glm::vec3 GetWorldPosition() const;
                 // Computed world-space AABB for broad-phase testing.
                 virtual Lindo::Math::AABB GetAABB() const = 0;

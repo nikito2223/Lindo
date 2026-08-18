@@ -5,7 +5,6 @@
 #include <string>
 #include <functional>
 
-// Форвард-декларации для уменьшения связности заголовков
 namespace Lindo {
     namespace Input { class Input; }
     namespace Graphics { namespace UI { class UIManager; } }
@@ -21,6 +20,8 @@ namespace Lindo {
         bool shouldClose() const;
         void swapBuffers();
         void pollEvents();
+
+        void setVSync(bool enabled);
 
         int getWidth() const { return m_width; }
         int getHeight() const { return m_height; }
@@ -50,11 +51,9 @@ namespace Lindo {
 
         std::function<void(int, int)> m_resizeCallback;
 
-        // Поля экземпляра (убрали статические s_inputInstance / s_uiInstance)
         Lindo::Input::Input* m_input = nullptr;
         Lindo::Graphics::UI::UIManager* m_uiManager = nullptr;
 
-        // Static callbacks для GLFW
         static void framebufferSizeCallback(GLFWwindow* window, int w, int h);
         static void cursorPosCallback(GLFWwindow* window, double x, double y);
         static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);

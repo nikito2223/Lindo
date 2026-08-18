@@ -14,7 +14,7 @@ namespace Lindo {
             }
 
             glm::vec3 Light::getPosition() const {
-                return owner ? owner->getWorldPosition() : glm::vec3(0.0f);
+                return gameObject ? gameObject->getWorldPosition() : glm::vec3(0.0f);
             }
 
             void Light::SetBaseColor(const glm::vec3& baseColor) {
@@ -41,8 +41,8 @@ namespace Lindo {
                 if (!enabled) return;
 
                 glm::vec3 worldDirection = direction;
-                if (owner) {
-                    worldDirection = glm::normalize(glm::mat3(owner->getWorldMatrix()) * direction);
+                if (gameObject) {
+                    worldDirection = glm::normalize(glm::mat3(gameObject->getWorldMatrix()) * direction);
                 }
 
                 shader.setVec3(uniformName + ".direction", worldDirection);
@@ -101,8 +101,8 @@ namespace Lindo {
                 if (!enabled) return;
 
                 glm::vec3 worldDirection = direction;
-                if (owner) {
-                    worldDirection = glm::normalize(glm::mat3(owner->getWorldMatrix()) * direction);
+                if (gameObject) {
+                    worldDirection = glm::normalize(glm::mat3(gameObject->getWorldMatrix()) * direction);
                 }
 
                 shader.setVec3(uniformName + ".position", getPosition());

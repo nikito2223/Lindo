@@ -7,6 +7,12 @@ namespace Lindo {
 }
 
 namespace Lindo {
+    namespace Debug {
+        class Console; // объявлена в debug/Console.h
+    }
+}
+
+namespace Lindo {
     namespace Input {
         class Input {
         public:
@@ -24,7 +30,7 @@ namespace Lindo {
             bool isF11Pressed() const { return m_f11Pressed; }
             bool isEscapePressed() const { return m_escapePressed; }
 
-            // 🔥 Универсальная проверка клавиши
+            // Универсальная проверка клавиши
             bool isKeyPressed(int key) const {
                 switch (key) {
                 case GLFW_KEY_W:          return m_forward;
@@ -47,7 +53,7 @@ namespace Lindo {
             bool consumeF11();
             bool consumeEscape();
 
-            // 🔥 Мышь и ее компоненты
+            // Мышь и ее компоненты
             glm::vec2 getMouseDelta() const { return m_mouseDelta; }
             float getMouseDeltaX() const { return m_mouseDelta.x; }
             float getMouseDeltaY() const { return m_mouseDelta.y; }
@@ -55,8 +61,9 @@ namespace Lindo {
             float getScrollY() const { return m_scrollY; }
             void resetMouseDelta() { m_mouseDelta = glm::vec2(0.0f); }
 
-            // Для колбэков
+            // Для колбэков окна
             void onKey(int key, int action);
+            void onChar(unsigned int codepoint); // текстовый ввод (для консоли), см. glfwSetCharCallback
             void onMouseMove(double x, double y);
             void onMouseButton(int button, int action);
             void onScroll(double yoffset);
@@ -64,6 +71,15 @@ namespace Lindo {
             // Состояние UI
             bool isUIActive() const { return m_uiActive; }
             void setUIActive(bool active);
+
+            // Игровая консоль: пока она открыта, Input перехватывает под неё клавиатуру/мышь/скролл
+            // и блокирует движение персонажа, чтобы набор команд не двигал игрока.
+            void setConsole(Lindo::Debug::Console* console) { m_console = console; }
+            bool isConsoleActive() const;
+
+        private:
+            void handleConsoleKey(int key);
+            void clearMovementKeys();
 
         private:
             // Флаги клавиш
@@ -82,6 +98,9 @@ namespace Lindo {
 
             // Флаг активности UI (курсор включен/выключен)
             bool m_uiActive = false;
+
+            // Игровая консоль (Input ею не владеет, только указатель)
+            Lindo::Debug::Console* m_console = nullptr;
         };
     }
 }

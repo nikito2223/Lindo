@@ -1,11 +1,14 @@
 ﻿#include "core/Application.h"
-#include "core/Globals.h"
+#include "core/Types/Settings.h"
 #include <array>
 #include <string>
 #include <iostream>
 
 int main() {
     try {
+        Lindo::DisplaySettings::getInstance().loadFromFile("../config/display.ini");
+        Lindo::Settings::getInstance().loadFromFile("../config/settings.ini");
+
         // Создание и запуск приложения
         Lindo::Application app;
         app.run();

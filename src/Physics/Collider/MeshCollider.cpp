@@ -1,4 +1,4 @@
-#include "MeshCollider.h"
+﻿#include "MeshCollider.h"
 #include <Physics/PhysicsSystem.h>
 #include <Component/GameObject/GameObject.h>
 
@@ -22,9 +22,9 @@ namespace Lindo {
             }
 
             void MeshCollider::UpdateFromMeshRenderer() {
-                if (!owner) return;
+                if (!gameObject) return;
 
-                auto* meshRenderer = owner->getComponent<Lindo::Components::Physics::MeshRenderer>();
+                auto* meshRenderer = gameObject->getComponent<Lindo::Components::Physics::MeshRenderer>();
                 if (!meshRenderer || !meshRenderer->hasBBox) {
                     return;
                 }

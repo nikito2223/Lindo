@@ -13,7 +13,7 @@ namespace Lindo {
                 UIWidget() = default;
                 virtual ~UIWidget() = default;
 
-                virtual void update(float dt) {}
+                virtual void update() {}
                 virtual void render(UIRenderer& renderer, UIFont* font) = 0;
                 virtual bool onMouseMove(float x, float y) { return false; }
                 virtual bool onMouseButton(float x, float y, int button, bool down) { return false; }

@@ -5,25 +5,37 @@
 namespace Lindo {
     namespace Graphics {
 
+        // Обновленные шейдеры
         static const char* debugLineVertex = R"(
 #version 330 core
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor;
+
+uniform mat4 model; // НОВОЕ: Перенос математики на GPU
 uniform mat4 view;
 uniform mat4 projection;
+
 out vec3 fragColor;
 void main() {
     fragColor = aColor;
-    gl_Position = projection * view * vec4(aPos, 1.0);
+    // GPU сама масштабирует и вращает вершины
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
 }
 )";
 
         static const char* debugLineFragment = R"(
 #version 330 core
 in vec3 fragColor;
+
+uniform vec3 uColor;
+uniform bool uUseUniformColor;
+
 out vec4 FragColor;
 void main() {
-    FragColor = vec4(fragColor, 1.0);
+    if(uUseUniformColor) 
+        FragColor = vec4(uColor, 1.0);
+    else 
+        FragColor = vec4(fragColor, 1.0);
 }
 )";
 
@@ -32,6 +44,52 @@ void main() {
         DebugDraw::~DebugDraw() {
             if (m_vbo) glDeleteBuffers(1, &m_vbo);
             if (m_vao) glDeleteVertexArrays(1, &m_vao);
+        }
+
+        void DebugDraw::initPrimitives() {
+            // 1. Единичный куб (от -0.5 до 0.5)
+            float boxVertices[] = {
+                -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,   0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f,
+                 0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f,  -0.5f, 0.5f,-0.5f, -0.5f,-0.5f,-0.5f,
+                -0.5f,-0.5f, 0.5f,  0.5f,-0.5f, 0.5f,   0.5f,-0.5f, 0.5f,  0.5f, 0.5f, 0.5f,
+                 0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,  -0.5f, 0.5f, 0.5f, -0.5f,-0.5f, 0.5f,
+                -0.5f,-0.5f,-0.5f, -0.5f,-0.5f, 0.5f,   0.5f,-0.5f,-0.5f,  0.5f,-0.5f, 0.5f,
+                 0.5f, 0.5f,-0.5f,  0.5f, 0.5f, 0.5f,  -0.5f, 0.5f,-0.5f, -0.5f, 0.5f, 0.5f
+            };
+
+            glGenVertexArrays(1, &m_boxVAO);
+            glGenBuffers(1, &m_boxVBO);
+            glBindVertexArray(m_boxVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, m_boxVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(boxVertices), boxVertices, GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+            // 2. Единичная сфера (радиус 1.0)
+            std::vector<glm::vec3> spherePoints;
+            const int segments = 24;
+            for (int i = 0; i < segments; i++) {
+                float t1 = (float)i / segments * 6.28318530718f;
+                float t2 = (float)(i + 1) / segments * 6.28318530718f;
+
+                // XY Plane
+                spherePoints.push_back({ cos(t1), sin(t1), 0 }); spherePoints.push_back({ cos(t2), sin(t2), 0 });
+                // XZ Plane
+                spherePoints.push_back({ cos(t1), 0, sin(t1) }); spherePoints.push_back({ cos(t2), 0, sin(t2) });
+                // YZ Plane
+                spherePoints.push_back({ 0, cos(t1), sin(t1) }); spherePoints.push_back({ 0, cos(t2), sin(t2) });
+            }
+            m_sphereIndexCount = spherePoints.size();
+
+            glGenVertexArrays(1, &m_sphereVAO);
+            glGenBuffers(1, &m_sphereVBO);
+            glBindVertexArray(m_sphereVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, m_sphereVBO);
+            glBufferData(GL_ARRAY_BUFFER, spherePoints.size() * sizeof(glm::vec3), spherePoints.data(), GL_STATIC_DRAW);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+
+            glBindVertexArray(0);
         }
 
         void DebugDraw::init() {
@@ -51,6 +109,8 @@ void main() {
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glBindVertexArray(0);
+
+            initPrimitives();
         }
 
         void DebugDraw::begin(const glm::mat4& view, const glm::mat4& projection) {
@@ -104,6 +164,32 @@ void main() {
             DrawLine(end, headBase - sideB, color);
         }
 
+        void DebugDraw::DrawWireBox(const glm::mat4& transform, const glm::vec3& color) {
+            m_shader->use();
+            m_shader->setMat4("view", m_view);
+            m_shader->setMat4("projection", m_projection);
+            m_shader->setMat4("model", transform);
+            m_shader->setVec3("uColor", color);
+            m_shader->setInt("uUseUniformColor", 1);
+
+            glBindVertexArray(m_boxVAO);
+            glDrawArrays(GL_LINES, 0, 24);
+            glBindVertexArray(0);
+        }
+
+        void DebugDraw::DrawWireSphereFast(const glm::mat4& transform, const glm::vec3& color) {
+            m_shader->use();
+            m_shader->setMat4("view", m_view);
+            m_shader->setMat4("projection", m_projection);
+            m_shader->setMat4("model", transform);
+            m_shader->setVec3("uColor", color);
+            m_shader->setInt("uUseUniformColor", 1);
+
+            glBindVertexArray(m_sphereVAO);
+            glDrawArrays(GL_LINES, 0, m_sphereIndexCount);
+            glBindVertexArray(0);
+        }
+
         void DebugDraw::render() {
             if (m_vertices.empty()) return;
 
@@ -114,6 +200,8 @@ void main() {
             m_shader->use();
             m_shader->setMat4("view", m_view);
             m_shader->setMat4("projection", m_projection);
+            m_shader->setMat4("model", glm::mat4(1.0f)); // Сбрасываем модель
+            m_shader->setInt("uUseUniformColor", 0);     // Используем цвета вершин
 
             GLboolean prevCullFace = glIsEnabled(GL_CULL_FACE);
             GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);

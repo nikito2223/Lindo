@@ -44,6 +44,7 @@ void main() {
             }
 
             UIRenderer::~UIRenderer() {
+                if (m_whiteTexture) glDeleteTextures(1, &m_whiteTexture);
                 glDeleteVertexArrays(1, &m_vao);
                 glDeleteBuffers(1, &m_vbo);
                 glDeleteProgram(m_shaderProgram);
@@ -83,6 +84,14 @@ void main() {
                 // Цвет
                 glEnableVertexAttribArray(2);
                 glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
+
+                // Создаём 1x1 белую текстуру для отрисовки прямоугольников без текстуры
+                unsigned char whitePixel[4] = { 255, 255, 255, 255 };
+                glGenTextures(1, &m_whiteTexture);
+                glBindTexture(GL_TEXTURE_2D, m_whiteTexture);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
                 glBindVertexArray(0);
                 return true;
@@ -124,35 +133,24 @@ void main() {
             }
 
             void UIRenderer::drawRect(const Rect& rect, const Color& color) {
-
-                // Вершины для двух треугольников (6 вершин)
+                // Если сменилась текстура с шрифта/картинки на белую заглушку — делаем flush()
+                if (m_currentTexture != m_whiteTexture || !m_useTexture) {
+                    flush();
+                    m_currentTexture = m_whiteTexture;
+                    m_useTexture = true;
+                }
 
                 Vertex v0{ {rect.x, rect.y}, {0,0}, {color.r, color.g, color.b, color.a} };
-
                 Vertex v1{ {rect.x + rect.w, rect.y}, {0,0}, {color.r, color.g, color.b, color.a} };
-
                 Vertex v2{ {rect.x + rect.w, rect.y + rect.h}, {0,0}, {color.r, color.g, color.b, color.a} };
-
                 Vertex v3{ {rect.x, rect.y + rect.h}, {0,0}, {color.r, color.g, color.b, color.a} };
 
-
-
-                // Первый треугольник
-
                 addVertex(v0);
-
                 addVertex(v1);
-
                 addVertex(v2);
-
-                // Второй треугольник
-
                 addVertex(v0);
-
                 addVertex(v2);
-
                 addVertex(v3);
-
             }
 
             void UIRenderer::drawTexturedRect(const Rect& rect, const Rect& texCoords, unsigned int textureId, const Color& tint)

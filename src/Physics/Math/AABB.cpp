@@ -113,7 +113,7 @@ namespace Lindo {
         bool AABB::intersects(const Lindo::Components::Physics::BoxCollider* box) const {
             if (!box) return false;
             glm::vec3 bmin, bmax;
-            box->GetAABB(bmin, bmax);
+            box->GetAABB();
             return intersectAABB(AABB(bmin, bmax));
         }
 

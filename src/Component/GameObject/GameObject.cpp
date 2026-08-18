@@ -3,6 +3,7 @@
 
 namespace Lindo {
     namespace World {
+
         void GameObject::printHierarchy(int indent) {
             std::string ind(indent, ' ');
             std::cout << ind << "GameObject: " << name
@@ -16,28 +17,32 @@ namespace Lindo {
             }
         }
 
-        // ----- ���������� � ��������� -----
-        void GameObject::Update(float deltaTime) {
+        // ----- Жизненный цикл -----
+
+        void GameObject::Update() {
             if (!isActive) return;
 
             if (!started) {
                 started = true;
+                // Использование индекса вместо range-based for предотвращает краш,
+                // если OnStart создаст новый компонент во время итерации
                 for (size_t i = 0; i < components.size(); ++i) {
                     components[i]->OnStart();
                 }
             }
 
-            for (auto& comp : components) {
-                comp->OnUpdate(deltaTime);
+            for (size_t i = 0; i < components.size(); ++i) {
+                components[i]->OnUpdate();
             }
 
-            for (auto* child : children) {
-                child->Update(deltaTime);
+            for (size_t i = 0; i < children.size(); ++i) {
+                children[i]->Update();
             }
         }
 
         void GameObject::Draw(Lindo::Graphics::Shader& shader) {
             if (!isActive) return;
+
             for (auto& comp : components) {
                 comp->OnDraw(shader);
             }
@@ -46,21 +51,47 @@ namespace Lindo {
             }
         }
 
-        // ----- ������� ���� (���� ��������� ��� ������ ��������) -----
         void GameObject::invalidateCache() {
             componentCache.clear();
         }
 
+        // ----- Иерархия (Родитель / Дети) -----
 
+        void GameObject::setParent(GameObject* newParent, bool keepWorldTransform) {
+            if (parent == newParent) return;
+
+            // Защита от циклического назначения (нельзя сделать родителям своего же ребенка)
+            if (newParent && newParent->isChildOf(this)) {
+                std::cout << "[GameObject] Error: Cannot set child as parent!" << std::endl;
+                return;
+            }
+
+            glm::vec3 worldPos = getWorldPosition();
+
+            if (parent) {
+                parent->removeChild(this);
+            }
+
+            parent = newParent;
+
+            if (parent) {
+                parent->children.push_back(this);
+            }
+
+            // Пересчитываем локальные координаты относительно нового родителя
+            if (keepWorldTransform) {
+                if (parent) {
+                    transform.position = worldPos - parent->getWorldPosition();
+                }
+                else {
+                    transform.position = worldPos;
+                }
+            }
+        }
 
         void GameObject::addChild(GameObject* child) {
-            if (child && child->parent != this) {
-                // ������� �� ����������� ��������
-                if (child->parent) {
-                    child->parent->removeChild(child);
-                }
-                child->parent = this;
-                children.push_back(child);
+            if (child) {
+                child->setParent(this, true);
             }
         }
 
@@ -72,7 +103,6 @@ namespace Lindo {
             }
         }
 
-        // �������� ���� �������� (����������)
         std::vector<GameObject*> GameObject::getAllChildren() {
             std::vector<GameObject*> result = children;
             for (auto* child : children) {
@@ -82,7 +112,8 @@ namespace Lindo {
             return result;
         }
 
-        // ----- ����� �������� (�������!) -----
+        // ----- Поиск объектов -----
+
         GameObject* GameObject::findChildByName(const std::string& childName) {
             for (auto* child : children) {
                 if (child->name == childName) return child;
@@ -102,20 +133,19 @@ namespace Lindo {
             return result;
         }
 
-        // ----- ���������� ����������� (�������!) -----
         void GameObject::setActive(bool active) {
             if (isActive == active) return;
             isActive = active;
 
-            // ���������� ��� ���� �����
             for (auto* child : children) {
                 child->setActive(active);
             }
         }
 
-        // ----- ������� ���������� � ������ �������� (�������!) -----
+        // ----- Трансформация в мировых координатах -----
+
         glm::vec3 GameObject::getWorldPosition() const {
-            return glm::vec3(getWorldMatrix()[3]); // 4-� ������� ������� �������� translation
+            return glm::vec3(getWorldMatrix()[3]);
         }
 
         glm::mat4 GameObject::getWorldMatrix() const {
@@ -124,5 +154,6 @@ namespace Lindo {
             }
             return transform.getMatrix();
         }
+
     }
 }
