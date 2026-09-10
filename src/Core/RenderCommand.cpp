@@ -1,20 +1,25 @@
 #include "RenderCommand.h"
-#include "Graphics/platform/OpenGL/OpenGLRenderAPI.h"
-#include <Graphics/platform/DirectX11/D3D11RenderAPI.h>
+#include "Platform/RenderAPI/OpenGL/OpenGLRenderAPI.h"
 #include <Debug/DebugLogger.h>
 
 namespace Lindo::Graphics {
 
-    std::unique_ptr<IRenderAPI> RenderCommand::s_renderAPI = []() {
-        switch (IRenderAPI::GetAPI()) {
-        case GraphicsAPI::OpenGL:
-            return std::unique_ptr<IRenderAPI>(std::make_unique<OpenGLRenderAPI>());
-        case GraphicsAPI::DirectX11:
-            return std::unique_ptr<IRenderAPI>(std::make_unique<D3D11RenderAPI>());
-        case GraphicsAPI::None:
-        default:
-            LOG_CRITICAL("Unknown or None Graphics API selected!");
-            throw std::runtime_error("No valid Graphics API selected");
+    std::unique_ptr<IRenderAPI>& RenderCommand::GetAPIInstance() {
+        static std::unique_ptr<IRenderAPI> s_renderAPI = nullptr;
+
+        // ������� ������ ������ �����, ����� � ���� ������� ���������� (��� ����� main)
+        if (!s_renderAPI) {
+            switch (IRenderAPI::GetAPI()) {
+            case GraphicsAPI::OpenGL:
+                s_renderAPI = std::make_unique<OpenGLRenderAPI>();
+                break;
+            case GraphicsAPI::None:
+            default:
+                LOG_CRITICAL("[RenderCommand] Unknown or None Graphics API selected!");
+                throw std::runtime_error("No valid Graphics API selected");
+            }
         }
-        }();
+        return s_renderAPI;
+    }
+
 }

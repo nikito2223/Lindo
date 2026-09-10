@@ -6,16 +6,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ==============================================================================
-# НАСТРОЙКА ВЫХОДНЫХ ДИРЕКТОРИЙ (bin/ и lib/)
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (bin/ пїЅ lib/)
 # ==============================================================================
-# Направляем все .exe и .dll файлы в папку bin/ внутри директории сборки
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ .exe пїЅ .dll пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ bin/ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Lindo/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Lindo/bin")
-# Статические библиотеки (.lib / .a) убираем в lib/
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (.lib / .a) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ lib/
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Lindo/lib")
 
-# Для MSVC / Multi-configuration генераторов (Debug/Release), чтобы не создавались
-# лишние подпапки bin/Debug, а всё падало строго в bin/
+# пїЅпїЅпїЅ MSVC / Multi-configuration пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Debug/Release), пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+# пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ bin/Debug, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ bin/
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Lindo/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Lindo/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Lindo/bin")
@@ -52,15 +52,15 @@ target_link_libraries(Lindo PRIVATE LindoSrc
 target_link_options(Lindo PRIVATE $<$<CXX_COMPILER_ID:GNU>:-no-pie>)
 
 # Deploy res to build/bin/res
-# Благодаря $<TARGET_FILE_DIR:Lindo>, CMake автоматически скопирует папку res
-# прямо туда, где лежит Lindo.exe (то есть в build/bin/res/)
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ $<TARGET_FILE_DIR:Lindo>, CMake пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ res
+# пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Lindo.exe (пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ build/bin/res/)
 add_custom_command(
     TARGET Lindo
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/Lindo/res)
 
-# Если в проекте есть папка config/, копируем её в build/config/
+# пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ config/, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ build/config/
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config")
     add_custom_command(
         TARGET Lindo
@@ -68,7 +68,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config")
         COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
                 ${CMAKE_CURRENT_SOURCE_DIR}/config ${CMAKE_BINARY_DIR}/Lindo/config)
 else()
-    # Если папки config еще нет в исходниках, просто создадим пустую папку build/config
+    # пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ config пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ build/config
     add_custom_command(
         TARGET Lindo
         POST_BUILD

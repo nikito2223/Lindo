@@ -1,0 +1,8 @@
+<UI>
+    <!-- Главное меню -->
+    <Panel id="mainPanel" x="420" y="210" width="440" height="150" color="0,0,0,0">
+        <Button x="0" y="0" width="440" height="50" text="Запустить симуляцию" onClick="play" color="0.08,0.08,0.1,0.92" textColor="0.9,0.9,0.9,1" fontSize="20" />
+        <Button x="0" y="50" width="440" height="50" text="Настройки" onClick="openSettings" color="0.08,0.08,0.1,0.92" textColor="0.9,0.9,0.9,1" fontSize="20" />
+        <Button x="0" y="100" width="440" height="50" text="Выход" onClick="quit" color="0.08,0.08,0.1,0.92" textColor="0.9,0.9,0.9,1" fontSize="20" />
+    </Panel>
+</UI>

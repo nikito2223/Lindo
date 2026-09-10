@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include "Component/Component.h"
 #include "Component/GameObject/transform.h"
+#include <world/managers/LayerManager.h>
 
 namespace Lindo {
     namespace Graphics {
@@ -17,78 +18,97 @@ namespace Lindo {
 
     namespace World {
 
-        /// <summary>
-        /// Базовый класс сущности на сцене. Содержит компоненты, трансформ и связи с дочерними объектами.
-        /// </summary>
+        /**
+         * @brief Базовый класс сущности сцены. Содержит компоненты, трансформ и связи с дочерними объектами.
+         */
         class GameObject {
+
         public:
-            /// <summary> Имя объекта на сцене. </summary>
-            std::string name;
+            std::string name; 
+            
+        private:
+            std::string tag = "Untagged";    ///< Хранимый тег объекта
+            uint8_t layer = 0;               ///< Индекс слоя объекта (0..31)
 
-            /// <summary> Тег объекта для группировки и поиска (например, "Player", "Enemy"). </summary>
-            std::string tag;
-
-            /// <summary> Локальный трансформ объекта (позиция, поворот, масштаб). </summary>
+        public:
             Lindo::Math::Transform transform;
 
-            /// <summary> Владеющий список всех компонентов объекта. </summary>
             std::vector<std::unique_ptr<Component>> components;
-
-            /// <summary> Быстрый кэш для доступа к компонентам по их типам. </summary>
             std::unordered_map<std::type_index, Component*> componentCache;
 
-            /// <summary> Флаг активности объекта. Неактивные объекты не обновляются и не рендерятся. </summary>
             bool isActive = true;
-
-            /// <summary> Флаг статичности объекта (для оптимизации физики и батчинга). </summary>
             bool isStatic = false;
-
-            /// <summary> Флаг сохранения объекта при смене сцены (аналог DontDestroyOnLoad). </summary>
             bool isPersistent = false;
-
-            /// <summary> Флаг отбрасывания теней объектом. </summary>
             bool castsShadows = true;
-
-            /// <summary> Флаг прохождения инициализации Start. </summary>
             bool started = false;
 
-            /// <summary> Список указателей на дочерние объекты. </summary>
             std::vector<GameObject*> children;
-
-            /// <summary> Указатель на родительский объект (nullptr, если объект корневой). </summary>
             GameObject* parent = nullptr;
 
-            /// <summary>
-            /// Конструктор игрового объекта.
-            /// </summary>
-            /// <param name="name">Имя объекта.</param>
-            /// <param name="tag">Тег объекта.</param>
-            GameObject(std::string name = "NewEntity", std::string tag = "Untagged")
-                : name(name), tag(tag) {
+            GameObject(std::string name = "NewEntity", std::string tag = "Untagged", uint8_t layer = 0)
+                : name(name) {
+                setTag(tag);
+                setLayer(layer);
             }
 
             virtual ~GameObject() = default;
 
-            /// <summary> Возвращает имя объекта. </summary>
+            /**
+             * @brief Получает имя объекта.
+             * @return Константная ссылка на имя.
+             */
             const std::string& getName() const { return name; }
 
-            /// <summary> Устанавливает новое имя объекта. </summary>
+            /**
+             * @brief Задает новое имя объекта.
+             * @param newName Новое имя.
+             */
             void setName(const std::string& newName) { name = newName; }
 
-            /// <summary> Возвращает тег объекта. </summary>
+            /**
+             * @brief Получает тег объекта.
+             * @return Константная ссылка на тег.
+             */
             const std::string& getTag() const { return tag; }
+            
+            void setTag(const std::string& newTag) {
+                auto& lm = LayerManager::get();
+                lm.registerTag(newTag); // Автоматическая регистрация при динамическом назначении
+                tag = newTag;
+            }
 
-            /// <summary> Устанавливает новый тег объекта. </summary>
-            void setTag(const std::string& newTag) { tag = newTag; }
+            bool compareTag(const std::string& otherTag) const {
+                return tag == otherTag;
+            }
 
-            // ----- Работа с компонентами -----
+            uint8_t getLayer() const { return layer; }
+            
+            void setLayer(uint8_t newLayer) {
+                if (newLayer >= LayerManager::MAX_LAYERS) {
+                    LOG_WARN("[GameObject] Invalid layer index: " + std::to_string(newLayer));
+                    return;
+                }
+                layer = newLayer;
+            }
 
-            /// <summary>
-            /// Создает и добавляет новый компонент на объект.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента, унаследованный от Component.</typeparam>
-            /// <param name="args">Аргументы для конструктора компонента.</param>
-            /// <returns>Указатель на созданный компонент.</returns>
+            void setLayerByName(const std::string& layerName) {
+                layer = LayerManager::get().getLayerByName(layerName);
+            }
+
+            std::string getLayerName() const {
+                return LayerManager::get().getLayerName(layer);
+            }
+
+            LayerMask getLayerMask() const {
+                return (1 << layer);
+            }
+            /**
+             * @brief Создает и добавляет новый компонент на объект.
+             * @tparam T Тип компонента, унаследованный от Component.
+             * @tparam Args Типы аргументов конструктора компонента.
+             * @param args Аргументы для конструктора компонента.
+             * @return Указатель на созданный компонент.
+             */
             template<typename T, typename... Args>
             T* addComponent(Args&&... args) {
                 static_assert(std::is_base_of<Component, T>::value,
@@ -103,11 +123,11 @@ namespace Lindo {
                 return ptr;
             }
 
-            /// <summary>
-            /// Находит и возвращает первый компонент указанного типа.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента.</typeparam>
-            /// <returns>Указатель на компонент или nullptr, если компонент не найден.</returns>
+            /**
+             * @brief Находит и возвращает первый компонент указанного типа.
+             * @tparam T Тип компонента.
+             * @return Указатель на компонент или nullptr, если компонент не найден.
+             */
             template<typename T>
             T* getComponent() {
                 auto it = componentCache.find(std::type_index(typeid(T)));
@@ -124,11 +144,11 @@ namespace Lindo {
                 return nullptr;
             }
 
-            /// <summary>
-            /// Находит все компоненты указанного типа на объекте.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента.</typeparam>
-            /// <returns>Вектор указателей на найденные компоненты.</returns>
+            /**
+             * @brief Находит все компоненты указанного типа на объекте.
+             * @tparam T Тип компонента.
+             * @return Вектор указателей на найденные компоненты.
+             */
             template<typename T>
             std::vector<T*> getComponents() {
                 std::vector<T*> result;
@@ -140,11 +160,11 @@ namespace Lindo {
                 return result;
             }
 
-            /// <summary>
-            /// Находит все компоненты, реализующие указанный интерфейс или абстрактный класс.
-            /// </summary>
-            /// <typeparam name="Interface">Тип интерфейса.</typeparam>
-            /// <returns>Вектор указателей на компоненты, приведённые к интерфейсу.</returns>
+            /**
+             * @brief Находит все компоненты, реализующие указанный интерфейс или абстрактный класс.
+             * @tparam Interface Тип интерфейса.
+             * @return Вектор указателей на компоненты, приведённые к интерфейсу.
+             */
             template<typename Interface>
             std::vector<Interface*> getInterfaces() {
                 std::vector<Interface*> result;
@@ -156,11 +176,11 @@ namespace Lindo {
                 return result;
             }
 
-            /// <summary>
-            /// Удаляет первый компонент указанного типа.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента для удаления.</typeparam>
-            /// <returns>true, если компонент был найден и удален.</returns>
+            /**
+             * @brief Удаляет первый компонент указанного типа.
+             * @tparam T Тип компонента для удаления.
+             * @return true, если компонент был найден и удален.
+             */
             template<typename T>
             bool removeComponent() {
                 auto it = std::find_if(components.begin(), components.end(),
@@ -171,26 +191,29 @@ namespace Lindo {
                 if (it != components.end()) {
                     (*it)->OnDestroy();
                     components.erase(it);
-                    invalidateCache(); // Сброс кэша для предотвращения висячих указателей
+                    invalidateCache();
                     return true;
                 }
                 return false;
             }
 
-            /// <summary>
-            /// Проверяет, прикреплен ли компонент указанного типа к объекту.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента.</typeparam>
+            /**
+             * @brief Проверяет, прикреплен ли компонент указанного типа к объекту.
+             * @tparam T Тип компонента.
+             * @return true, если компонент существует.
+             */
             template<typename T>
             bool hasComponent() {
                 return getComponent<T>() != nullptr;
             }
 
-            /// <summary>
-            /// Возвращает существующий компонент или создает новый, если он отсутствует.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента.</typeparam>
-            /// <param name="args">Аргументы конструктора, если компонент придется создавать.</param>
+            /**
+             * @brief Возвращает существующий компонент или создает новый, если он отсутствует.
+             * @tparam T Тип компонента.
+             * @tparam Args Типы аргументов конструктора.
+             * @param args Аргументы конструктора для создания нового компонента.
+             * @return Указатель на компонент.
+             */
             template<typename T, typename... Args>
             T* getOrAddComponent(Args&&... args) {
                 T* comp = getComponent<T>();
@@ -200,11 +223,12 @@ namespace Lindo {
                 return comp;
             }
 
-            /// <summary>
-            /// Возвращает обязательный компонент. Если он отсутствует, выбрасывает исключение.
-            /// </summary>
-            /// <typeparam name="T">Тип компонента.</typeparam>
-            /// <exception std::runtime_error>Выбрасывается, если компонент не найден.</exception>
+            /**
+             * @brief Возвращает обязательный компонент. Выбрасывает исключение, если он отсутствует.
+             * @tparam T Тип компонента.
+             * @return Указатель на компонент.
+             * @throws std::runtime_error Выбрасывается, если компонент не найден.
+             */
             template<typename T>
             T* reqComponent() {
                 T* comp = getComponent<T>();
@@ -214,8 +238,17 @@ namespace Lindo {
                 return comp;
             }
 
+            /**
+             * @brief Устанавливает нового родителя для объекта.
+             * @param newParent Указатель на нового родителя.
+             * @param keepWorldTransform Сохранять ли мировые координаты объекта.
+             */
             void setParent(GameObject* newParent, bool keepWorldTransform = true);
 
+            /**
+             * @brief Находит корневой объект иерархии.
+             * @return Указатель на верхний родительский объект.
+             */
             GameObject* getRoot() {
                 GameObject* current = this;
                 while (current->parent != nullptr) {
@@ -224,6 +257,11 @@ namespace Lindo {
                 return current;
             }
 
+            /**
+             * @brief Проверяет, является ли объект потомком другого объекта.
+             * @param potentialParent Предполагаемый родитель.
+             * @return true, если объект находится внутри иерархии potentialParent.
+             */
             bool isChildOf(const GameObject* potentialParent) const {
                 const GameObject* current = parent;
                 while (current != nullptr) {
@@ -233,7 +271,11 @@ namespace Lindo {
                 return false;
             }
 
-            // Поиск компонентов по иерархии вверх
+            /**
+             * @brief Рекурсивный поиск компонента вверх по иерархии родителей.
+             * @tparam T Тип компонента.
+             * @return Указатель на найденный компонент или nullptr.
+             */
             template<typename T>
             T* getComponentInParent() {
                 GameObject* current = this;
@@ -245,7 +287,11 @@ namespace Lindo {
                 return nullptr;
             }
 
-            // Поиск компонентов по иерархии вниз (включая себя)
+            /**
+             * @brief Рекурсивный поиск первого подходящего компонента вниз по иерархии детей.
+             * @tparam T Тип компонента.
+             * @return Указатель на найденный компонент или nullptr.
+             */
             template<typename T>
             T* getComponentInChildren() {
                 T* comp = getComponent<T>();
@@ -258,6 +304,11 @@ namespace Lindo {
                 return nullptr;
             }
 
+            /**
+             * @brief Заполняет вектор всеми компонентами типа T, найденными у объекта и его детей.
+             * @tparam T Тип компонента.
+             * @param outList Входной вектор для сохранения результатов.
+             */
             template<typename T>
             void getComponentsInChildren(std::vector<T*>& outList) {
                 auto selfComps = getComponents<T>();
@@ -268,46 +319,97 @@ namespace Lindo {
                 }
             }
 
-            // ----- Иерархия (Дочерние / Родительские объекты) -----
-
-            /// <summary> Добавляет дочерний объект. </summary>
+            /**
+             * @brief Добавляет дочерний объект.
+             * @param child Указатель на добавляемый объект.
+             */
             void addChild(GameObject* child);
 
-            /// <summary> Удаляет дочерний объект из списка потомков. </summary>
+            /**
+             * @brief Удаляет дочерний объект из списка потомков.
+             * @param child Указатель на удаляемый объект.
+             */
             void removeChild(GameObject* child);
 
-            /// <summary> Возвращает полный вектор всех дочерних объектов рекурсивно. </summary>
+            /**
+             * @brief Возвращает полный список всех дочерних объектов рекурсивно.
+             * @return Вектор указателей на все объекты-потомки.
+             */
             std::vector<GameObject*> getAllChildren();
 
-            /// <summary> Поиск дочернего объекта по имени. </summary>
+            /**
+             * @brief Ищет дочерний объект по имени.
+             * @param childName Имя искомого объекта.
+             * @return Указатель на объект или nullptr.
+             */
             GameObject* findChildByName(const std::string& childName);
 
-            /// <summary> Поиск дочерних объектов по тегу. </summary>
+            /**
+             * @brief Ищет дочерние объекты по тегу.
+             * @param childTag Тег искомых объектов.
+             * @return Вектор найденных объектов.
+             */
             std::vector<GameObject*> findChildrenByTag(const std::string& childTag);
 
-            // ----- Состояние и Трансформация -----
-
-            /// <summary> Переключает активность объекта и всех его дочерних элементов. </summary>
+            /**
+             * @brief Переключает активность объекта и всех его дочерних элементов.
+             * @param active Новое состояние активности.
+             */
             void setActive(bool active);
 
-            /// <summary> Рассчитывает абсолютную мировую позицию с учетом родительских трансформаций. </summary>
+            /**
+             * @brief Рассчитывает абсолютную мировую позицию с учетом родительских трансформаций.
+             * @return Вектор мировых координат glm::vec3.
+             */
             glm::vec3 getWorldPosition() const;
+            glm::mat4 getLocalMatrix() const { return transform.getLocalMatrix(); }
+            glm::vec3 getLocalPosition() const { return transform.getLocalPosition(); }
+            void setLocalPosition(const glm::vec3& position) { transform.setLocalPosition(position); }
+            void setWorldPosition(const glm::vec3& position);
 
-            /// <summary> Рассчитывает итоговую мировую матрицу трансформации объекта. </summary>
+            /**
+             * @brief Рассчитывает итоговую мировую матрицу трансформации объекта.
+             * @return Матрица мировой трансформации glm::mat4.
+             */
             glm::mat4 getWorldMatrix() const;
 
-            // ----- Жизненный цикл и Рендеринг -----
-
-            /// <summary> Обновляет логику всех прикрепленных компонентов и дочерних объектов. </summary>
+            /**
+             * @brief Обновляет логику всех прикрепленных компонентов и дочерних объектов.
+             */
             virtual void Update();
 
-            /// <summary> Отрисовывает геометрию компонентов объекта. </summary>
+            /**
+             * @brief Отрисовывает геометрию компонентов объекта.
+             * @param shader Активный шейдер рендеринга.
+             */
             virtual void Draw(Lindo::Graphics::Shader& shader);
 
-            /// <summary> Полностью очищает кэш компонентов. </summary>
+            /**
+             * @brief Вызывает отрисовку отладочной графики для всех компонентов и дочерних объектов.
+             */
+            virtual void DrawGizmos();
+
+            /**
+             * @brief Подсчитывает общее количество потомков в дереве иерархии.
+             * @return Количество дочерних объектов.
+             */
+            int countChildrenRecursive() const {
+                int count = static_cast<int>(children.size());
+                for (const auto& child : children) {
+                    count += child->countChildrenRecursive();
+                }
+                return count;
+            }
+
+            /**
+             * @brief Полностью очищает кэш компонентов.
+             */
             void invalidateCache();
 
-            /// <summary> Выводит иерархию объекта и его детей в консоль для отладки. </summary>
+            /**
+             * @brief Выводит дерево иерархии объекта и его потомков в консоль.
+             * @param indent Количество пробелов для отступа уровня иерархии.
+             */
             void printHierarchy(int indent = 0);
         };
     }

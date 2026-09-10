@@ -43,7 +43,7 @@ void SetStrength(float newStrength) { strength = newStrength; }
                 void SetFocalPointFromgameObject() { if (gameObject) focalPoint = gameObject->transform.position; }
                 glm::vec3 GetFocalPoint() const { return focalPoint; }
 
-void SetRadius(float newRadius) { radius = std::max(0.0f, newRadius); }
+                void SetRadius(float newRadius) { radius = std::max(0.0f, newRadius); }
                 float GetRadius() const { return radius; }
 
                 void SetEnabled(bool enabled) { isEnabled = enabled; }

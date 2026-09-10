@@ -1,0 +1,39 @@
+<UI>
+    <!-- Окно настроек -->
+    <Panel id="settingsPanel" x="310" y="50" width="660" height="620" color="0.08,0.08,0.1,0.96" visible="false" zOrder="10">
+        <Label x="30" y="15" width="600" height="35" text="НАСТРОЙКИ" fontSize="22" color="0.9,0.9,0.9,1" />
+
+        <!-- Имя игрока -->
+        <Label x="30" y="65" width="200" height="30" text="Имя игрока:" fontSize="16" color="0.7,0.7,0.8,1" />
+        <Input id="playerName" x="240" y="65" width="380" height="30" placeholder="Введите ник..." fontSize="14" onSubmit="onNameChanged" />
+
+        <!-- Громкость -->
+        <Label id="volLabel" x="30" y="110" width="200" height="30" text="Громкость: 100%" fontSize="16" color="0.7,0.7,0.8,1" />
+        <Slider id="volSlider" x="240" y="115" width="380" height="20" min="0" max="100" value="100" onChange="onVolumeChanged" />
+
+        <!-- FOV (Угол обзора) -->
+        <Label id="fovLabel" x="30" y="155" width="200" height="30" text="FOV: 75°" fontSize="16" color="0.7,0.7,0.8,1" />
+        <Slider id="fovSlider" x="240" y="160" width="380" height="20" min="60" max="110" value="75" onChange="onFovChanged" />
+
+        <!-- Качество теней -->
+        <Label x="30" y="200" width="200" height="30" text="Качество теней:" fontSize="16" color="0.7,0.7,0.8,1" />
+        <DropDown id="shadowSelect" x="240" y="200" width="380" height="30" options="Выкл,Низкое,Среднее,Высокое,Ультра" onSelect="onShadowQualityChanged" zOrder="110" fontSize="14"/>
+
+        <!-- Фильтрация текстур -->
+        <Label x="30" y="245" width="200" height="30" text="Фильтрация:" fontSize="16" color="0.7,0.7,0.8,1" />
+        <DropDown id="texSelect" x="240" y="245" width="380" height="30" options="Bilinear,Trilinear,Anisotropic 2x,Anisotropic 8x,Anisotropic 16x" onSelect="onTextureFilteringChanged" zOrder="105" fontSize="14"/>
+
+        <!-- Ограничение FPS -->
+        <Label x="30" y="290" width="200" height="30" text="Лимит FPS:" fontSize="16" color="0.7,0.7,0.8,1" />
+        <DropDown id="fpsSelect" x="240" y="290" width="380" height="30" options="Без ограничений,60 FPS,120 FPS,144 FPS" onSelect="onFpsChanged" zOrder="100" fontSize="14"/>
+
+        <!-- Чекбоксы (Toggle) -->
+        <Toggle id="bloomToggle" x="30" y="340" width="180" height="30" label="Эффект Bloom" checked="true" onChange="onBloomToggle" fontSize="16" />
+        <Toggle id="vsyncToggle" x="240" y="340" width="180" height="30" label="Вертикальная синхронизация" checked="true" onChange="onVSyncToggle" fontSize="16" />
+        <Toggle id="debugToggle" x="480" y="340" width="150" height="30" label="Отладка (FPS)" checked="false" onChange="onDebugToggle" fontSize="16" />
+
+        <!-- Кнопки управления -->
+        <Button x="30" y="550" width="200" height="40" text="Сбросить" onClick="resetSettings" color="0.3,0.15,0.15,1" textColor="0.9,0.9,0.9,1" fontSize="16" />
+        <Button x="420" y="550" width="200" height="40" text="Назад" onClick="closeSettings" color="0.15,0.18,0.22,1" textColor="0.9,0.9,0.9,1" fontSize="16" />
+    </Panel>
+</UI>

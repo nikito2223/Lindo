@@ -92,6 +92,7 @@ private:
 
     bool m_directionalActive = false;
     bool m_initialized = false;
+    bool m_diagnosticsLogged = false;
 };
 
 } // namespace Graphics

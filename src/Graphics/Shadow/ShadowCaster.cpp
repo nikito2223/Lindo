@@ -194,7 +194,7 @@ namespace Lindo {
             RenderCommand::SetDepthTest(true);
             RenderCommand::SetDepthWrite(true);
             RenderCommand::SetDepthFuncLess();
-            RenderCommand::SetCullFace(true, false); // Front-face culling to prevent peter-panning
+            RenderCommand::SetCullFace(false); // Keep all shadow geometry, including non-standard winding.
             RenderCommand::SetBlending(false);
 
             for (int i = 0; i < m_cascadeCount; ++i) {
@@ -266,7 +266,7 @@ namespace Lindo {
             RenderCommand::SetDepthTest(true);
             RenderCommand::SetDepthWrite(true);
             RenderCommand::SetDepthFuncLess();
-            RenderCommand::SetCullFace(true, false);
+            RenderCommand::SetCullFace(false);
             RenderCommand::SetBlending(false);
 
             m_target->beginRender(0);
@@ -331,7 +331,7 @@ namespace Lindo {
             RenderCommand::SetDepthTest(true);
             RenderCommand::SetDepthWrite(true);
             RenderCommand::SetDepthFuncLess();
-            RenderCommand::SetCullFace(true, false);
+            RenderCommand::SetCullFace(false);
             RenderCommand::SetBlending(false);
 
             m_target->beginRender(0);

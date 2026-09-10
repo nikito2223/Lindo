@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 #include "Component/Component.h"
-#include <Physics/Collider/CapsuleCollider.h>
+#include <Component/Physhcs/Colliders/CapsuleCollider.h>
 
 namespace Lindo {
     namespace Components {
@@ -33,10 +33,13 @@ namespace Lindo {
                 float flySpeed = 12.0f;
                 float climbSpeed = 3.0f;
 
-                float acceleration = 10.0f;
-                float deceleration = 8.0f;
-                float groundFriction = 8.0f;
-                float airControl = 0.3f;
+                float acceleration = 10.0f;      // sv_accelerate — разгон на земле к wishSpeed
+                float deceleration = 8.0f;        // не используется движком трения напрямую, оставлено для совместимости
+                float groundFriction = 8.0f;      // sv_friction
+                float stopSpeed = 2.0f;           // sv_stopspeed — порог для трения на малых скоростях
+                float airControl = 0.3f;          // не используется новой моделью, оставлено для совместимости
+                float airAccelerate = 10.0f;      // sv_airaccelerate — разгон в воздухе
+                float airWishSpeedCap = 2.0f;      // потолок wishSpeed, до которого воздушный разгон "цепляет" скорость (в Source ~30u/s), выше — страйф всё ещё разгоняет, но уже не за счёт клэмпа
                 float gravityScale = 1.0f;
                 float jumpHeight = 2.0f;
                 float maxStepHeight = 0.45f;
@@ -79,6 +82,10 @@ namespace Lindo {
                 bool Jump();
                 bool Crouch();
                 bool UnCrouch();
+                // Вызывается каждый кадр из системы ввода с текущим состоянием клавиши приседания
+                // (например Ctrl), как в Source: держим — приседаем, отпустили — встаём (если есть место).
+                void SetCrouchHeld(bool held);
+                bool IsCrouchHeld() const { return crouchHeld; }
                 bool Slide();
                 void StopMovement();
                 void Teleport(const glm::vec3& position);
@@ -94,6 +101,8 @@ namespace Lindo {
                 void SetWalkSpeed(float speed) { settings.walkSpeed = speed; }
                 void SetRunSpeed(float speed) { settings.runSpeed = speed; }
                 void SetJumpHeight(float height) { settings.jumpHeight = height; }
+                void SetSimulationEnabled(bool enabled) { m_simulationEnabled = enabled; }
+                bool IsSimulationEnabled() const { return m_simulationEnabled; }
 
                 // �������
                 bool IsGrounded() const { return state.isGrounded; }
@@ -114,6 +123,11 @@ namespace Lindo {
                 void ApplyGravity();
                 void ApplyMovement(glm::vec3 inputDirection);
                 void ApplyFriction();
+                // Source-style разгон: сначала считаем добавочную скорость вдоль wishDir, затем клэмпим её.
+                void GroundAccelerate(const glm::vec3& wishDir, float wishSpeed, float accel);
+                void AirAccelerate(const glm::vec3& wishDir, float wishSpeed, float accel);
+                // Проверка, есть ли место над головой, чтобы встать из приседа (нет потолка).
+                bool CanStandUp() const;
                 void HandleAutoOrientation();
                 float GetCurrentMaxSpeed() const;
                 void UpdateCurrentSpeed();
@@ -130,9 +144,13 @@ namespace Lindo {
                 // ����
                 glm::vec3 currentInput = glm::vec3(0.0f);
                 bool isRunningInput = false;
+                bool crouchHeld = false;
+                float jumpBufferTimer = 0.0f;
+                bool jumpRequested = false;
 
                 // �������
                 std::function<void()> onJump;
+                bool m_simulationEnabled = true;
                 std::function<void()> onLand;
                 std::function<void(bool)> onCrouch;
 

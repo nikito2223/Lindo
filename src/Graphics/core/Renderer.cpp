@@ -3,7 +3,7 @@
 #include "core/SceneManager.h"
 #include "graphics/ui/UIManager.h"
 #include "debug/DebugOverlay.h"
-#include "graphics/render/skybox.h"
+#include "graphics/skybox/skybox.h"
 #include "graphics/Shadow/ShadowManager.h"
 #include "core/Types/Settings.h"
 #include "core/AssetManager.h"
@@ -15,30 +15,24 @@
 #include <Component/PlayerController/Player.h>
 #include <Component/Camera/Camera.h>
 #include <Component/Graphics/Light.h>
-#include <Physics/Collider/Collider.h>
+#include <Component/Physhcs/MeshRenderer.h>
 #include <filesystem>
 
 #include "Core/RenderCommand.h"
-#include <Physics/Collider/MeshCollider.h>
-#include <Physics/Collider/CapsuleCollider.h>
-#include <Physics/Collider/BoxCollider.h>
-#include <Physics/Collider/SphereCollider.h>
 #include <Debug/DebugSystem.h>
+#include "Framebuffer.h"
 
 namespace Lindo {
     namespace Graphics {
 
         static Lindo::Components::Rendering::Camera* GetMainCamera(Lindo::SceneManager* sceneManager) {
             if (!sceneManager) return nullptr;
-
             auto* currentScene = sceneManager->GetCurrentScene();
             if (!currentScene) return nullptr;
 
             auto cameras = currentScene->FindComponentsOfType<Lindo::Components::Rendering::Camera>();
             for (auto* cam : cameras) {
-                if (cam && cam->gameObject) {
-                    return cam;
-                }
+                if (cam && cam->gameObject) return cam;
             }
 
             auto* player = sceneManager->FindComponentInScene<Lindo::Components::Controller::Player>();
@@ -56,8 +50,58 @@ namespace Lindo {
 
         Renderer::~Renderer() = default;
 
+        bool Renderer::setSkybox(const std::string& hdrRelativePath, int faceResolution) {
+            auto& assets = AssetManager::get();
+            std::string finalPath = hdrRelativePath;
+        
+            // 1. Если передано просто имя (напр. "night_sky"), добавляем "skybox/"
+            if (finalPath.find('/') == std::string::npos && finalPath.find('\\') == std::string::npos) {
+                finalPath = "skybox/" + finalPath;
+            }
+        
+            // 2. Если нет расширения, по умолчанию добавляем .hdr
+            if (!std::filesystem::path(finalPath).has_extension()) {
+                finalPath += ".hdr";
+            }
+        
+            // Резолвим путь через AssetManager
+            std::string hdrPath = assets.resolvePath(finalPath, "textures");
+        
+            if (!std::filesystem::exists(hdrPath)) {
+                // Запасная попытка через getTexturePath / прямое разрешение
+                hdrPath = assets.resolvePath(hdrRelativePath, "textures");
+            }
+        
+            if (!std::filesystem::exists(hdrPath)) {
+                LOG_WARN("[Renderer] Skybox HDR file missing at path: " + hdrRelativePath + " (" + hdrPath + ")");
+                return false;
+            }
+        
+            LOG_INFO("[Renderer] Loading Skybox HDR texture (" + std::to_string(faceResolution) + "x" + std::to_string(faceResolution) + "): " + hdrPath);
+        
+            try {
+                m_skybox = std::make_unique<Skybox>(hdrPath, faceResolution);
+                LOG_INFO("[Renderer] New HDR Skybox successfully loaded.");
+                return true;
+            } catch (const std::exception& e) {
+                LOG_ERROR("[Renderer] Failed to load Skybox: " + std::string(e.what()));
+                return false;
+            }
+        }
+
         void Renderer::init() {
+            if (m_initialized) {
+                LOG_WARN("[Renderer] init() called more than once; keeping existing resources.");
+                return;
+            }
+
             LOG_INFO("[Renderer] Initializing Renderer shaders, buffers, and resources...");
+
+            DisplaySettings& startupDisplaySettings = DisplaySettings::getInstance();
+            m_viewportWidth = startupDisplaySettings.windowWidth;
+            m_viewportHeight = startupDisplaySettings.windowHeight;
+
+            m_fbo = std::make_unique<Framebuffer>(m_viewportWidth, m_viewportHeight);
 
             RenderCommand::SetClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.0f));
 
@@ -73,44 +117,38 @@ namespace Lindo {
             }
 
             m_lightingShader = std::make_unique<Shader>(vertPath.c_str(), fragPath.c_str());
-            LOG_INFO("[Renderer] Main lighting shader initialized successfully.");
-
-            std::string hdrPath = assets.resolvePath("skybox/qwantani_dusk_2_puresky_4k.hdr", "textures");
-            if (std::filesystem::exists(hdrPath)) {
-                LOG_INFO("[Renderer] Skybox file found. Loading HDR texture: " + hdrPath);
-                m_skybox = std::make_unique<Skybox>(hdrPath, 1024);
-                LOG_INFO("[Renderer] HDR Skybox successfully created.");
-            }
-            else {
-                LOG_WARN("[Renderer] Skybox HDR file missing at path: " + hdrPath);
+            if (!m_lightingShader->isValid()) {
+                LOG_ERROR("[Renderer] Main lighting shader is invalid; scene rendering is disabled.");
+                return;
             }
 
             LOG_INFO("[Renderer] Initializing DebugDraw primitive renderer...");
-            m_debugDraw = std::make_unique<DebugDraw>();
-            m_debugDraw->init();
+            DebugDraw::GetInstance().init();
 
             LOG_INFO("[Renderer] Initializing ShadowManager...");
             m_shadowManager = std::make_unique<ShadowManager>();
-
-            // Синхронизация ShadowQuality из настроек
             m_shadowManager->setQuality(settings.shadowQuality);
+
+            m_initialized = true;
             LOG_INFO("[Renderer] ShadowManager setup complete according to Settings.");
         }
 
         void Renderer::render() {
-            if (!m_sceneManager || !m_lightingShader) return;
+            if (!m_initialized || !m_sceneManager || !m_lightingShader || !m_lightingShader->isValid()) return;
 
             auto* currentScene = m_sceneManager->GetCurrentScene();
             if (!currentScene) return;
 
-            DisplaySettings& displaySettings = DisplaySettings::getInstance();
             Settings& settings = Settings::getInstance();
             auto* mainCamera = GetMainCamera(m_sceneManager);
 
-            // Установка режима wireframe на основе настроек
+            if (mainCamera) {
+                m_frustum.update(mainCamera->getProjectionMatrix() * mainCamera->getViewMatrix());
+            }
+
             glPolygonMode(GL_FRONT_AND_BACK, settings.wireframeMode ? GL_LINE : GL_FILL);
 
-            // PASS 1: Shadow Pass (если тени включены)
+            // PASS 1: Shadow Pass
             if (m_shadowManager && settings.enableShadows) {
                 glm::mat4 viewProj = glm::mat4(1.0f);
                 float nearPlane = settings.nearPlane;
@@ -125,8 +163,12 @@ namespace Lindo {
                 m_shadowManager->renderShadows(currentScene, viewProj, nearPlane, farPlane);
             }
 
-            // PASS 2: Forward Main Pass
-            RenderCommand::SetViewport(0, 0, displaySettings.windowWidth, displaySettings.windowHeight);
+            // --- БИНДИМ НАШ FBO ДЛЯ РЕНДЕРА СЦЕНЫ ---
+            if (m_fbo) {
+                m_fbo->bind();
+            }
+
+            RenderCommand::SetViewport(0, 0, m_viewportWidth, m_viewportHeight);
             RenderCommand::SetDepthTest(true);
             RenderCommand::SetDepthWrite(true);
             RenderCommand::SetDepthFuncLess();
@@ -137,7 +179,6 @@ namespace Lindo {
 
             m_lightingShader->use();
 
-            // Передача параметров постобработки, гаммы, экспозиции и теней в шейдер
             m_lightingShader->setFloat("gamma", settings.gamma);
             m_lightingShader->setFloat("exposure", settings.exposure);
             m_lightingShader->setInt("enableShadows", settings.enableShadows ? 1 : 0);
@@ -157,9 +198,9 @@ namespace Lindo {
                 m_shadowManager->bindShadowTextures(*m_lightingShader, currentScene);
             }
 
-            m_sceneManager->Render(*m_lightingShader);
+            renderScene(*currentScene, *m_lightingShader, mainCamera);
 
-            // PASS 3: Skybox
+            // Skybox Pass
             if (mainCamera && m_skybox) {
                 glm::mat4 view = mainCamera->getViewMatrix();
                 glm::mat4 skyboxView = glm::mat4(glm::mat3(view));
@@ -182,163 +223,163 @@ namespace Lindo {
                 RenderCommand::SetDepthFuncLess();
             }
 
-            // PASS 4: UI
-            if (m_uiManager) {
+            // Physics & Gizmo Debug Draw
+            bool renderPhysicsDebug = settings.isDebugDrawEnabled();
+            if (renderPhysicsDebug && currentScene) {
+                auto& debugDraw = DebugDraw::GetInstance();
+                glm::mat4 view = mainCamera ? mainCamera->getViewMatrix() : glm::mat4(1.0f);
+                glm::mat4 projection = mainCamera ? mainCamera->getProjectionMatrix() : glm::mat4(1.0f);
+
+                debugDraw.begin(view, projection);
+                RenderCommand::SetDepthTest(false);
+
+                auto* dirLight = currentScene->FindComponentOfType<Lindo::Components::Light::DirectionalLight>();
+                if (dirLight && dirLight->enabled) {
+                    glm::vec3 pos = dirLight->getPosition();
+                    glm::vec3 dir = glm::normalize(dirLight->direction);
+                    glm::vec3 color = glm::vec3(dirLight->color);
+
+                    debugDraw.DrawSphere(pos, 0.6f, color, 12);
+                    debugDraw.DrawArrow(pos, pos + dir * 5.0f, color, 0.5f);
+                }
+
+                auto pointLights = currentScene->FindComponentsOfType<Lindo::Components::Light::PointLight>();
+                for (auto* pointLight : pointLights) {
+                    if (!pointLight || !pointLight->enabled) continue;
+                    debugDraw.DrawSphere(pointLight->getPosition(), 0.35f, glm::vec3(pointLight->color), 12);
+                }
+
+                const auto& gameObjects = currentScene->GetGameObjects();
+                for (size_t i = 0; i < gameObjects.size(); ++i) {
+                    if (gameObjects[i] && gameObjects[i]->isActive) {
+                        gameObjects[i]->DrawGizmos();
+                    }
+                }
+
+                debugDraw.render();
+                RenderCommand::SetDepthTest(true);
+            }
+
+            if (m_fbo) {
+                m_fbo->unbind();
+            }
+
+            RenderCommand::SetViewport(0, 0, m_viewportWidth, m_viewportHeight);
+            if (m_fbo) {
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo->getFBOID());
+                GLenum framebufferStatus = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER);
+
                 RenderCommand::SetDepthTest(false);
                 RenderCommand::SetCullFace(false);
                 RenderCommand::SetBlending(true);
 
-                m_uiManager->update();
-                m_uiManager->render();
-            }
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-            // PASS 5: Physics & Gizmo Debug Draw
-            bool renderPhysicsDebug = settings.isDebugDrawEnabled();
-            if (m_debugDraw && renderPhysicsDebug) {
-                if (currentScene) {
-                    glm::mat4 view = mainCamera ? mainCamera->getViewMatrix() : glm::mat4(1.0f);
-                    glm::mat4 projection = mainCamera ? mainCamera->getProjectionMatrix() : glm::mat4(1.0f);
+                if (framebufferStatus == GL_FRAMEBUFFER_COMPLETE) {
+                    glBlitFramebuffer(
+                        0, 0, m_viewportWidth, m_viewportHeight,
+                        0, 0, m_viewportWidth, m_viewportHeight,
+                        GL_COLOR_BUFFER_BIT, GL_LINEAR
+                    );
+                }
 
-                    m_debugDraw->begin(view, projection);
-
-                    // 1. DIRECTIONAL LIGHT GIZMO
-                    auto* dirLight = currentScene->FindComponentOfType<Lindo::Components::Light::DirectionalLight>();
-                    if (dirLight && dirLight->enabled) {
-                        glm::vec3 pos = dirLight->getPosition();
-                        glm::vec3 dir = glm::normalize(dirLight->direction);
-                        glm::vec3 color = glm::vec3(dirLight->color);
-
-                        m_debugDraw->DrawSphere(pos, 0.6f, color, 12);
-                        m_debugDraw->DrawArrow(pos, pos + dir * 5.0f, color, 0.5f);
-
-                        glm::vec3 right = glm::normalize(glm::cross(dir, glm::abs(dir.y) > 0.99f ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(0.0f, 1.0f, 0.0f)));
-                        glm::vec3 up = glm::normalize(glm::cross(right, dir));
-                        float offset = 1.2f;
-
-                        m_debugDraw->DrawLine(pos + right * offset, pos + right * offset + dir * 4.0f, color);
-                        m_debugDraw->DrawLine(pos - right * offset, pos - right * offset + dir * 4.0f, color);
-                        m_debugDraw->DrawLine(pos + up * offset, pos + up * offset + dir * 4.0f, color);
-                        m_debugDraw->DrawLine(pos - up * offset, pos - up * offset + dir * 4.0f, color);
-                    }
-
-                    // 2. POINT LIGHT GIZMO
-                    auto pointLights = currentScene->FindComponentsOfType<Lindo::Components::Light::PointLight>();
-                    for (auto* pointLight : pointLights) {
-                        if (!pointLight || !pointLight->enabled) continue;
-                        glm::vec3 pos = pointLight->getPosition();
-                        glm::vec3 col = glm::vec3(pointLight->color);
-
-                        m_debugDraw->DrawSphere(pos, 0.35f, col, 12);
-
-                        float r = 0.8f;
-                        m_debugDraw->DrawLine(pos - glm::vec3(r, 0, 0), pos + glm::vec3(r, 0, 0), col);
-                        m_debugDraw->DrawLine(pos - glm::vec3(0, r, 0), pos + glm::vec3(0, r, 0), col);
-                        m_debugDraw->DrawLine(pos - glm::vec3(0, 0, r), pos + glm::vec3(0, 0, r), col);
-                    }
-
-                    // 3. COLLIDERS
-                    auto colliders = currentScene->FindComponentsOfType<Lindo::Components::Physics::Collider>();
-
-                    for (auto* collider : colliders) {
-                        if (!collider || !collider->gameObject) continue;
-
-                        glm::mat4 world = collider->gameObject->getWorldMatrix();
-                        glm::vec3 pos = collider->GetWorldPosition();
-                        glm::vec3 xAxis = glm::vec3(world[0]) * 0.5f;
-                        glm::vec3 yAxis = glm::vec3(world[1]) * 0.5f;
-                        glm::vec3 zAxis = glm::vec3(world[2]) * 0.5f;
-
-                        m_debugDraw->DrawLine(pos, pos + xAxis, glm::vec3(1.0f, 0.0f, 0.0f));
-                        m_debugDraw->DrawLine(pos, pos + yAxis, glm::vec3(0.0f, 1.0f, 0.0f));
-                        m_debugDraw->DrawLine(pos, pos + zAxis, glm::vec3(0.0f, 0.0f, 1.0f));
-
-                        // Важно: MeshCollider проверяется Первым, так как наследуется от BoxCollider
-                        if (auto* mesh = dynamic_cast<Lindo::Components::Physics::MeshCollider*>(collider)) {
-                            glm::mat4 transform = glm::translate(world, mesh->GetOffset());
-                            transform = glm::scale(transform, mesh->GetSize());
-                            m_debugDraw->DrawWireBox(transform, glm::vec3(1.0f, 0.0f, 1.0f));
-                        }
-                        else if (auto* box = dynamic_cast<Lindo::Components::Physics::BoxCollider*>(collider)) {
-                            glm::mat4 transform = glm::translate(world, box->GetOffset());
-                            transform = glm::scale(transform, box->GetSize());
-                            m_debugDraw->DrawWireBox(transform, glm::vec3(0.0f, 1.0f, 1.0f));
-                        }
-                        else if (auto* sphere = dynamic_cast<Lindo::Components::Physics::SphereCollider*>(collider)) {
-                            float maxScale = glm::max(glm::max(glm::length(glm::vec3(world[0])), glm::length(glm::vec3(world[1]))), glm::length(glm::vec3(world[2])));
-                            float worldRadius = sphere->GetRadius() * maxScale;
-
-                            glm::mat4 transform = glm::translate(glm::mat4(1.0f), pos);
-                            transform = glm::scale(transform, glm::vec3(worldRadius));
-                            m_debugDraw->DrawWireSphereFast(transform, glm::vec3(0.0f, 1.0f, 1.0f));
-                        }
-                        else if (auto* capsule = dynamic_cast<Lindo::Components::Physics::CapsuleCollider*>(collider)) {
-                            glm::vec3 top, bottom;
-                            capsule->GetEndpoints(bottom, top);
-                            float radius = capsule->GetWorldRadius();
-                            glm::vec3 axis = top - bottom;
-                            float axisLen = glm::length(axis);
-                            glm::vec3 dir = axisLen > 1e-6f ? axis / axisLen : glm::vec3(0.0f, 1.0f, 0.0f);
-
-                            glm::vec3 ortho = glm::abs(glm::dot(dir, glm::vec3(0.0f, 1.0f, 0.0f))) > 0.99f
-                                ? glm::vec3(1.0f, 0.0f, 0.0f)
-                                : glm::normalize(glm::cross(dir, glm::vec3(0.0f, 1.0f, 0.0f)));
-                            glm::vec3 tangent = glm::normalize(glm::cross(dir, ortho));
-                            glm::vec3 bitangent = glm::normalize(glm::cross(dir, tangent));
-
-                            const int segments = 20;
-                            const int halfSegments = 10;
-                            const glm::vec3 color(1.0f, 0.7f, 0.0f);
-
-                            auto drawCircle = [&](const glm::vec3& center) {
-                                m_debugDraw->DrawCircle(center, tangent, bitangent, radius, color, segments);
-                                };
-                            drawCircle(top);
-                            drawCircle(bottom);
-
-                            m_debugDraw->DrawLine(top + tangent * radius, bottom + tangent * radius, color);
-                            m_debugDraw->DrawLine(top - tangent * radius, bottom - tangent * radius, color);
-                            m_debugDraw->DrawLine(top + bitangent * radius, bottom + bitangent * radius, color);
-                            m_debugDraw->DrawLine(top - bitangent * radius, bottom - bitangent * radius, color);
-
-                            auto drawArc = [&](const glm::vec3& center, const glm::vec3& planeVec, float sign) {
-                                glm::vec3 prevPoint = center + planeVec * radius;
-                                for (int i = 1; i <= halfSegments; ++i) {
-                                    float theta = 3.14159265f * float(i) / float(halfSegments);
-                                    glm::vec3 nextPoint = center + cos(theta) * planeVec * radius + sin(theta) * dir * radius * sign;
-                                    m_debugDraw->DrawLine(prevPoint, nextPoint, color);
-                                    prevPoint = nextPoint;
-                                }
-                                };
-
-                            drawArc(top, tangent, 1.0f);
-                            drawArc(top, bitangent, 1.0f);
-                            drawArc(bottom, tangent, -1.0f);
-                            drawArc(bottom, bitangent, -1.0f);
-                        }
-                    }
-
-                    m_debugDraw->render();
+                if (m_uiManager) {
+                    m_uiManager->update();
+                    m_uiManager->render();
                 }
             }
 
-            // PASS 6: Debug Overlay (если включен показ FPS / дебага)
             if (m_debugSystem) {
                 m_debugSystem->update(m_sceneManager, mainCamera);
                 m_debugSystem->renderUI(m_uiManager);
             }
         }
 
-        void Renderer::onResize(int width, int height) {
-            if (height == 0) height = 1;
+        void Renderer::applySettings(const Lindo::Settings& settings) {
+            if (m_shadowManager) {
+                m_shadowManager->setQuality(settings.shadowQuality);
+            }
+        }
 
+        void Renderer::renderScene(Lindo::World::Scene& scene, Shader& shader, Lindo::Components::Rendering::Camera* camera) {
+            shader.use();
+
+            shader.setInt("activePointLights", 0);
+            shader.setBool("spotLight.enabled", false);
+
+            if (camera && camera->gameObject) {
+                shader.setMat4("viewMatrix", camera->getViewMatrix());
+                shader.setMat4("projectionMatrix", camera->getProjectionMatrix());
+                shader.setVec3("viewPos", camera->gameObject->getWorldPosition());
+            }
+
+            auto* sunObject = scene.FindGameObject("Sun");
+            auto* sunLight = sunObject
+                ? sunObject->getComponent<Lindo::Components::Light::DirectionalLight>()
+                : nullptr;
+            if (sunLight && sunLight->enabled) {
+                sunLight->ApplyToShader(shader, "dirLight");
+            } else {
+                shader.setBool("dirLight.enabled", false);
+            }
+
+            constexpr int maxPointLights = 32;
+            int activeLights = 0;
+            for (auto* pointLight : scene.FindComponentsOfType<Lindo::Components::Light::PointLight>()) {
+                if (!pointLight || !pointLight->enabled || activeLights >= maxPointLights) continue;
+                pointLight->ApplyToShader(shader, "pointLights[" + std::to_string(activeLights) + "]");
+                ++activeLights;
+            }
+            shader.setInt("activePointLights", activeLights);
+
+            if (auto* spotLight = scene.FindComponentOfType<Lindo::Components::Light::SpotLight>();
+                spotLight && spotLight->enabled) {
+                spotLight->ApplyToShader(shader, "spotLight");
+            }
+
+            for (const auto& object : scene.GetGameObjects()) {
+                if (!object || !object->isActive) continue;
+                auto* meshRenderer = object->getComponent<Lindo::Components::Physics::MeshRenderer>();
+                if (meshRenderer && meshRenderer->IsEnabled()) {
+                    if (meshRenderer->model) {
+                        const auto localBounds = meshRenderer->model->getAABB();
+                        const glm::mat4 world = object->getWorldMatrix();
+                        glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+                        glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+                        for (const glm::vec3& corner : {
+                            glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.min.z),
+                            glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.min.z),
+                            glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.min.z),
+                            glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.min.z),
+                            glm::vec3(localBounds.min.x, localBounds.min.y, localBounds.max.z),
+                            glm::vec3(localBounds.max.x, localBounds.min.y, localBounds.max.z),
+                            glm::vec3(localBounds.min.x, localBounds.max.y, localBounds.max.z),
+                            glm::vec3(localBounds.max.x, localBounds.max.y, localBounds.max.z) }) {
+                            const glm::vec3 transformed = glm::vec3(world * glm::vec4(corner, 1.0f));
+                            min = glm::min(min, transformed);
+                            max = glm::max(max, transformed);
+                        }
+                        if (!m_frustum.intersects(Lindo::Math::AABB(min, max))) continue;
+                    }
+                    meshRenderer->OnDraw(shader);
+                }
+            }
+        }
+
+        void Renderer::onResize(int width, int height) {
+            if (width <= 0 || height <= 0) return;
             LOG_INFO("[Renderer] Viewport resized: " + std::to_string(width) + "x" + std::to_string(height));
+            m_viewportWidth = width;
+            m_viewportHeight = height;
+
+            if (m_fbo) {
+                m_fbo->resize(width, height);
+            }
 
             auto* mainCamera = GetMainCamera(m_sceneManager);
             if (mainCamera) {
                 mainCamera->setAspectRatio(static_cast<float>(width) / static_cast<float>(height));
             }
-
-            RenderCommand::SetViewport(0, 0, width, height);
         }
     }
 }

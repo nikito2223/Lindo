@@ -1,0 +1,14 @@
+<UI>
+    <Panel id="editor.panel" x="18" y="18" width="390" height="390" color="0.025,0.035,0.05,0.94">
+        <Label x="16" y="12" width="350" height="28" text="EDITOR SCENE VIEW" fontSize="22" color="0.45,0.9,1,1" />
+        <Label x="16" y="42" width="350" height="24" text="F6  Toggle Editor / Game" fontSize="15" color="0.55,0.65,0.75,1" />
+        <Label id="editor.scene" x="16" y="78" width="350" height="24" text="Scene: -" fontSize="17" color="0.84,0.89,0.95,1" />
+        <Label id="editor.player" x="16" y="107" width="350" height="24" text="Player: -" fontSize="17" color="0.84,0.89,0.95,1" />
+        <Label id="editor.position" x="16" y="136" width="350" height="24" text="Position: -" fontSize="17" color="0.84,0.89,0.95,1" />
+        <Label id="editor.objects" x="16" y="165" width="350" height="24" text="Objects: -" fontSize="17" color="0.84,0.89,0.95,1" />
+        <Label id="editor.culling" x="16" y="194" width="350" height="24" text="Culling: -" fontSize="17" color="0.84,0.89,0.95,1" />
+        <Label id="editor.bounds" x="16" y="223" width="350" height="24" text="Bounds: enabled" fontSize="17" color="0.84,0.89,0.95,1" />
+        <Label x="16" y="260" width="350" height="24" text="Scene Objects" fontSize="17" color="0.45,0.9,1,1" />
+        <Label id="editor.object_list" x="16" y="290" width="350" height="70" text="-" fontSize="15" color="0.7,0.78,0.88,1" />
+    </Panel>
+</UI>

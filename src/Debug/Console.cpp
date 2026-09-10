@@ -30,7 +30,7 @@ namespace Lindo {
         void Console::hide() { m_targetOpen = false; }
 
         void Console::update() {
-            float dt = Lindo::Time::GetDeltaTime();
+            float dt = Lindo::Time::GetUnscaledDeltaTime();
             float target = m_targetOpen ? 1.0f : 0.0f;
             float speed = std::min(1.0f, dt * m_animSpeed);
             m_openAmount += (target - m_openAmount) * speed;
@@ -48,21 +48,21 @@ namespace Lindo {
 
             float panelHeight = m_screenHeight * m_heightRatio * m_openAmount;
 
-            // 1. Полноценная заливка фона консоли черным цветом
+            // 1. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             renderer.drawRect(Rect(0, 0, (float)m_screenWidth, panelHeight), Color(0.02f, 0.02f, 0.03f, 0.95f));
 
-            // 2. Синяя акцентная полоска по нижнему краю
+            // 2. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             renderer.drawRect(Rect(0, panelHeight - 2.0f, (float)m_screenWidth, 2.0f), Color(0.25f, 0.55f, 1.0f, 1.0f));
 
             float inputY = panelHeight - INPUT_HEIGHT;
 
-            // 3. Фон для самого поля ввода
+            // 3. пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             renderer.drawRect(Rect(0, inputY, (float)m_screenWidth, INPUT_HEIGHT), Color(0.08f, 0.08f, 0.10f, 0.98f));
 
             float scale = TEXT_SIZE / m_font->getLineHeight();
             float inputBaseline = inputY + INPUT_HEIGHT * 0.5f + m_font->getAscent() * scale * 0.35f;
 
-            // Отрисовка выделения текста (если оно есть)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
             if (hasSelection()) {
                 size_t mn = getSelectionMin();
                 size_t mx = getSelectionMax();
@@ -72,24 +72,24 @@ namespace Lindo {
                 float selStartX = PADDING + m_font->getStringWidthWithSize(beforeMin, TEXT_SIZE);
                 float selWidth = m_font->getStringWidthWithSize(selectedStr, TEXT_SIZE);
 
-                // Полупрозрачный синий прямоугольник под выделенным текстом
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 renderer.drawRect(Rect(selStartX, inputY + 4.0f, selWidth, INPUT_HEIGHT - 8.0f), Color(0.25f, 0.5f, 0.8f, 0.4f));
             }
 
-            // Отрисовка вводного текста
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             std::string prompt = "> " + m_inputBuffer;
             std::vector<UIRenderer::Vertex> inputVerts;
             m_font->getTextVerticesWithSize(prompt, PADDING, inputBaseline, TEXT_SIZE, Color(1.0f, 1.0f, 1.0f, 1.0f), inputVerts);
             if (!inputVerts.empty()) renderer.drawRaw(inputVerts, m_font->getTextureID());
 
-            // Курсор
+            // пїЅпїЅпїЅпїЅпїЅпїЅ
             if (m_cursorVisible) {
                 std::string beforeCursor = "> " + m_inputBuffer.substr(0, m_cursorPos);
                 float cursorX = PADDING + m_font->getStringWidthWithSize(beforeCursor, TEXT_SIZE);
                 renderer.drawRect(Rect(cursorX, inputY + 4.0f, 2.0f, INPUT_HEIGHT - 8.0f), Color(0.45f, 1.0f, 0.45f, 1.0f));
             }
 
-            // Отрисовка журнала логов
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             if (!m_lines.empty()) {
                 int total = (int)m_lines.size();
                 int startIdx = total - 1 - m_scrollOffset;
@@ -114,10 +114,12 @@ namespace Lindo {
             }
         }
 
-        // ---------------- Ввод ----------------
+        // ---------------- пїЅпїЅпїЅпїЅ ----------------
 
         void Console::onChar(unsigned int codepoint) {
-            if (codepoint == '`' || codepoint == '~') return; // клавиша открытия консоли не должна печататься
+            if (codepoint == '`' || codepoint == '~') return; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+
+            resetTabCompletion();
 
             if (hasSelection()) {
                 deleteSelection();
@@ -145,12 +147,13 @@ namespace Lindo {
 
             m_inputBuffer.insert(m_cursorPos, encoded);
             m_cursorPos += encoded.size();
-            m_selectionAnchor = m_cursorPos; // Сбрасываем выделение в новую позицию курсора
+            m_selectionAnchor = m_cursorPos; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             m_cursorVisible = true;
             m_cursorBlinkTimer = 0.0f;
         }
 
         void Console::onBackspace() {
+            resetTabCompletion();
             if (hasSelection()) {
                 deleteSelection();
                 return;
@@ -167,6 +170,7 @@ namespace Lindo {
         }
 
         void Console::onDeleteForward() {
+            resetTabCompletion();
             if (hasSelection()) {
                 deleteSelection();
                 return;
@@ -180,6 +184,7 @@ namespace Lindo {
         }
 
         void Console::onEnter() {
+            resetTabCompletion();
             if (m_inputBuffer.empty()) return;
             executeLine(m_inputBuffer);
             m_inputBuffer.clear();
@@ -228,6 +233,7 @@ namespace Lindo {
 
         void Console::onPaste() {
             if (!m_glfwWindow) return;
+            resetTabCompletion();
             const char* clip = glfwGetClipboardString(m_glfwWindow);
             if (!clip) return;
             std::string text(clip);
@@ -246,24 +252,26 @@ namespace Lindo {
 
         void Console::onCut() {
             if (!m_glfwWindow || !hasSelection()) return;
+            resetTabCompletion();
             onCopy();
             deleteSelection();
         }
 
         void Console::onTab() {
-            // Если кэш пустой (нажали Tab впервые для текущего префикса)
-            if (m_tabMatchesCache.empty()) {
-                size_t sp = m_inputBuffer.find(' ');
-                // Если есть пробел, значит, мы уже вводим аргументы — автодополнение команды не нужно
-                if (sp != std::string::npos) return;
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ Tab пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+            const size_t commandEnd = m_inputBuffer.find_first_of(" \t");
+            if (commandEnd != std::string::npos && m_cursorPos > commandEnd) return;
 
-                std::string prefix = m_inputBuffer;
+            if (m_tabMatchesCache.empty()) {
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+                const size_t prefixEnd = commandEnd == std::string::npos ? m_cursorPos : commandEnd;
+                std::string prefix = m_inputBuffer.substr(0, prefixEnd);
                 std::string lowerPrefix = prefix;
                 for (auto& c : lowerPrefix) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
-                // Собираем все подходящие команды
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 for (auto& kv : m_commands) {
-                    // Если префикс пустой, подходят вообще ВСЕ команды
+                    // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                     if (lowerPrefix.empty() || kv.first.compare(0, lowerPrefix.size(), lowerPrefix) == 0) {
                         m_tabMatchesCache.push_back(kv.second.name);
                     }
@@ -274,19 +282,19 @@ namespace Lindo {
                 m_tabIndex = 0;
             }
 
-            // Если найдена ровно 1 команда (или после фильтрации осталась одна)
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 1 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
             if (m_tabMatchesCache.size() == 1) {
                 m_inputBuffer = m_tabMatchesCache[0] + " ";
                 m_cursorPos = m_inputBuffer.size();
                 m_selectionAnchor = m_cursorPos;
             }
             else {
-                // Если вариантов несколько — циклически перебираем их по одному при каждом нажатии Tab
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Tab
                 m_inputBuffer = m_tabMatchesCache[m_tabIndex] + " ";
                 m_cursorPos = m_inputBuffer.size();
                 m_selectionAnchor = m_cursorPos;
 
-                // Печатаем список вариантов в лог только при первом нажатии, чтобы не засорять чат при листании
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 if (m_tabIndex == 0) {
                     std::string list;
                     for (size_t i = 0; i < m_tabMatchesCache.size(); ++i) {
@@ -295,7 +303,7 @@ namespace Lindo {
                     print(list, Color(0.6f, 0.6f, 0.6f, 1.0f));
                 }
 
-                // Переходим к следующей команде для следующего нажатия Tab
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Tab
                 m_tabIndex = (m_tabIndex + 1) % m_tabMatchesCache.size();
             }
         }
@@ -303,16 +311,19 @@ namespace Lindo {
         void Console::onEscape() { hide(); }
 
         void Console::onHome() {
+            resetTabCompletion();
             m_cursorPos = 0;
             m_selectionAnchor = m_cursorPos;
         }
 
         void Console::onEnd() {
+            resetTabCompletion();
             m_cursorPos = m_inputBuffer.size();
             m_selectionAnchor = m_cursorPos;
         }
 
         void Console::onMoveCursorLeft() {
+            resetTabCompletion();
             if (m_cursorPos == 0) return;
             size_t pos = m_cursorPos - 1;
             while (pos > 0 && (static_cast<unsigned char>(m_inputBuffer[pos]) & 0xC0) == 0x80) --pos;
@@ -321,6 +332,7 @@ namespace Lindo {
         }
 
         void Console::onMoveCursorRight() {
+            resetTabCompletion();
             if (m_cursorPos >= m_inputBuffer.size()) return;
             size_t pos = m_cursorPos + 1;
             while (pos < m_inputBuffer.size() && (static_cast<unsigned char>(m_inputBuffer[pos]) & 0xC0) == 0x80) ++pos;
@@ -329,6 +341,7 @@ namespace Lindo {
         }
 
         void Console::onHistoryUp() {
+            resetTabCompletion();
             if (m_history.empty()) return;
             if (m_historyIndex == -1) m_historyIndex = (int)m_history.size();
             if (m_historyIndex > 0) --m_historyIndex;
@@ -338,6 +351,7 @@ namespace Lindo {
         }
 
         void Console::onHistoryDown() {
+            resetTabCompletion();
             if (m_historyIndex == -1) return;
             ++m_historyIndex;
             if (m_historyIndex >= (int)m_history.size()) {
@@ -359,7 +373,12 @@ namespace Lindo {
             if (m_scrollOffset > maxOffset) m_scrollOffset = maxOffset;
         }
 
-        // ---------------- Команды ----------------
+        void Console::resetTabCompletion() {
+            m_tabMatchesCache.clear();
+            m_tabIndex = 0;
+        }
+
+        // ---------------- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ----------------
 
         std::vector<std::string> Console::tokenize(const std::string& line) const {
             std::vector<std::string> tokens;
@@ -420,7 +439,7 @@ namespace Lindo {
             it->second.fn(args);
         }
 
-        // ---------------- Логи ----------------
+        // ---------------- пїЅпїЅпїЅпїЅ ----------------
 
         void Console::addLog(Lindo::Core::LogLevel level, const std::string& text) {
             print(text, colorForLevel(level));

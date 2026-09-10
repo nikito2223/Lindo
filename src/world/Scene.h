@@ -30,36 +30,40 @@ namespace Lindo {
             Scene() = default;
             virtual ~Scene();
 
-            // ��������� ���� �����
-            virtual void OnCreate() {}      // ��� �������� �����
-            virtual void OnActivate() {}    // ����� ����� ���������� ��������
-            virtual void OnDeactivate() {}  // ����� ����� ��������������
-            virtual void OnDestroy() {}     // ��� ����������� �����
+            // Жизненный цикл сцены
+            virtual void OnCreate() {}      // При создании сцены
+            virtual void OnActivate() {}    // Когда сцена становится активной
+            virtual void OnDeactivate() {}  // Когда сцена деактивируется
+            virtual void OnDestroy() {}     // При уничтожении сцены
 
-            // �������� ������
+            // Основные циклы
             virtual void Update() {}
-            virtual void Render(Graphics::Shader& shader) {}
             virtual void ProcessInput(Input::Input* input) {}
 
-            // ���������� GameObject
+            // Управление GameObject
             Lindo::World::GameObject* CreateGameObject(const std::string& name = "GameObject");
+            void AddGameObject(Lindo::World::GameObject* obj); // Добавление уже созданного объекта
             void DestroyGameObject(Lindo::World::GameObject* obj);
             void DestroyGameObject(const std::string& name);
 
-            // ����� ��������
+            // Поиск объектов
             Lindo::World::GameObject* FindGameObject(const std::string& name) const;
             std::vector<Lindo::World::GameObject*> FindGameObjectsByTag(const std::string& tag) const;
+
             template<typename T>
             T* FindComponentOfType() const;
+
             template<typename T>
             std::vector<T*> FindComponentsOfType() const;
 
-            // �������
+            // Геттеры
             const std::vector<std::unique_ptr<Lindo::World::GameObject>>& GetGameObjects() const { return gameObjects; }
+            int countAllGameObjectsRecursive() const;
+
             bool IsActive() const { return isActive; }
             const std::string& GetName() const { return sceneName; }
 
-            // �������
+            // Сеттеры
             void SetName(const std::string& name) { sceneName = name; }
             void SetActive(bool active) { isActive = active; }
 
@@ -72,7 +76,7 @@ namespace Lindo {
             std::unordered_map<std::string, Lindo::World::GameObject*> gameObjectMap;
         };
 
-        // ���������� �������
+        // Реализация шаблонов поиска
         template<typename T>
         T* Scene::FindComponentOfType() const {
             for (const auto& obj : gameObjects) {

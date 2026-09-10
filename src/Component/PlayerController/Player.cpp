@@ -29,18 +29,18 @@ namespace Lindo {
                     characterController->SetOnJumpCallback([this]() {
                         // Эффект качания при прыжке
                         headBobTimer = 0.5f;
-                    });
+                        });
 
                     characterController->SetOnLandCallback([this]() {
                         // Эффект при приземлении
                         headBobTimer = 0.3f;
-                    });
+                        });
 
                     characterController->SetOnCrouchCallback([this](bool crouching) {
                         // Логика переключения приседания
-                    });
+                        });
                 }
-                
+
                 // Добавляем камеру как компонент
                 camera = gameObject->addComponent<Lindo::Components::Rendering::Camera>();
 
@@ -62,6 +62,7 @@ namespace Lindo {
 
             void Player::OnUpdate() {
                 if (!isAlive || !characterController) return;
+                if (freeCameraMode) return;
                 float dt = Lindo::Time::GetDeltaTime();
 
                 // Обновляем инвульнерабельность
@@ -91,6 +92,20 @@ namespace Lindo {
             }
 
             void Player::OnDestroy() {
+            }
+
+            void Player::SetFreeCameraMode(bool enabled) {
+                if (freeCameraMode == enabled || !camera || !characterController) return;
+                freeCameraMode = enabled;
+                characterController->SetSimulationEnabled(!enabled);
+                camera->setMode(enabled ? Rendering::Camera::Mode::Free : Rendering::Camera::Mode::FirstPerson);
+                forwardInput = 0.0f;
+                rightInput = 0.0f;
+                isRunning = false;
+                if (!enabled) {
+                    camera->heightOffset = isCrouching ? 0.9f : 1.6f;
+                    camera->setFront(camera->getFront());
+                }
             }
 
             void Player::ProcessInput() {
@@ -183,12 +198,27 @@ namespace Lindo {
 
             void Player::UnCrouch() {
                 if (characterController && isCrouching) {
-                    characterController->UnCrouch();
-                    isCrouching = false;
+                    // UnCrouch() может вернуть false, если сверху потолок — тогда персонаж
+                    // остаётся в приседе (как в Source), и isCrouching/камеру трогать не нужно.
+                    if (characterController->UnCrouch()) {
+                        isCrouching = false;
 
-                    if (camera) {
-                        camera->heightOffset = 1.6f; // Поднимаем камеру обратно
+                        if (camera) {
+                            camera->heightOffset = 1.6f; // Поднимаем камеру обратно
+                        }
                     }
+                }
+            }
+
+            void Player::SetCrouchInput(bool held) {
+                // Держим Ctrl — приседаем, отпустили — пытаемся встать (получится, только если
+                // сверху достаточно места; иначе Player::UnCrouch() выше просто ничего не сделает
+                // и мы повторим попытку в следующем кадре, пока клавиша остаётся отпущенной).
+                if (held) {
+                    Crouch();
+                }
+                else {
+                    UnCrouch();
                 }
             }
 

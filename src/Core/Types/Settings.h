@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <functional>
+#include <vector>
 
 namespace Lindo {
 
@@ -49,17 +51,32 @@ namespace Lindo {
         float sfxVolume = 1.0f;
         bool muteAudio = false;
 
+        using SettingsChangedCallback = std::function<void(const Settings&)>;
+        
+        void addOnChangedCallback(SettingsChangedCallback callback) {
+            m_onChangeCallbacks.push_back(callback);
+        }
+
+        void apply(const std::string& filepath = "../config/settings.ini") {
+            saveToFile(filepath);
+            for (auto& cb : m_onChangeCallbacks) {
+                if (cb) cb(*this);
+            }
+        }
+
         // --- Getters / Setters ---
         bool isDebugDrawEnabled() const { return debugMode; }
         void setDebugDrawEnabled(bool value) { debugMode = value; }
 
         void resetToDefaults();
 
-        // Методы для работы с файлами
-        void saveToFile(const std::string& filepath = "config/settings.ini");
-        void loadFromFile(const std::string& filepath = "config/settings.ini");
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        void saveToFile(const std::string& filepath = "../config/settings.ini");
+        void loadFromFile(const std::string& filepath = "../config/settings.ini");
 
         static Settings& getInstance();
+        private: 
+            std::vector<SettingsChangedCallback> m_onChangeCallbacks;
     };
 
     struct DisplaySettings {
@@ -76,9 +93,25 @@ namespace Lindo {
             return windowHeight > 0 ? static_cast<float>(windowWidth) / static_cast<float>(windowHeight) : 16.0f / 9.0f;
         }
 
-        void saveToFile(const std::string& filepath = "config/display.ini");
-        void loadFromFile(const std::string& filepath = "config/display.ini");
+        using DisplayChangedCallback = std::function<void(const DisplaySettings&)>;
+
+        void addOnChangedCallback(DisplayChangedCallback callback) {
+            m_onChangeCallbacks.push_back(callback);
+        }
+
+        void apply(const std::string& filepath = "../config/display.ini") {
+            saveToFile(filepath);
+            for (auto& cb : m_onChangeCallbacks) {
+                if (cb) cb(*this);
+            }
+        }
+
+        void saveToFile(const std::string& filepath = "../config/display.ini");
+        void loadFromFile(const std::string& filepath = "../config/display.ini");
 
         static DisplaySettings& getInstance();
+
+        private:
+            std::vector<DisplayChangedCallback> m_onChangeCallbacks;
     };
 }

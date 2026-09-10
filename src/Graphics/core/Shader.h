@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 
 #include <string>
+
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -187,6 +188,38 @@ namespace Lindo {
                 return glGetUniformLocation(ID, name.c_str());
             }
 
+            void logUniformDiagnostics(const std::string& label,
+                const std::vector<std::string>& names) const {
+                LOG_INFO("[Shader Diagnostics] " + label + " program=" + std::to_string(ID));
+                for (const auto& name : names) {
+                    const GLint location = glGetUniformLocation(ID, name.c_str());
+                    if (location < 0) {
+                        LOG_WARN("[Shader Diagnostics] Missing or optimized uniform: " + name);
+                    }
+                    else {
+                        LOG_DEBUG("[Shader Diagnostics] Uniform '" + name + "' location=" +
+                            std::to_string(location));
+                    }
+                }
+            }
+
+            static void logOpenGLErrors(const std::string& stage) {
+                GLenum error = GL_NO_ERROR;
+                while ((error = glGetError()) != GL_NO_ERROR) {
+                    std::string name;
+                    switch (error) {
+                    case GL_INVALID_ENUM: name = "GL_INVALID_ENUM"; break;
+                    case GL_INVALID_VALUE: name = "GL_INVALID_VALUE"; break;
+                    case GL_INVALID_OPERATION: name = "GL_INVALID_OPERATION"; break;
+                    case GL_INVALID_FRAMEBUFFER_OPERATION: name = "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
+                    case GL_OUT_OF_MEMORY: name = "GL_OUT_OF_MEMORY"; break;
+                    default: name = "GL_UNKNOWN_ERROR"; break;
+                    }
+                    LOG_ERROR("[OpenGL Diagnostics] " + stage + ": " + name +
+                        " (0x" + std::to_string(static_cast<unsigned int>(error)) + ")");
+                }
+            }
+
             void setBoolCached(const std::string& name, bool value) const
             {
                 static std::unordered_map<std::string, int> locationCache;
@@ -267,6 +300,30 @@ namespace Lindo {
 
         private:
 
+            static std::string sanitizeShaderSource(const std::string& source) {
+                std::string cleaned = source;
+
+                if (cleaned.size() >= 3 && cleaned[0] == static_cast<char>(0xEF) && cleaned[1] == static_cast<char>(0xBB) && cleaned[2] == static_cast<char>(0xBF)) {
+                    cleaned.erase(0, 3);
+                }
+
+                std::string sanitized;
+                sanitized.reserve(cleaned.size());
+                for (unsigned char c : cleaned) {
+                    if (c == 0xEF || c == 0xBB || c == 0xBF) {
+                        continue;
+                    }
+
+                    if (c < 0x20 && c != '\n' && c != '\r' && c != '\t') {
+                        continue;
+                    }
+
+                    sanitized.push_back(static_cast<char>(c));
+                }
+
+                return sanitized;
+            }
+
             Shader(const std::string& vertexCode, const std::string& fragmentCode, bool /*fromString*/) {
                 compileFromString(vertexCode, "", fragmentCode);
             }
@@ -300,6 +357,7 @@ namespace Lindo {
 
                 while (std::getline(file, line)) {
                     lineNumber++;
+                    line = sanitizeShaderSource(line);
                     size_t firstNonSpace = line.find_first_not_of(" \t");
                     if (firstNonSpace != std::string::npos && line.compare(firstNonSpace, 8, "#include") == 0) {
                         size_t start = line.find('"', firstNonSpace + 8);
@@ -322,7 +380,7 @@ namespace Lindo {
                     source += line + "\n";
                 }
 
-                return source;
+                return sanitizeShaderSource(source);
             }
 
             void compileShader(const char* vertexPath, const char* geometryPath, const char* fragmentPath) {
@@ -363,6 +421,12 @@ namespace Lindo {
                 const char* gShaderCode = geometryCode.empty() ? nullptr : geometryCode.c_str();
                 const char* fShaderCode = fragmentCode.c_str();
 
+                if (vertexCode.empty() || fragmentCode.empty()) {
+                    LOG_ERROR("[Shader] Cannot compile program: vertex or fragment source is empty.");
+                    ID = 0;
+                    return;
+                }
+
                 unsigned int vertex = 0, geometry = 0, fragment = 0;
 
                 // Vertex Shader
@@ -371,6 +435,7 @@ namespace Lindo {
                 glShaderSource(vertex, 1, &vShaderCode, NULL);
                 glCompileShader(vertex);
                 checkCompileErrors(vertex, "VERTEX");
+                logOpenGLErrors("after vertex shader compilation");
 
                 // Geometry Shader
                 if (gShaderCode) {
@@ -379,6 +444,7 @@ namespace Lindo {
                     glShaderSource(geometry, 1, &gShaderCode, NULL);
                     glCompileShader(geometry);
                     checkCompileErrors(geometry, "GEOMETRY");
+                    logOpenGLErrors("after geometry shader compilation");
                 }
 
                 // Fragment Shader
@@ -387,6 +453,7 @@ namespace Lindo {
                 glShaderSource(fragment, 1, &fShaderCode, NULL);
                 glCompileShader(fragment);
                 checkCompileErrors(fragment, "FRAGMENT");
+                logOpenGLErrors("after fragment shader compilation");
 
                 // Program Linking
                 LOG_DEBUG("[Shader Linking] Linking Shader Program...");
@@ -396,6 +463,7 @@ namespace Lindo {
                 glAttachShader(ID, fragment);
                 glLinkProgram(ID);
                 checkCompileErrors(ID, "PROGRAM");
+                logOpenGLErrors("after shader program link");
 
                 // Cleanup
                 glDeleteShader(vertex);

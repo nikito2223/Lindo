@@ -19,47 +19,13 @@ uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLight;
 uniform Material material;
 
-uniform int u_pointShadowIndex[NR_POINT_LIGHTS];
-
-// Debug mode
-uniform bool debugMode;
-uniform bool showLightIcons;
-uniform float lightIconRadius;
-
 // Forward Declarations
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffCol, vec3 specCol);
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol, int shadowIndex);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol);
 
 void main()
 {
-    if (debugMode && showLightIcons) {
-        for (int i = 0; i < NR_POINT_LIGHTS; i++) {
-            if (pointLights[i].enabled) {
-                vec3 toLight = pointLights[i].position - FragPos;
-                float distToLight = length(toLight);
-                if (distToLight < lightIconRadius) {
-                    float intensity = 1.0 - distToLight / lightIconRadius;
-                    vec3 baseColor = pointLights[i].color * pointLights[i].intensity;
-                    float alpha = mix(0.3, 0.9, intensity);
-                    FragColor = vec4(baseColor, alpha);
-                    return;
-                }
-            }
-        }
-        if (spotLight.enabled) {
-            vec3 toLight = spotLight.position - FragPos;
-            float distToLight = length(toLight);
-            if (distToLight < lightIconRadius) {
-                float intensity = 1.0 - distToLight / lightIconRadius;
-                vec3 baseColor = spotLight.color * spotLight.intensity;
-                float alpha = mix(0.3, 0.9, intensity);
-                FragColor = vec4(baseColor, alpha);
-                return;
-            }
-        }
-    }
-
     vec4 diffTex = material.useTexture ? texture(material.diffuse, TexCoords) : vec4(material.color, 1.0);
     if (diffTex.a < 0.1) discard;
 
@@ -69,12 +35,12 @@ void main()
     vec3 norm = normalize(Normal);
     vec3 viewDir = length(viewPos - FragPos) > 0.0001 ? normalize(viewPos - FragPos) : vec3(0.0, 0.0, 1.0);
 
-    vec3 result = CalcDirLight(dirLight, norm, viewDir, diffCol, specCol);
+    vec3 result = diffCol * 0.03 + CalcDirLight(dirLight, norm, viewDir, diffCol, specCol);
 
     int numLights = min(activePointLights, NR_POINT_LIGHTS);
     for (int i = 0; i < numLights; i++) {
         if (pointLights[i].enabled) {
-            result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, diffCol, specCol, u_pointShadowIndex[i]);
+            result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, diffCol, specCol);
         }
     }
 
@@ -99,18 +65,16 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffCol, vec3 
     vec3 specular = light.specular * spec * specCol * light.color;
 
     if (u_shadowsEnabled) {
-        vec4 viewPos4 = viewMatrix * vec4(FragPos, 1.0);
-        float viewDepth = -viewPos4.z;
-        
-        float shadow = CascadedShadowCalculation(FragPos, normal, lightDir, viewDepth);
-        diffuse *= (1.0 - shadow);
-        specular *= (1.0 - shadow);
+        vec4 viewPosition = viewMatrix * vec4(FragPos, 1.0);
+        float shadow = CascadedShadowCalculation(FragPos, normal, lightDir, -viewPosition.z);
+        diffuse *= 1.0 - shadow;
+        specular *= 1.0 - shadow;
     }
 
     return ambient + diffuse + specular;
 }
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol, int shadowIndex)
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol)
 {
     vec3 lightDir = light.position - fragPos;
     float distance = length(lightDir);
@@ -119,8 +83,6 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     float denom = light.constant + light.linear * distance + light.quadratic * (distance * distance);
     float attenuation = 1.0 / max(denom, 0.0001);
 
-    // ОПТИМИЗАЦИЯ: Если свет от этого источника уже не виден (менее 1%), 
-    // мы даже не считаем для него блики и тяжелые тени
     if (attenuation < 0.01) {
         return vec3(0.0);
     }
@@ -133,13 +95,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     vec3 diffuse  = light.diffuse * diff * diffCol;
     vec3 specular = light.specular * spec * specCol * light.color;
 
-    // Считаем тень только если источник реально бросает тень
-    float shadow = 0.0;
-    if (shadowIndex >= 0 && u_shadowsEnabled) {
-        shadow = PointShadowCalculation(fragPos, normal, light.position, shadowIndex);
-    }
-
-    return (ambient + (1.0 - shadow) * (diffuse + specular)) * attenuation;
+    return (ambient + diffuse + specular) * attenuation;
 }
 
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol)
@@ -163,6 +119,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
     vec3 specular = light.specular * spec * specCol * light.color;
 
     float shadow = SpotShadowCalculation(fragPos, normal, light.position, light.direction);
+
     vec3 lighting = ambient + (1.0 - shadow) * (diffuse + specular);
 
     return lighting * attenuation * spotIntensity;

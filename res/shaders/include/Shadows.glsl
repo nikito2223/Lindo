@@ -13,12 +13,6 @@ uniform float u_shadowMapSize;
 uniform float u_penumbraScale;
 uniform float u_cascadeBlend;
 
-// === Point Shadows Uniforms ===
-uniform samplerCube u_pointShadowMaps[4];
-uniform float u_pointShadowFarPlanes[4];
-uniform vec3 u_pointShadowPositions[4];
-uniform int u_pointShadowCount;
-
 // === Spot Shadows Uniforms ===
 uniform sampler2D u_spotShadowMap;
 uniform bool u_spotShadowsEnabled;
@@ -26,14 +20,6 @@ uniform mat4 u_spotShadowMatrix;
 uniform vec3 u_spotLightPosition;
 uniform vec3 u_spotLightDirection;
 uniform float u_spotShadowFarPlane;
-
-const vec3 sampleOffsetDirections[20] = vec3[](
-    vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
-    vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
-    vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
-    vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
-    vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0,  1, -1), vec3( 0, -1, -1)
-);
 
 int selectCascade(float viewDepth)
 {
@@ -50,7 +36,7 @@ float PCFDirectional(vec2 projCoords, int cascade, float currentDepth, float bia
 {
     vec2 texelSize = vec2(1.0) / vec2(textureSize(u_shadowMap, 0).xy);
     float shadow = 0.0;
-    int kernel = 2;
+    int kernel = 1;
     for (int x = -kernel; x <= kernel; ++x) {
         for (int y = -kernel; y <= kernel; ++y) {
             float pcfDepth = texture(u_shadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, float(cascade))).r;
@@ -130,39 +116,24 @@ float CascadedShadowCalculation(vec3 fragPos, vec3 normal, vec3 lightDir, float 
         shadow = PCFDirectional(projCoords.xy, cascade, currentDepth, bias);
     }
 
-    float blend = u_cascadeBlend;
-    if (cascade > 0 && viewDepth > u_cascadeSplitPlanes[cascade - 1]) {
-        float t = clamp((viewDepth - u_cascadeSplitPlanes[cascade - 1]) / blend, 0.0, 1.0);
-        shadow *= (1.0 - t);
+    // РРЎРџР РђР’Р›Р•РќРР• 1: РљР°СЃРєР°РґРЅС‹Р№ Р±Р»РµРЅРґРёРЅРі СѓР±РёСЂР°Р» С‚РµРЅРё РІРјРµСЃС‚Рѕ РјСЏРіРєРѕРіРѕ РїРµСЂРµС…РѕРґР°
+    if (cascade < u_cascadeCount - 1 && u_cascadeBlend > 0.0) {
+        float nextSplit = u_cascadeSplitPlanes[cascade];
+        float fadeStart = nextSplit - u_cascadeBlend;
+        if (viewDepth > fadeStart) {
+            float t = clamp((viewDepth - fadeStart) / u_cascadeBlend, 0.0, 1.0);
+            int nextCascade = cascade + 1;
+            vec4 nextLightSpace = u_shadowMatrices[nextCascade] * vec4(offsetFragPos, 1.0);
+            vec3 nextProjCoords = (nextLightSpace.xyz / nextLightSpace.w) * 0.5 + 0.5;
+            float nextShadow;
+            if (u_penumbraScale > 0.0) {
+                nextShadow = PCSSDirectional(nextProjCoords.xy, nextCascade, normal, lightDir, nextProjCoords.z, bias);
+            } else {
+                nextShadow = PCFDirectional(nextProjCoords.xy, nextCascade, nextProjCoords.z, bias);
+            }
+            shadow = mix(shadow, nextShadow, t);
+        }
     }
-
-    return clamp(shadow, 0.0, 1.0);
-}
-
-float PointShadowCalculation(vec3 fragPos, vec3 normal, vec3 lightPos, int shadowIndex)
-{
-    if (shadowIndex < 0 || shadowIndex >= u_pointShadowCount) return 0.0;
-
-    vec3 fragToLight = fragPos - lightPos;
-    float currentDepth = length(fragToLight);
-    float farPlane = u_pointShadowFarPlanes[shadowIndex];
-
-    // Отсекаем пиксели, которые находятся дальше границы тени источника
-    if (currentDepth > farPlane) return 0.0;
-
-    vec3 lightDir = normalize(lightPos - fragPos);
-    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
-
-    float shadow = 0.0;
-    float diskRadius = 0.05;
-    
-    // Цикл теперь использует предкомпилированный глобальный массив
-    for (int i = 0; i < 20; ++i) {
-        float closest = texture(u_pointShadowMaps[shadowIndex], fragToLight + sampleOffsetDirections[i] * diskRadius).r;
-        closest *= farPlane;
-        if (currentDepth - bias > closest) shadow += 1.0;
-    }
-    shadow /= 20.0;
 
     return clamp(shadow, 0.0, 1.0);
 }

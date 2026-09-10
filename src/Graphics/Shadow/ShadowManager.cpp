@@ -55,7 +55,6 @@ namespace Lindo {
             m_initialized = true;
 
             discoverCasters(scene);
-            updatePointCasters(scene);
 
             LOG_INFO("ShadowManager initialized (quality=" + std::to_string(static_cast<int>(m_quality)) +
                 ", cascades=" + std::to_string(m_settings.cascadeCount) +
@@ -69,18 +68,7 @@ namespace Lindo {
 
                 auto* meshRenderer = obj->getComponent<Lindo::Components::Physics::MeshRenderer>();
                 if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
-
-                const glm::mat4 worldMatrix = obj->getWorldMatrix();
-                depthShader.setMat4("u_model", worldMatrix);
-
-                if (meshRenderer->mesh) {
-                    meshRenderer->mesh->Draw(depthShader);
-                }
-                else if (meshRenderer->model) {
-                    for (auto& mesh : meshRenderer->model->getMeshes()) {
-                        mesh.Draw(depthShader);
-                    }
-                }
+                meshRenderer->DrawShadow(depthShader);
             }
         }
 
@@ -107,6 +95,10 @@ namespace Lindo {
             m_pointLightPositions.clear();
             m_pointLightFarPlanes.clear();
             m_pointLightSources.clear();
+            if (maxPoint <= 0) {
+                m_pointCasters.clear();
+                return;
+            }
             for (auto* pl : pointLights) {
                 if (!pl || !pl->enabled || !pl->castShadows) continue;
                 if (static_cast<int>(m_pointLightPositions.size()) >= maxPoint) break;
@@ -132,39 +124,54 @@ namespace Lindo {
         void ShadowManager::renderShadows(Lindo::World::Scene* scene,
             const glm::mat4& viewProj, float nearPlane, float farPlane) {
             if (!scene) return;
+
+            auto* directionalLight = scene->FindComponentOfType<Lindo::Components::Light::DirectionalLight>();
+            auto* spotLight = scene->FindComponentOfType<Lindo::Components::Light::SpotLight>();
+            const bool hasDirectionalShadows = directionalLight && directionalLight->enabled && directionalLight->castShadows;
+            const bool hasSpotShadows = spotLight && spotLight->enabled && spotLight->castShadows;
+            if (!hasDirectionalShadows && !hasSpotShadows) {
+                m_directionalActive = false;
+                m_spotActive = false;
+                m_pointLightPositions.clear();
+                m_pointLightFarPlanes.clear();
+                m_pointLightSources.clear();
+                return;
+            }
+
             if (!m_initialized) initialize(scene);
 
             discoverCasters(scene);
-            updatePointCasters(scene);
+
+            if (!m_diagnosticsLogged) {
+                LOG_INFO("[Shadow Diagnostics] casters=" + std::to_string(m_shadowCasters.size()) +
+                    ", directional=" + std::string(hasDirectionalShadows ? "on" : "off") +
+                    ", spot=" + std::string(hasSpotShadows ? "on" : "off") +
+                    ", cascades=" + std::to_string(m_settings.cascadeCount) +
+                    ", mapSize=" + std::to_string(m_settings.shadowMapSize));
+                m_diagnosticsLogged = true;
+            }
 
             if (m_settings.cascadeCount <= 0) {
                 m_directionalActive = false;
             }
 
             // --- Directional (CSM) pass ---
-            auto* dirLight = scene->FindComponentOfType<Lindo::Components::Light::DirectionalLight>();
+            auto* dirLight = directionalLight;
             m_directionalActive = false;
             if (dirLight && dirLight->enabled && dirLight->castShadows && m_directionalCaster) {
                 m_directionalCaster->setLight(dirLight->direction);
                 m_directionalCaster->setLightPosition(dirLight->getPosition());
                 m_directionalCaster->setCamera(viewProj, nearPlane, farPlane);
                 m_directionalCaster->render(m_shadowCasters);
+                Shader::logOpenGLErrors("after directional shadow pass");
 
                 m_lightSpaceMatrices = m_directionalCaster->lightSpaceMatrices();
                 m_splitDepths = m_directionalCaster->splitDepths();
                 m_directionalActive = m_directionalCaster->valid();
             }
 
-            // --- Point light passes ---
-            for (size_t i = 0; i < m_pointLightPositions.size(); ++i) {
-                if (i >= m_pointCasters.size() || !m_pointCasters[i]) continue;
-                m_pointCasters[i]->setLight(m_pointLightPositions[i], m_pointLightFarPlanes[i]);
-                m_pointCasters[i]->render(m_shadowCasters);
-            }
-
             // --- Spot light pass ---
             m_spotActive = false;
-            auto* spotLight = scene->FindComponentOfType<Lindo::Components::Light::SpotLight>();
             if (spotLight && spotLight->enabled && spotLight->castShadows && m_spotCaster) {
                 glm::vec3 lightDirection = spotLight->direction;
                 if (spotLight->gameObject) {
@@ -174,6 +181,7 @@ namespace Lindo {
                 m_spotCaster->setLight(spotLight->getPosition(), lightDirection,
                     spotLight->farPlane, coneAngle);
                 m_spotCaster->render(m_shadowCasters);
+                Shader::logOpenGLErrors("after spot shadow pass");
                 m_spotLightSpaceMatrix = m_spotCaster->lightSpaceMatrix();
                 m_spotLightPosition = spotLight->getPosition();
                 m_spotLightDirection = lightDirection;
@@ -206,6 +214,7 @@ namespace Lindo {
             if (m_directionalCaster && m_directionalCaster->valid()) {
                 m_directionalCaster->bindForReading(5);
                 forwardShader.setInt("u_shadowMap", 5);
+                Shader::logOpenGLErrors("after binding directional shadow texture");
             }
 
             if (m_directionalActive && m_directionalCaster && m_directionalCaster->valid()) {

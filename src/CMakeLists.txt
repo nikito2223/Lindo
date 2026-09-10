@@ -2,6 +2,9 @@ project(LindoSrc)
 
 file(GLOB_RECURSE headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB_RECURSE sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/core/Frustum.cpp)
+list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Editor/EditorSystem.cpp)
+list(REMOVE_DUPLICATES sources)
 list(REMOVE_ITEM sources ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/core/DebugDraw.cpp)
 
@@ -21,11 +24,17 @@ endif()
 find_package(glfw3 REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(PNG REQUIRED)
+find_package(Lua REQUIRED)
+find_package(sol2 CONFIG REQUIRED)
 
-target_include_directories(LindoSrc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(LindoSrc 
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${LUA_INCLUDE_DIR}
+    )
 
 target_compile_options(LindoSrc PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/FS>
+    /bigobj
 )
 
 target_link_libraries(
@@ -38,7 +47,8 @@ target_link_libraries(
             OpenAL::OpenAL
             Freetype::Freetype
             PNG::PNG
-            $<$<PLATFORM_ID:Windows>:d3d11 dxgi dxguid>
+            ${LUA_LIBRARIES}
+            sol2::sol2
     PUBLIC glm::glm # Need public for src/delegates.hpp, which including to
                     # main.cpp
 )

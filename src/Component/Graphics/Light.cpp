@@ -57,6 +57,7 @@ namespace Lindo {
             // ==========================================
             PointLight::PointLight(const std::string& lightName)
                 : Light(LightType::Point, lightName) {
+                castShadows = false;
             }
 
             void PointLight::SetRadius(float newRadius) {
@@ -87,6 +88,7 @@ namespace Lindo {
             // ==========================================
             SpotLight::SpotLight(const std::string& lightName)
                 : Light(LightType::Spot, lightName) {
+                castShadows = false;
             }
 
             void SpotLight::SetRadius(float newRadius) {

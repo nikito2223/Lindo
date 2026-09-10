@@ -6,8 +6,7 @@ namespace Lindo::Graphics {
     enum class GraphicsAPI {
         None = 0,
         OpenGL = 1,
-        DirectX11 = 2, // На будущее
-        Vulkan = 3     // На будущее
+        Vulkan = 3     // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     };
 
     class IRenderAPI {
@@ -19,7 +18,7 @@ namespace Lindo::Graphics {
         virtual void SetClearColor(const glm::vec4& color) = 0;
         virtual void Clear(bool colorBuffer = true, bool depthBuffer = true) = 0;
 
-        // Управление состояниями (State Management)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (State Management)
         virtual void SetDepthTest(bool enabled) = 0;
         virtual void SetDepthWrite(bool enabled) = 0;
         virtual void SetDepthFuncLess() = 0;

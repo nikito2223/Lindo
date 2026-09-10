@@ -23,7 +23,7 @@ struct ShadowQualitySettings {
     float normalBias        = 0.02f;  // offset cast surface along normal
     float penumbraScale     = 1.0f;   // PCSS blocker-search scale
     float cascadeBlend      = 0.1f;   // blend band between cascades (view depth)
-    int   maxPointShadows   = 4;      // simultaneous point-light shadow maps
+    int   maxPointShadows   = 2;      // simultaneous point-light shadow maps
     int   pointShadowSize   = 1024;   // cubemap face resolution
     int   spotShadowSize    = 1024;   // spot shadow map resolution
 };
@@ -47,6 +47,7 @@ inline ShadowQualitySettings qualitySettingsOf(ShadowQuality q) {
             s.maxDepthBias = 0.06f;
             s.normalBias = 0.03f;
             s.pointShadowSize = 512;
+            s.maxPointShadows = 0;
             s.spotShadowSize = 512;
             break;
         case ShadowQuality::Medium:
@@ -58,27 +59,30 @@ inline ShadowQualitySettings qualitySettingsOf(ShadowQuality q) {
             s.maxDepthBias = 0.05f;
             s.normalBias = 0.025f;
             s.pointShadowSize = 1024;
+            s.maxPointShadows = 1;
             s.spotShadowSize = 1024;
             break;
         case ShadowQuality::High:
             s.cascadeCount = 3;
             s.shadowMapSize = 2048;
-            s.pcssEnabled = true;
+            s.pcssEnabled = false;
             s.penumbraScale = 1.0f;
             s.maxDepthBias = 0.04f;
             s.normalBias = 0.02f;
             s.pointShadowSize = 2048;
+            s.maxPointShadows = 2;
             s.spotShadowSize = 2048;
             break;
         case ShadowQuality::Ultra:
         default:
             s.cascadeCount = 4;
             s.shadowMapSize = 4096;
-            s.pcssEnabled = true;
+            s.pcssEnabled = false;
             s.penumbraScale = 1.0f;
             s.maxDepthBias = 0.03f;
             s.normalBias = 0.015f;
             s.pointShadowSize = 4096;
+            s.maxPointShadows = 2;
             s.spotShadowSize = 4096;
             break;
     }

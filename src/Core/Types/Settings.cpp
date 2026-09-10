@@ -3,6 +3,7 @@
 #include <sstream>
 #include <filesystem>
 #include <iostream>
+#include "Debug/DebugLogger.h" // Для LOG_INFO / LOG_ERROR
 
 namespace Lindo {
 
@@ -31,19 +32,25 @@ namespace Lindo {
     }
 
     void Settings::saveToFile(const std::string& filepath) {
-        // Убеждаемся, что директория существует (например, config/)
         std::filesystem::path path(filepath);
+        std::filesystem::path absPath = std::filesystem::absolute(path);
+
+        LOG_INFO("[Settings] Attempting to save config to: " + absPath.string());
+
         if (path.has_parent_path()) {
-            std::filesystem::create_directories(path.parent_path());
+            std::error_code ec;
+            std::filesystem::create_directories(path.parent_path(), ec);
+            if (ec) {
+                LOG_ERROR("[Settings] Failed to create directories: " + ec.message());
+            }
         }
 
-        std::ofstream outFile(filepath);
+        std::ofstream outFile(filepath, std::ios::out | std::ios::trunc);
         if (!outFile.is_open()) {
-            std::cerr << "[Settings] Failed to open file for writing: " << filepath << std::endl;
+            LOG_ERROR("[Settings] Failed to open file for writing: " + absPath.string());
             return;
         }
 
-        // Самый простой и надежный формат ключ = значение (INI-like)
         outFile << "debugMode=" << debugMode << "\n";
         outFile << "showFPS=" << showFPS << "\n";
         outFile << "wireframeMode=" << wireframeMode << "\n";
@@ -64,19 +71,30 @@ namespace Lindo {
         outFile << "sfxVolume=" << sfxVolume << "\n";
         outFile << "muteAudio=" << muteAudio << "\n";
 
+        outFile.flush();
         outFile.close();
+
+        if (outFile.fail()) {
+            LOG_ERROR("[Settings] Error occurred during writing to file: " + absPath.string());
+        }
+        else {
+            LOG_INFO("[Settings] Config saved successfully to: " + absPath.string());
+        }
     }
 
     void Settings::loadFromFile(const std::string& filepath) {
+        std::filesystem::path absPath = std::filesystem::absolute(filepath);
+        LOG_INFO("[Settings] Loading config from: " + absPath.string());
+
         if (!std::filesystem::exists(filepath)) {
-            std::cout << "[Settings] Config file not found at " << filepath << ". Using defaults and creating file.\n";
-            saveToFile(filepath); // Создаем файл с дефолтными значениями, если его нет
+            LOG_INFO("[Settings] Config file not found at " + absPath.string() + ". Using defaults and creating file.");
+            saveToFile(filepath);
             return;
         }
 
         std::ifstream inFile(filepath);
         if (!inFile.is_open()) {
-            std::cerr << "[Settings] Failed to open file for reading: " << filepath << std::endl;
+            LOG_ERROR("[Settings] Failed to open file for reading: " + absPath.string());
             return;
         }
 
@@ -108,13 +126,12 @@ namespace Lindo {
                         else if (key == "sfxVolume") sfxVolume = std::stof(value);
                         else if (key == "muteAudio") muteAudio = (value == "1" || value == "true");
                     }
-                    catch (...) {
-                        // Игнорируем ошибки парсинга отдельных строк
-                    }
+                    catch (...) {}
                 }
             }
         }
         inFile.close();
+        LOG_INFO("[Settings] Config loaded successfully.");
     }
 
     Settings& Settings::getInstance() {
@@ -126,12 +143,23 @@ namespace Lindo {
 
     void DisplaySettings::saveToFile(const std::string& filepath) {
         std::filesystem::path path(filepath);
+        std::filesystem::path absPath = std::filesystem::absolute(path);
+
+        LOG_INFO("[DisplaySettings] Attempting to save display config to: " + absPath.string());
+
         if (path.has_parent_path()) {
-            std::filesystem::create_directories(path.parent_path());
+            std::error_code ec;
+            std::filesystem::create_directories(path.parent_path(), ec);
+            if (ec) {
+                LOG_ERROR("[DisplaySettings] Failed to create directories: " + ec.message());
+            }
         }
 
-        std::ofstream outFile(filepath);
-        if (!outFile.is_open()) return;
+        std::ofstream outFile(filepath, std::ios::out | std::ios::trunc);
+        if (!outFile.is_open()) {
+            LOG_ERROR("[DisplaySettings] Failed to open file for writing: " + absPath.string());
+            return;
+        }
 
         outFile << "windowWidth=" << windowWidth << "\n";
         outFile << "windowHeight=" << windowHeight << "\n";
@@ -142,17 +170,32 @@ namespace Lindo {
         outFile << "useFixedTimestep=" << useFixedTimestep << "\n";
         outFile << "fixedTimestep=" << fixedTimestep << "\n";
 
+        outFile.flush();
         outFile.close();
+
+        if (outFile.fail()) {
+            LOG_ERROR("[DisplaySettings] Error occurred during writing to file: " + absPath.string());
+        }
+        else {
+            LOG_INFO("[DisplaySettings] Config saved successfully (fullscreen=" + std::to_string(fullscreen) + ") to: " + absPath.string());
+        }
     }
 
     void DisplaySettings::loadFromFile(const std::string& filepath) {
+        std::filesystem::path absPath = std::filesystem::absolute(filepath);
+        LOG_INFO("[DisplaySettings] Loading config from: " + absPath.string());
+
         if (!std::filesystem::exists(filepath)) {
+            LOG_INFO("[DisplaySettings] Config file not found at " + absPath.string() + ". Using defaults and creating file.");
             saveToFile(filepath);
             return;
         }
 
         std::ifstream inFile(filepath);
-        if (!inFile.is_open()) return;
+        if (!inFile.is_open()) {
+            LOG_ERROR("[DisplaySettings] Failed to open file for reading: " + absPath.string());
+            return;
+        }
 
         std::string line;
         while (std::getline(inFile, line)) {
@@ -176,6 +219,7 @@ namespace Lindo {
             }
         }
         inFile.close();
+        LOG_INFO("[DisplaySettings] Config loaded successfully.");
     }
 
     DisplaySettings& DisplaySettings::getInstance() {

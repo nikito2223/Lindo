@@ -2,20 +2,21 @@
 #include <glad/glad.h>
 #include <iostream>
 #include <string>
+#include <debug/DebugLogger.h>
 namespace Lindo {
     namespace Graphics {
         namespace UI {
             static const char* vertexShaderSource = R"(
 #version 330 core
-layout (location = 0) in vec2 aPos;       // Позиция на экране (в пикселях)
-layout (location = 1) in vec2 aTexCoords; // Координаты атласа шрифта [0, 1]
-layout (location = 2) in vec4 aColor;     // Цвет текста (переданный из UIFont)
+layout (location = 0) in vec2 aPos;       // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+layout (location = 1) in vec2 aTexCoords; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ [0, 1]
+layout (location = 2) in vec4 aColor;     // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ UIFont)
 
 out vec2 TexCoords;
 out vec4 FragColor;
 
-// Сюда передавайте ортографическую матрицу проекции, 
-// например: glm::ortho(0.0f, screenWidth, screenHeight, 0.0f)
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: glm::ortho(0.0f, screenWidth, screenHeight, 0.0f)
 uniform mat4 projection; 
 
 void main() {
@@ -32,7 +33,7 @@ in vec4 FragColor;
 
 out vec4 color;
 
-uniform sampler2D uTexture; // Проверь, чтобы имя было uTexture, а не textTexture
+uniform sampler2D uTexture; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ uTexture, пїЅ пїЅпїЅ textTexture
 
 void main() {
     color = FragColor * texture(uTexture, TexCoords);
@@ -51,23 +52,36 @@ void main() {
             }
 
             bool UIRenderer::init() {
-                // Компиляция шейдеров (упрощённо, можно вынести в функцию)
+                LOG_INFO("[UIRenderer] Creating OpenGL UI shader program...");
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                 unsigned int vs = glCreateShader(GL_VERTEX_SHADER);
                 glShaderSource(vs, 1, &vertexShaderSource, nullptr);
                 glCompileShader(vs);
+                GLint vertexCompiled = GL_FALSE;
+                glGetShaderiv(vs, GL_COMPILE_STATUS, &vertexCompiled);
+                LOG_INFO(std::string("[UIRenderer] UI vertex shader compile: ") +
+                    (vertexCompiled == GL_TRUE ? "OK" : "FAILED"));
                 unsigned int fs = glCreateShader(GL_FRAGMENT_SHADER);
                 glShaderSource(fs, 1, &fragmentShaderSource, nullptr);
                 glCompileShader(fs);
+                GLint fragmentCompiled = GL_FALSE;
+                glGetShaderiv(fs, GL_COMPILE_STATUS, &fragmentCompiled);
+                LOG_INFO(std::string("[UIRenderer] UI fragment shader compile: ") +
+                    (fragmentCompiled == GL_TRUE ? "OK" : "FAILED"));
 
                 m_shaderProgram = glCreateProgram();
                 glAttachShader(m_shaderProgram, vs);
                 glAttachShader(m_shaderProgram, fs);
                 glLinkProgram(m_shaderProgram);
+                GLint programLinked = GL_FALSE;
+                glGetProgramiv(m_shaderProgram, GL_LINK_STATUS, &programLinked);
+                LOG_INFO(std::string("[UIRenderer] UI shader program link: ") +
+                    (programLinked == GL_TRUE ? "OK" : "FAILED"));
 
                 glDeleteShader(vs);
                 glDeleteShader(fs);
 
-                // Создание VAO/VBO
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ VAO/VBO
                 glGenVertexArrays(1, &m_vao);
                 glGenBuffers(1, &m_vbo);
 
@@ -75,17 +89,17 @@ void main() {
                 glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
                 glBufferData(GL_ARRAY_BUFFER, MAX_VERTICES * sizeof(Vertex), nullptr, GL_DYNAMIC_DRAW);
 
-                // Позиция
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 glEnableVertexAttribArray(0);
                 glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, pos));
-                // Текстурные координаты
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 glEnableVertexAttribArray(1);
                 glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoord));
-                // Цвет
+                // пїЅпїЅпїЅпїЅ
                 glEnableVertexAttribArray(2);
                 glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
 
-                // Создаём 1x1 белую текстуру для отрисовки прямоугольников без текстуры
+                // пїЅпїЅпїЅпїЅпїЅпїЅ 1x1 пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 unsigned char whitePixel[4] = { 255, 255, 255, 255 };
                 glGenTextures(1, &m_whiteTexture);
                 glBindTexture(GL_TEXTURE_2D, m_whiteTexture);
@@ -94,11 +108,59 @@ void main() {
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
                 glBindVertexArray(0);
+                LOG_INFO(std::string("[UIRenderer] OpenGL UI resources ready. VAO=") +
+                    std::to_string(m_vao) + ", VBO=" + std::to_string(m_vbo) +
+                    ", WhiteTexture=" + std::to_string(m_whiteTexture));
                 return true;
             }
 
+            void UIRenderer::drawRoundedRect(const Rect& rect, const Color& color, float radius, int segments) {
+                if (radius <= 0.0f) {
+                    drawRect(rect, color);
+                    return;
+                }
+            
+                // РћРіСЂР°РЅРёС‡РёРІР°РµРј СЂР°РґРёСѓСЃ РїРѕР»РѕРІРёРЅРѕР№ РјРёРЅРёРјР°Р»СЊРЅРѕР№ СЃС‚РѕСЂРѕРЅС‹
+                radius = std::min(radius, std::min(rect.w, rect.h) * 0.5f);
+            
+                if (m_currentTexture != m_whiteTexture || !m_useTexture) {
+                    flush();
+                    m_currentTexture = m_whiteTexture;
+                    m_useTexture = true;
+                }
+            
+                std::vector<glm::vec2> points;
+                // Р¦РµРЅС‚СЂС‹ 4-С… РґСѓРі СЃРєСЂСѓРіР»РµРЅРёСЏ
+                glm::vec2 centers[4] = {
+                    { rect.x + rect.w - radius, rect.y + radius },          // Р’РµСЂС…РЅРёР№ РїСЂР°РІС‹Р№
+                    { rect.x + rect.w - radius, rect.y + rect.h - radius },  // РќРёР¶РЅРёР№ РїСЂР°РІС‹Р№
+                    { rect.x + radius,          rect.y + rect.h - radius },  // РќРёР¶РЅРёР№ Р»РµРІС‹Р№
+                    { rect.x + radius,          rect.y + radius }           // Р’РµСЂС…РЅРёР№ Р»РµРІС‹Р№
+                };
+            
+                float angles[4] = { 0.0f, glm::half_pi<float>(), glm::pi<float>(), glm::three_over_two_pi<float>() };
+            
+                for (int i = 0; i < 4; ++i) {
+                    for (int j = 0; j <= segments; ++j) {
+                        float a = angles[i] + (glm::half_pi<float>() * j / segments);
+                        points.push_back(centers[i] + glm::vec2(std::cos(a), std::sin(a)) * radius);
+                    }
+                }
+            
+                // РўСЂРёР°РЅРіСѓР»СЏС†РёСЏ СЃРєСЂСѓРіР»РµРЅРЅРѕРіРѕ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° (Triangle Fan РѕС‚ С†РµРЅС‚СЂР°)
+                glm::vec2 center(rect.x + rect.w * 0.5f, rect.y + rect.h * 0.5f);
+                Vertex centerVert{ center, {0,0}, {color.r, color.g, color.b, color.a} };
+            
+                for (size_t i = 0; i < points.size(); ++i) {
+                    size_t next = (i + 1) % points.size();
+                    addVertex(centerVert);
+                    addVertex(Vertex{ points[i], {0,0}, {color.r, color.g, color.b, color.a} });
+                    addVertex(Vertex{ points[next], {0,0}, {color.r, color.g, color.b, color.a} });
+                }
+            }
+
             void UIRenderer::beginFrame(int screenWidth, int screenHeight) {
-                // Ортографическая проекция: лево=0, право=screenWidth, низ=screenHeight, верх=0 (типично для UI)
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ=0, пїЅпїЅпїЅпїЅпїЅ=screenWidth, пїЅпїЅпїЅ=screenHeight, пїЅпїЅпїЅпїЅ=0 (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ UI)
                 m_projection = glm::ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
                 glUseProgram(m_shaderProgram);
                 glUniformMatrix4fv(glGetUniformLocation(m_shaderProgram, "projection"), 1, GL_FALSE, &m_projection[0][0]);
@@ -110,30 +172,27 @@ void main() {
 
             void UIRenderer::endFrame() {
                 flush();
-                glEnable(GL_DEPTH_TEST); // восстанавливаем состояние (опционально)
+                glEnable(GL_DEPTH_TEST); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             }
 
             void UIRenderer::drawRaw(const std::vector<Vertex>& vertices, unsigned int textureId)
             {
                 if (vertices.empty()) return;
-
-                // Если текстура изменилась или до этого мы рисовали без текстуры — сбрасываем батч
-                if (m_currentTexture != textureId || !m_useTexture)
-                {
+                if (m_currentTexture != textureId || !m_useTexture) {
                     flush();
                     m_currentTexture = textureId;
                     m_useTexture = true;
                 }
-
-                // Просто переносим готовые вершины в наш общий буфер батчинга!
-                for (const auto& vertex : vertices)
-                {
-                    addVertex(vertex);
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ push_back
+                if (m_vertices.size() + vertices.size() > MAX_VERTICES) {
+                    flush(); // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
                 }
+                m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
             }
 
+
             void UIRenderer::drawRect(const Rect& rect, const Color& color) {
-                // Если сменилась текстура с шрифта/картинки на белую заглушку — делаем flush()
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ flush()
                 if (m_currentTexture != m_whiteTexture || !m_useTexture) {
                     flush();
                     m_currentTexture = m_whiteTexture;
@@ -200,8 +259,8 @@ void main() {
                 }
                 else
                 {
-                    // Если текстура не используется, биндим дефолтную текстуру 0 (белую заглушку драйвера)
-                    // Либо, если у тебя есть текстура-белый пиксель, подставь её ID сюда.
+                    // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0 (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+                    // пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ ID пїЅпїЅпїЅпїЅ.
                     glBindTexture(GL_TEXTURE_2D, 0);
                 }
 

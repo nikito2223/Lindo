@@ -121,6 +121,9 @@ namespace Lindo {
                 float maxPenetration = 0.05f;
                 float slop = 0.005f;      // allowed penetration before resolution
                 float bias = 0.2f;        // positional correction bias
+                float stepAccumulator = 0.0f;
+
+                void StepFixed();
             };
 
         }

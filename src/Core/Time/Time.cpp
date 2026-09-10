@@ -1,5 +1,5 @@
 #include "Time.h"
-#include "Core/Types/Settings.h" // Подключаем настройки DisplaySettings
+#include "Core/Types/Settings.h" // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ DisplaySettings
 #include <algorithm>
 
 namespace Lindo {
@@ -16,24 +16,20 @@ namespace Lindo {
 
         const auto& display = DisplaySettings::getInstance();
 
-        // 1. Обновляем фиксированный шаг из настроек
+        // 1. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         s_fixedDeltaTime = display.fixedTimestep;
 
-        // 2. Если включен принудительный фиксированный шаг (useFixedTimestep == true)
-        if (display.useFixedTimestep) {
-            s_deltaTime = display.fixedTimestep;
-        }
-        else {
-            std::chrono::duration<float> delta = currentTime - s_lastFrameTime;
-            s_deltaTime = delta.count();
+        // Render/gameplay time must always represent real elapsed time.
+        // Fixed-step simulation is accumulated and consumed by PhysicsSystem.
+        std::chrono::duration<float> delta = currentTime - s_lastFrameTime;
+        s_deltaTime = delta.count();
 
-            // Защита от просадок кадров (ограничиваем дельту максимум ~0.1 сек / 10 FPS)
-            s_deltaTime = std::min(s_deltaTime, 0.1f);
-        }
+        // Prevent a long pause or debugger break from producing a huge jump.
+        s_deltaTime = std::clamp(s_deltaTime, 0.0f, 0.1f);
 
         s_lastFrameTime = currentTime;
 
-        // 3. Обновляем счетчики времени
+        // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         s_unscaledTotalTime = std::chrono::duration<float>(currentTime - s_startTime).count();
         s_totalTime += s_deltaTime * s_timeScale;
 

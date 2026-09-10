@@ -40,6 +40,25 @@ namespace Lindo {
 
                 bool IsEnabled() const { return enabled; }
 
+                void DrawShadow(Lindo::Graphics::Shader& shader) const {
+                    if (!gameObject || !IsEnabled()) return;
+
+                    const glm::mat4 worldMatrix = gameObject->getWorldMatrix();
+                    if (mesh) {
+                        shader.setMat4("u_model", worldMatrix);
+                        mesh->Draw(shader);
+                        return;
+                    }
+
+                    if (model) {
+                        const glm::mat4 modelMatrix = worldMatrix * model->transform.getMatrix();
+                        shader.setMat4("u_model", modelMatrix);
+                        for (auto& modelMesh : model->getMeshes()) {
+                            modelMesh.Draw(shader);
+                        }
+                    }
+                }
+
                 // Сеттеры с автоматическим пересчетом Bounding Box
                 void setMesh(Lindo::Graphics::Mesh* m) {
                     mesh = m;

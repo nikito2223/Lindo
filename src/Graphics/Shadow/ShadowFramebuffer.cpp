@@ -1,4 +1,5 @@
 #include "ShadowFramebuffer.h"
+#include "Graphics/core/Shader.h"
 #include "Debug/DebugLogger.h"
 #include "Core/RenderCommand.h"
 
@@ -123,6 +124,7 @@ namespace Lindo {
             glReadBuffer(GL_NONE);
 
             const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            Shader::logOpenGLErrors("shadow framebuffer creation");
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -153,6 +155,14 @@ namespace Lindo {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                     GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_texture, 0);
             }
+
+            const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            if (status != GL_FRAMEBUFFER_COMPLETE) {
+                LOG_ERROR("ShadowFramebuffer::beginRender - FBO incomplete (status=" +
+                    std::to_string(static_cast<int>(status)) + ", layer=" +
+                    std::to_string(layerOrFace) + ")");
+            }
+            Shader::logOpenGLErrors("shadow framebuffer layer binding");
 
             RenderCommand::Clear(false, true);
         }

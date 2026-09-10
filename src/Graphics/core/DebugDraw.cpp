@@ -165,6 +165,11 @@ void main() {
         }
 
         void DebugDraw::DrawWireBox(const glm::mat4& transform, const glm::vec3& color) {
+            if (!m_shader) {
+                // Чтобы не падать, если шейдер забыли инициализировать
+                return;
+            }
+
             m_shader->use();
             m_shader->setMat4("view", m_view);
             m_shader->setMat4("projection", m_projection);
@@ -178,6 +183,11 @@ void main() {
         }
 
         void DebugDraw::DrawWireSphereFast(const glm::mat4& transform, const glm::vec3& color) {
+            if (!m_shader) {
+                // Чтобы не падать, если шейдер забыли инициализировать
+                return;
+            }
+
             m_shader->use();
             m_shader->setMat4("view", m_view);
             m_shader->setMat4("projection", m_projection);

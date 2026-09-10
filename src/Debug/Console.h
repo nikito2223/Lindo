@@ -12,7 +12,7 @@
 namespace Lindo {
     namespace Debug {
 
-        // Обработчик команды консоли: получает список аргументов (без имени самой команды)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         using ConsoleCommandFn = std::function<void(const std::vector<std::string>& args)>;
 
         struct ConsoleCommand {
@@ -26,13 +26,13 @@ namespace Lindo {
             Lindo::Graphics::UI::Color color;
         };
 
-        // Внутриигровая консоль в стиле Unity Console / X-Ray Engine (S.T.A.L.K.E.R.).
-        // Выезжает сверху экрана по клавише (обычно ~ / `), выводит все логи движка
-        // (через DebugLogger) и позволяет вводить команды с историей и автодополнением.
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ Unity Console / X-Ray Engine (S.T.A.L.K.E.R.).
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ ~ / `), пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+        // (пїЅпїЅпїЅпїЅпїЅ DebugLogger) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
         //
-        // Консоль ничего не знает про конкретную оконную систему (GLFW/WinAPI/SDL) -
-        // методы onChar/onEnter/onTab/... нужно дёргать из колбэков окна вручную,
-        // см. пример интеграции в конце ответа.
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (GLFW/WinAPI/SDL) -
+        // пїЅпїЅпїЅпїЅпїЅпїЅ onChar/onEnter/onTab/... пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+        // пїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.
         class Console {
         public:
             Console();
@@ -44,14 +44,14 @@ namespace Lindo {
             void update();
             void render(Lindo::Graphics::UI::UIRenderer& renderer);
 
-            // --- Видимость ---
+            // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
             void toggle();
             void show();
             void hide();
             bool isVisible() const { return m_targetOpen; }
             bool isFullyClosed() const { return !m_targetOpen && m_openAmount <= 0.001f; }
 
-            // --- Ввод текста (дёргать из колбэков окна, когда консоль открыта) ---
+            // --- пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) ---
             void onChar(unsigned int codepoint);
             void onBackspace();
             void onDeleteForward();
@@ -66,27 +66,28 @@ namespace Lindo {
             void onHistoryDown();
             void onScroll(float delta);
 
-            // --- Команды ---
+            // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
             void registerCommand(const std::string& name, const std::string& description, ConsoleCommandFn fn);
             void executeLine(const std::string& line);
 
-            // --- Вывод/логи ---
+            // --- пїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅ ---
             void addLog(Lindo::Core::LogLevel level, const std::string& text);
             void print(const std::string& text, const Lindo::Graphics::UI::Color& color = Lindo::Graphics::UI::Color(1, 1, 1, 1));
             void clear();
 
-            // Подключает консоль к DebugLogger: все LOG_INFO/LOG_WARN/LOG_ERROR/... будут попадать сюда же
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ DebugLogger: пїЅпїЅпїЅ LOG_INFO/LOG_WARN/LOG_ERROR/... пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ
             static void hookLogger(Console* console);
 
             void setGLFWWindow(GLFWwindow* window) { m_glfwWindow = window; }
 
-            // Методы редактирования и буфера обмена
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             void onSelectAll();
             void onCopy();
             void onPaste();
             void onCut();
 
         private:
+            void resetTabCompletion();
             void registerBuiltinCommands();
             std::vector<std::string> tokenize(const std::string& line) const;
             Lindo::Graphics::UI::Color colorForLevel(Lindo::Core::LogLevel level) const;
@@ -94,8 +95,8 @@ namespace Lindo {
             std::vector<std::string> m_tabMatchesCache;
             size_t m_tabIndex = 0;
 
-            size_t m_selectionAnchor = 0; // Точка начала выделения текста
-            GLFWwindow* m_glfwWindow = nullptr; // Ссылка на окно для буфера обмена
+            size_t m_selectionAnchor = 0; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+            GLFWwindow* m_glfwWindow = nullptr; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
         private:
             Lindo::Graphics::UI::UIFont* m_font = nullptr;
@@ -109,29 +110,29 @@ namespace Lindo {
             int m_screenWidth = 0;
             int m_screenHeight = 0;
 
-            // Анимация выезжания консоли
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             bool m_targetOpen = false;
-            float m_openAmount = 0.0f;   // 0 = закрыта, 1 = полностью открыта
+            float m_openAmount = 0.0f;   // 0 = пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 1 = пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             float m_animSpeed = 10.0f;
-            float m_heightRatio = 0.5f;  // какую долю экрана занимает открытая консоль
+            float m_heightRatio = 0.5f;  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-            // Журнал сообщений
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             std::deque<ConsoleLine> m_lines;
             size_t m_maxLines = 1000;
-            int m_scrollOffset = 0;      // на сколько строк проскроллено вверх от низа
+            int m_scrollOffset = 0;      // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
 
-            // Текущая строка ввода
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             std::string m_inputBuffer;
             size_t m_cursorPos = 0;
             float m_cursorBlinkTimer = 0.0f;
             bool m_cursorVisible = true;
 
-            // История введённых команд (стрелки вверх/вниз)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅ)
             std::vector<std::string> m_history;
             int m_historyIndex = -1;
             size_t m_maxHistory = 100;
 
-            // Зарегистрированные команды (ключ - имя команды в нижнем регистре)
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ - пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             std::unordered_map<std::string, ConsoleCommand> m_commands;
 
             const float LINE_HEIGHT = 18.0f;

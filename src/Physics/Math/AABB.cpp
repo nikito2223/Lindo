@@ -1,9 +1,9 @@
 ﻿#include "AABB.h"
 #include "VectorMath.h"
-#include <Physics/Collider/BoxCollider.h>
-#include <Physics/Collider/SphereCollider.h>
-#include <Physics/Collider/CapsuleCollider.h>
-#include <Physics/Collider/Collider.h>
+#include <Component/Physhcs/Colliders/BoxCollider.h>
+#include <Component/Physhcs/Colliders/SphereCollider.h>
+#include <Component/Physhcs/Colliders/CapsuleCollider.h>
+#include <Component/Physhcs/Colliders/Collider.h>
 
 namespace Lindo {
     namespace Math {

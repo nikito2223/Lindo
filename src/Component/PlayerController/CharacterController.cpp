@@ -35,9 +35,13 @@ namespace Lindo {
             }
 
             void CharacterController::OnUpdate() {
+                if (!m_simulationEnabled) return;
                 float dt = Lindo::Time::GetDeltaTime();
 
                 if (dt <= 0.0f) return;
+
+                if (jumpBufferTimer > 0.0f) jumpBufferTimer = std::max(0.0f, jumpBufferTimer - dt);
+                if (jumpBufferTimer <= 0.0f) jumpRequested = false;
 
                 if (gameObject->transform.position.y <= -100.0f) {
                     // 1. Возвращаем позицию
@@ -45,6 +49,15 @@ namespace Lindo {
                 }
 
                 UpdateGroundStatus();
+                if (jumpRequested && state.isGrounded) {
+                    const float jumpVelocity = sqrtf(2.0f * 9.81f * settings.jumpHeight);
+                    state.velocity.y = jumpVelocity;
+                    state.isJumping = true;
+                    state.isGrounded = false;
+                    jumpRequested = false;
+                    jumpBufferTimer = 0.0f;
+                    if (onJump) onJump();
+                }
                 ApplyMovement(currentInput);
                 UpdatePhysics();
                 UpdateCurrentSpeed();
@@ -95,7 +108,13 @@ namespace Lindo {
             }
 
             bool CharacterController::Jump() {
-                if (!state.isGrounded || state.isJumping) return false;
+                if (state.isJumping) return false;
+
+                if (!state.isGrounded) {
+                    jumpRequested = true;
+                    jumpBufferTimer = 0.15f;
+                    return true;
+                }
 
                 if (movementMode == MovementMode::Crouching) {
                     UnCrouch();
@@ -124,11 +143,55 @@ namespace Lindo {
             bool CharacterController::UnCrouch() {
                 if (movementMode != MovementMode::Crouching) return false;
 
+                // Как в Source: если над головой потолок, отменяем вставание и остаёмся в приседе.
+                // Позиция — это ноги персонажа, так что просто пробуем высоту в полный рост на месте.
+                if (!CanStandUp()) return false;
+
                 collider.SetHeight(originalHeight);
                 collider.SetOffset(glm::vec3(0.0f, collider.GetHeight() * 0.5f, 0.0f));
                 SetMovementMode(MovementMode::Walking);
 
                 if (onCrouch) onCrouch(false);
+                return true;
+            }
+
+            void CharacterController::SetCrouchHeld(bool held) {
+                crouchHeld = held;
+
+                if (held) {
+                    Crouch();
+                }
+                else {
+                    // UnCrouch() сам вернёт false и ничего не сделает, если сверху есть препятствие —
+                    // тогда просто повторим попытку в следующем кадре, пока crouchHeld == false.
+                    UnCrouch();
+                }
+            }
+
+            bool CharacterController::CanStandUp() const {
+                if (!gameObject) return true;
+
+                // Собираем "пробную" капсулу в полный рост на текущей позиции ног и проверяем,
+                // не пересекается ли она с чем-либо, кроме собственного коллайдера персонажа.
+                Physics::CapsuleCollider standTest;
+                standTest.SetRadius(collider.GetRadius());
+                standTest.SetHeight(originalHeight);
+                standTest.SetDirection(collider.GetDirection());
+                standTest.gameObject = gameObject;
+                standTest.SetOffset(glm::vec3(0.0f, originalHeight * 0.5f, 0.0f));
+                standTest.setPosition(getPosition());
+
+                auto& physics = Lindo::Components::Physics::PhysicsSystem::GetInstance();
+                for (auto* other : physics.GetColliders()) {
+                    if (!other || other == &collider || !other->IsEnabled()) continue;
+                    if (other->gameObject == gameObject) continue;
+
+                    Lindo::Components::Physics::CollisionInfo info;
+                    if (standTest.CheckCollision(other, info) && info.penetrationDepth > 0.0f) {
+                        return false;
+                    }
+                }
+
                 return true;
             }
 
@@ -212,65 +275,88 @@ namespace Lindo {
                 state.velocity.y = std::max(state.velocity.y, -maxFallSpeed);
             }
 
+            // Движение реализовано по классической модели Quake/Source: friction -> accelerate на земле,
+            // air-accelerate в воздухе. Отдельного жёсткого клэмпа скорости в конце больше нет — это
+            // сознательное решение, именно оно даёт характерный strafe-jump / bunnyhop разгон в воздухе.
             void CharacterController::ApplyMovement(glm::vec3 inputDirection) {
                 float dt = Lindo::Time::GetDeltaTime();
                 if (dt <= 0.0f) return;
 
-                // Нормализуем ввод
-                float inputLength = glm::length(inputDirection);
-                if (inputLength > 0.001f) {
-                    inputDirection /= inputLength;
-                }
+                // wishSpeed учитывает величину ввода (полезно для геймпада/стика), направление нормализуем отдельно.
+                float inputMagnitude = std::min(glm::length(inputDirection), 1.0f);
+                glm::vec3 wishDir = (inputMagnitude > 0.001f) ? (inputDirection / glm::length(inputDirection)) : glm::vec3(0.0f);
 
                 float maxSpeed = GetCurrentMaxSpeed();
+                float wishSpeed = maxSpeed * inputMagnitude;
 
                 if (state.isGrounded) {
-                    // Движение по земле
-                    glm::vec3 targetVelocity = inputDirection * maxSpeed;
-                    glm::vec3 velocityDiff = targetVelocity - glm::vec3(state.velocity.x, 0.0f, state.velocity.z);
-
-                    float accelRate = settings.acceleration;
-                    state.velocity.x += velocityDiff.x * accelRate * dt;
-                    state.velocity.z += velocityDiff.z * accelRate * dt;
-
-                    // Трение
                     ApplyFriction();
+                    GroundAccelerate(wishDir, wishSpeed, settings.acceleration);
                 }
                 else {
-                    // Движение в прыжке
-                    if (settings.airControl > 0.0f && inputLength > 0.0f) {
-                        glm::vec3 airAccel = inputDirection * maxSpeed * settings.airControl;
-                        state.velocity.x += airAccel.x * dt;
-                        state.velocity.z += airAccel.z * dt;
-                    }
-                }
-
-                // Ограничиваем горизонтальную скорость
-                glm::vec3 horizontalVel = glm::vec3(state.velocity.x, 0.0f, state.velocity.z);
-                float horizontalSpeed = glm::length(horizontalVel);
-                if (horizontalSpeed > maxSpeed) {
-                    horizontalVel = horizontalVel * (maxSpeed / horizontalSpeed);
-                    state.velocity.x = horizontalVel.x;
-                    state.velocity.z = horizontalVel.z;
+                    AirAccelerate(wishDir, wishSpeed, settings.airAccelerate);
                 }
             }
 
-            void CharacterController::ApplyFriction() {
+            // sv_accelerate: считаем, сколько скорости уже есть вдоль wishDir, добавляем разницу до wishSpeed,
+            // но не больше, чем accel * wishSpeed * dt за кадр.
+            void CharacterController::GroundAccelerate(const glm::vec3& wishDir, float wishSpeed, float accel) {
+                if (wishSpeed <= 0.0f) return;
                 float dt = Lindo::Time::GetDeltaTime();
-                if (!state.isGrounded) return;
 
-                glm::vec3 horizontalVel = glm::vec3(state.velocity.x, 0.0f, state.velocity.z);
+                glm::vec3 horizontalVel(state.velocity.x, 0.0f, state.velocity.z);
+                float currentSpeedAlongWish = glm::dot(horizontalVel, wishDir);
+                float addSpeed = wishSpeed - currentSpeedAlongWish;
+                if (addSpeed <= 0.0f) return;
+
+                float accelSpeed = std::min(accel * wishSpeed * dt, addSpeed);
+
+                state.velocity.x += accelSpeed * wishDir.x;
+                state.velocity.z += accelSpeed * wishDir.z;
+            }
+
+            // sv_airaccelerate: то же самое, но wishSpeed, до которого "цепляет" скорость, ограничен потолком
+            // (airWishSpeedCap) — иначе можно было бы разгоняться в воздухе так же быстро, как по земле.
+            // Сам прирост скорости (accelSpeed) всё ещё считается от полного (некапнутого) wishSpeed, как в оригинале —
+            // именно это позволяет стрейф-джампу набирать скорость выше обычного максимума бега.
+            void CharacterController::AirAccelerate(const glm::vec3& wishDir, float wishSpeed, float accel) {
+                if (glm::length(wishDir) < 0.001f || wishSpeed <= 0.0f) return;
+                float dt = Lindo::Time::GetDeltaTime();
+
+                float cappedWishSpeed = std::min(wishSpeed, settings.airWishSpeedCap);
+
+                glm::vec3 horizontalVel(state.velocity.x, 0.0f, state.velocity.z);
+                float currentSpeedAlongWish = glm::dot(horizontalVel, wishDir);
+                float addSpeed = cappedWishSpeed - currentSpeedAlongWish;
+                if (addSpeed <= 0.0f) return;
+
+                float accelSpeed = std::min(accel * wishSpeed * dt, addSpeed);
+
+                state.velocity.x += accelSpeed * wishDir.x;
+                state.velocity.z += accelSpeed * wishDir.z;
+            }
+
+            // sv_friction: тормозим только на земле, ниже stopSpeed трение "цепляется" сильнее,
+            // чтобы персонаж не скользил бесконечно на малых скоростях.
+            void CharacterController::ApplyFriction() {
+                if (!state.isGrounded) return;
+                float dt = Lindo::Time::GetDeltaTime();
+
+                glm::vec3 horizontalVel(state.velocity.x, 0.0f, state.velocity.z);
                 float speed = glm::length(horizontalVel);
 
-                if (speed > 0.001f) {
-                    float friction = settings.groundFriction;
-                    float decrease = friction * dt;
-                    if (decrease > speed) decrease = speed;
-
-                    horizontalVel *= (speed - decrease) / speed;
-                    state.velocity.x = horizontalVel.x;
-                    state.velocity.z = horizontalVel.z;
+                if (speed < 0.01f) {
+                    state.velocity.x = 0.0f;
+                    state.velocity.z = 0.0f;
+                    return;
                 }
+
+                float control = std::max(speed, settings.stopSpeed);
+                float drop = control * settings.groundFriction * dt;
+
+                float newSpeed = std::max(speed - drop, 0.0f) / speed;
+                state.velocity.x *= newSpeed;
+                state.velocity.z *= newSpeed;
             }
 
             void CharacterController::HandleAutoOrientation() {
@@ -334,7 +420,7 @@ namespace Lindo {
                         }
                         // ------------------------------------------
 
-                        if (normal.y > 0.5f) {
+                        if (normal.y > 0.5f && state.velocity.y <= 0.0f) {
                             foundGroundContact = true;
                         }
 
@@ -398,9 +484,11 @@ namespace Lindo {
                     state.isJumping = false;
                     state.isSliding = false;
 
-                    // Сбрасываем накопление падения при нахождении на земле
+                    // Сбрасываем накопление падения при нахождении на земле.
+                    // Увеличиваем прижимную силу до -2.0f (вместо -0.1f), 
+                    // чтобы персонаж не отрывался от земли на склонах.
                     if (state.velocity.y < 0.0f) {
-                        state.velocity.y = -0.1f;
+                        state.velocity.y = -2.0f;
                     }
                 }
             }

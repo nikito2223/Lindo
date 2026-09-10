@@ -1,8 +1,8 @@
 #include "PhysicsSystem.h"
-#include <Physics/Collider/Collider.h>
-#include <Physics/Collider/BoxCollider.h>
-#include <Physics/Collider/SphereCollider.h>
-#include <Physics/Collider/CapsuleCollider.h>
+#include <Component/Physhcs/Colliders/Collider.h>
+#include <Component/Physhcs/Colliders/BoxCollider.h>
+#include <Component/Physhcs/Colliders/SphereCollider.h>
+#include <Component/Physhcs/Colliders/CapsuleCollider.h>
 #include <Physics/GravityField.h>
 #include <Component/Physhcs/RigidBody.h>
 #include "Core/Time/Time.h"
@@ -311,6 +311,21 @@ namespace Lindo {
             }
 
             void PhysicsSystem::Step() {
+                const float fixedStep = Lindo::Time::GetUnscaledFixedDeltaTime();
+                if (fixedStep <= 0.0f) return;
+
+                stepAccumulator += Lindo::Time::GetUnscaledDeltaTime() * Lindo::Time::GetTimeScale();
+                stepAccumulator = std::min(stepAccumulator, fixedStep * 4.0f);
+
+                int steps = 0;
+                while (stepAccumulator >= fixedStep && steps < 4) {
+                    StepFixed();
+                    stepAccumulator -= fixedStep;
+                    ++steps;
+                }
+            }
+
+            void PhysicsSystem::StepFixed() {
                 float dt = Lindo::Time::GetFixedDeltaTime();
                 if (dt <= 0.0f) return;
 

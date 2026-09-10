@@ -19,6 +19,14 @@ namespace Lindo {
             return ptr;
         }
 
+        void Scene::AddGameObject(Lindo::World::GameObject* obj) {
+            if (!obj) return;
+
+            // Передаем владение сырым указателем вектору unique_ptr
+            gameObjects.push_back(std::unique_ptr<Lindo::World::GameObject>(obj));
+            gameObjectMap[obj->getName()] = obj;
+        }
+
         void Scene::DestroyGameObject(Lindo::World::GameObject* obj) {
             if (!obj) return;
 
@@ -29,6 +37,14 @@ namespace Lindo {
                 gameObjectMap.erase((*it)->getName());
                 gameObjects.erase(it);
             }
+        }
+
+        int Scene::countAllGameObjectsRecursive() const {
+            int count = static_cast<int>(gameObjects.size());
+            for (const auto& obj : gameObjects) {
+                count += obj->countChildrenRecursive();
+            }
+            return count;
         }
 
         void Scene::DestroyGameObject(const std::string& name) {

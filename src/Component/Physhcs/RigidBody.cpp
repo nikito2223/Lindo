@@ -1,6 +1,6 @@
 ﻿#include "RigidBody.h"
 #include <Component/GameObject/GameObject.h>
-#include <Physics/Collider/Collider.h>
+#include <Component/Physhcs/Colliders/Collider.h>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>

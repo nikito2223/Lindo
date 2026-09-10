@@ -6,7 +6,7 @@
 
 namespace Lindo {
     namespace Debug {
-        class Console; // объявлена в debug/Console.h
+        class Console; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ debug/Console.h
     }
 }
 
@@ -20,18 +20,23 @@ namespace Lindo {
 
                 void init(int width, int height);
 
-                // Обновление анимаций/состояния (в т.ч. консоли) - звать раз в кадр перед render()
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅ.пїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ render()
                 void update();
 
                 void render();
                 void onResize(int width, int height);
                 void onMouseMove(float x, float y);
                 void onMouseButton(float x, float y, int button, bool pressed);
+                void clearDynamicWidgets();
+
+                void onChar(unsigned int codepoint);
+                void onKey(int key, int scancode, int action, int mods);
 
                 UIFont* getFont() const { return m_font.get(); }
-                UIRenderer* getRenderer() const { return m_renderer.get(); } // публичный доступ к рендереру
-
-                // Игровая консоль (лог + ввод команд), доступна после init()
+                UIRenderer* getRenderer() const { return m_renderer.get(); } // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ UIManager.h пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ UIManager:
+                std::shared_ptr<UIPanel> getRootPanel() const { return m_rootPanel; }
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ + пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ), пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ init()
                 Lindo::Debug::Console* getConsole() const { return m_console.get(); }
 
             private:

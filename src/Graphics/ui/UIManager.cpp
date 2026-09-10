@@ -26,20 +26,20 @@ namespace Lindo {
                     }
                     };
 
-                // 1. Все стандартные ASCII символы (английский алфавит, цифры, знаки препинания от 32 до 126)
+                // 1. пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ASCII пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 32 пїЅпїЅ 126)
                 for (uint32_t i = 32; i <= 126; ++i) {
                     addCP(i);
                 }
 
-                // 2. Знак номера (№)
+                // 2. пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ)
                 addCP(0x2116);
 
-                // 3. Кириллица (А-Я и а-я)
+                // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ-пїЅ пїЅ пїЅ-пїЅ)
                 for (uint32_t i = 0x0410; i <= 0x044F; ++i) {
                     addCP(i);
                 }
 
-                // 4. Буквы Ё и ё
+                // 4. пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ пїЅ
                 addCP(0x0401);
                 addCP(0x0451);
 
@@ -48,6 +48,10 @@ namespace Lindo {
 
             UIManager::UIManager() = default;
             UIManager::~UIManager() = default;
+
+            void UIManager::clearDynamicWidgets() {
+                if (m_rootPanel) m_rootPanel->clearChildren();
+            }
 
             void UIManager::init(int width, int height) {
                 LOG_INFO("UIManager::init() started");
@@ -59,7 +63,7 @@ namespace Lindo {
 
                 std::string charset = generateCharset();
 
-                // Для размера 24px берём 512x512 атлас как отправную точку (можно увеличить)
+                // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 24px пїЅпїЅпїЅпїЅ 512x512 пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                 bool fontLoaded = m_font->loadFromFile("C:/Windows/Fonts/arial.ttf", 24.0f, 512, 512, charset);
 
                 if (!fontLoaded) {
@@ -74,10 +78,10 @@ namespace Lindo {
                 m_rootPanel->setSize(static_cast<float>(width), static_cast<float>(height));
                 m_rootPanel->setPosition(0, 0);
 
-                // Внутриигровая консоль - использует тот же шрифт, что и остальной UI
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI
                 m_console = std::make_unique<Lindo::Debug::Console>();
                 m_console->init(m_font.get(), width, height);
-                Lindo::Debug::Console::hookLogger(m_console.get()); // все LOG_INFO/LOG_WARN/... теперь видны и в консоли
+                Lindo::Debug::Console::hookLogger(m_console.get()); // пїЅпїЅпїЅ LOG_INFO/LOG_WARN/... пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
                 m_initialized = true;
                 LOG_INFO("UIManager::init() finished");
@@ -94,7 +98,7 @@ namespace Lindo {
                 m_renderer->beginFrame(static_cast<int>(m_rootPanel->getWidth()), static_cast<int>(m_rootPanel->getHeight()));
                 m_rootPanel->render(*m_renderer, m_font.get());
 
-                // Консоль рисуется последней - поверх всего остального UI
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI
                 if (m_console) {
                     m_console->render(*m_renderer);
                 }
@@ -112,7 +116,7 @@ namespace Lindo {
             }
 
             void UIManager::onMouseMove(float x, float y) {
-                // Пока консоль открыта - она перехватывает ввод, под ней ничего не должно реагировать
+                // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 if (m_console && m_console->isVisible()) return;
 
                 if (m_rootPanel) {
@@ -125,6 +129,22 @@ namespace Lindo {
 
                 if (m_rootPanel) {
                     m_rootPanel->onMouseButton(x, y, button, pressed);
+                }
+            }
+
+            void UIManager::onChar(unsigned int codepoint) {
+                if (m_console && m_console->isVisible()) return;
+                        
+                if (m_rootPanel) {
+                    m_rootPanel->onChar(codepoint);
+                }
+            }
+            
+            void UIManager::onKey(int key, int scancode, int action, int mods) {
+                if (m_console && m_console->isVisible()) return;
+            
+                if (m_rootPanel) {
+                    m_rootPanel->onKey(key, scancode, action, mods);
                 }
             }
         }

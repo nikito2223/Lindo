@@ -1,4 +1,4 @@
-#pragma once
+п»ї#pragma once
 #include <Component/Component.h>
 #include <Component/Camera/Camera.h>
 #include <string>
@@ -16,12 +16,12 @@ namespace Lindo {
         namespace Controller {
             class Player : public Lindo::World::Component {
             public:
-                // Настройки игрока
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 struct PlayerSettings {
                     std::string playerName = "Player";
                     float mouseSensitivity = 0.1f;
                     bool invertY = false;
-                    bool enableHeadBob = true;     // Включить качание головы
+                    bool enableHeadBob = true;     // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 };
 
                 Player();
@@ -32,27 +32,32 @@ namespace Lindo {
                 void OnUpdate() override;
                 void OnDestroy() override;
 
-                // Управление
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 void ProcessInput();
                 void MoveForward(float value);
                 void MoveRight(float value);
                 void Look(float deltaX, float deltaY);
 
-                // Действия
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 void Jump();
                 void StartRunning();
                 void StopRunning();
                 void Crouch();
                 void UnCrouch();
+                // Р’С‹Р·С‹РІР°С‚СЊ РєР°Р¶РґС‹Р№ РєР°РґСЂ РёР· СЃРёСЃС‚РµРјС‹ РІРІРѕРґР° СЃ С‚РµРєСѓС‰РёРј СЃРѕСЃС‚РѕСЏРЅРёРµРј РєР»Р°РІРёС€Рё (РЅР°РїСЂРёРјРµСЂ LeftControl):
+                // held == true, РїРѕРєР° РєР»Р°РІРёС€Р° Р·Р°Р¶Р°С‚Р°, false вЂ” РєР°Рє С‚РѕР»СЊРєРѕ РѕС‚РїСѓС‰РµРЅР°.
+                void SetCrouchInput(bool held);
+                void SetFreeCameraMode(bool enabled);
+                bool IsFreeCameraMode() const { return freeCameraMode; }
                 void Interact();
 
-                // Геттеры/сеттеры
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 void SetPlayerName(const std::string& name) { settings.playerName = name; }
                 std::string GetPlayerName() const { return settings.playerName; }
                 Lindo::Components::Character::CharacterController* GetCharacterController() const { return characterController; }
                 Rendering::Camera* GetCamera() const { return camera; }
 
-                // Состояние
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 bool IsAlive() const { return isAlive; }
                 void SetAlive(bool alive) { isAlive = alive; }
                 float GetHealth() const { return health; }
@@ -65,18 +70,18 @@ namespace Lindo {
                 void UpdateInputState();
                 void HandleHeadBob();
 
-                // Компоненты
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 Lindo::Components::Character::CharacterController* characterController = nullptr;
                 Rendering::Camera* camera = nullptr;
 
-                // Настройки
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 PlayerSettings settings;
 
-                // Состояние
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 bool isAlive = true;
                 float health = 100.0f;
 
-                // Ввод
+                // пїЅпїЅпїЅпїЅ
                 float forwardInput = 0.0f;
                 float rightInput = 0.0f;
                 float lastMouseX = 0.0f;
@@ -85,15 +90,16 @@ namespace Lindo {
                 bool isCrouching = false;
                 bool isMoving = false;
 
-                // Камера
-                float cameraYaw = -90.0f;  // Инициализируем как в камере
+                // пїЅпїЅпїЅпїЅпїЅпїЅ
+                float cameraYaw = -90.0f;  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 float cameraPitch = 0.0f;
 
-                // Вспомогательные
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 glm::vec3 lastFramePosition;
                 float invulnerabilityTimer = 0.0f;
                 bool isInvulnerable = false;
                 float headBobTimer = 0.0f;
+                bool freeCameraMode = false;
             };
         }
     }

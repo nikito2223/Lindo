@@ -4,123 +4,144 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+
 namespace Lindo {
     namespace Math {
+        /**
+         * @brief Структура трансформации объекта (позиция, поворот, масштаб).
+         */
         struct Transform {
-            glm::vec3 position{ 0.0f };
-            glm::vec3 rotation{ 0.0f }; // градусы вокруг осей X, Y, Z
-            glm::vec3 scale{ 1.0f };
+            glm::vec3 position{ 0.0f }; ///< Позиция объекта в пространстве.
+            glm::vec3 rotation{ 0.0f }; ///< Поворот в градусах вокруг осей X, Y, Z (углы Эйлера).
+            glm::vec3 scale{ 1.0f };    ///< Масштаб объекта по осям.
 
-            glm::mat4 getMatrix() const {
+            /**
+             * @brief Рассчитывает локальную матрицу трансформации на основе углов Эйлера.
+             * @return Итоговая матрица переноса, поворота и масштаба (glm::mat4).
+             */
+            glm::mat4 getLocalMatrix() const {
                 glm::mat4 model(1.0f);
-                // 1. Перемещение
                 model = glm::translate(model, position);
-                // 2. Вращение (X, Y, Z)
                 model = glm::rotate(model, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
                 model = glm::rotate(model, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
                 model = glm::rotate(model, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-                // 3. Масштабирование
                 model = glm::scale(model, scale);
                 return model;
             }
 
-            // Альтернативный вариант с кватернионами (более точный)
+            glm::mat4 getMatrix() const { return getLocalMatrix(); }
+
+            glm::vec3 getLocalPosition() const { return position; }
+            glm::vec3 getLocalEulerAngles() const { return rotation; }
+            glm::vec3 getLocalScale() const { return scale; }
+
+            void setLocalPosition(const glm::vec3& value) { position = value; }
+            void setLocalEulerAngles(const glm::vec3& value) { rotation = value; }
+            void setLocalScale(const glm::vec3& value) { scale = value; }
+
+            /**
+             * @brief Рассчитывает локальную матрицу трансформации через кватернионы для избежания Gimbal Lock.
+             * @return Точная матрица модели (glm::mat4).
+             */
             glm::mat4 getMatrixQuat() const {
                 glm::mat4 model(1.0f);
-
-                // Перемещение
                 model = glm::translate(model, position);
 
-                // Вращение через кватернион
                 glm::quat quat = glm::quat(glm::vec3(
                     glm::radians(rotation.x),
                     glm::radians(rotation.y),
                     glm::radians(rotation.z)
                 ));
                 model = model * glm::mat4_cast(quat);
-
-                // Масштабирование
                 model = glm::scale(model, scale);
 
                 return model;
             }
 
+            /**
+             * @brief Возвращает нормализованный вектор направления "вперед" (ось +Z) в мировом пространстве.
+             * @return Вектор направления glm::vec3.
+             */
             glm::vec3 getForward() const {
-                // Создаем кватернион из углов Эйлера (в радианах)
                 glm::quat q = glm::quat(glm::vec3(
                     glm::radians(rotation.x),
                     glm::radians(rotation.y),
                     glm::radians(rotation.z)
                 ));
-
-                // Поворачиваем вектор (0,0,1) кватернионом
                 return glm::normalize(q * glm::vec3(0.0f, 0.0f, 1.0f));
             }
 
-            // Получить направление "вверх" (локальная ось Y) в мировых координатах
+            /**
+             * @brief Возвращает нормализованный вектор направления "вверх" (ось +Y) в мировом пространстве.
+             * @return Вектор направления glm::vec3.
+             */
             glm::vec3 getUp() const {
-                // Создаем кватернион из углов Эйлера (в радианах)
                 glm::quat q = glm::quat(glm::vec3(
                     glm::radians(rotation.x),
                     glm::radians(rotation.y),
                     glm::radians(rotation.z)
                 ));
-
-                // Поворачиваем вектор (0,1,0) кватернионом
                 return glm::normalize(q * glm::vec3(0.0f, 1.0f, 0.0f));
             }
 
-            // Получить направление "вправо" (локальная ось X) в мировых координатах
+            /**
+             * @brief Возвращает нормализованный вектор направления "вправо" (ось +X) в мировом пространстве.
+             * @return Вектор направления glm::vec3.
+             */
             glm::vec3 getRight() const {
                 glm::quat q = glm::quat(glm::vec3(
                     glm::radians(rotation.x),
                     glm::radians(rotation.y),
                     glm::radians(rotation.z)
                 ));
-
-                // Поворачиваем вектор (1,0,0) кватернионом
                 return glm::normalize(q * glm::vec3(1.0f, 0.0f, 0.0f));
             }
 
-            // Альтернативная реализация через матрицу поворота (без кватерниона)
+            /**
+             * @brief Альтернативное получение вектора "вперед" через матрицу поворота.
+             * @return Нормализованный вектор направления glm::vec3.
+             */
             glm::vec3 getForwardMatrix() const {
                 glm::mat4 rotMat = glm::mat4(1.0f);
                 rotMat = glm::rotate(rotMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
                 rotMat = glm::rotate(rotMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
                 rotMat = glm::rotate(rotMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-                // Направление вперед - это 3-й столбец матрицы (для OpenGL, где ось Z - вперед)
                 return glm::normalize(glm::vec3(rotMat[2][0], rotMat[2][1], rotMat[2][2]));
             }
 
+            /**
+             * @brief Альтернативное получение вектора "вверх" через матрицу поворота.
+             * @return Нормализованный вектор направления glm::vec3.
+             */
             glm::vec3 getUpMatrix() const {
                 glm::mat4 rotMat = glm::mat4(1.0f);
                 rotMat = glm::rotate(rotMat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
                 rotMat = glm::rotate(rotMat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
                 rotMat = glm::rotate(rotMat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-                // Направление вверх - это 2-й столбец матрицы
                 return glm::normalize(glm::vec3(rotMat[1][0], rotMat[1][1], rotMat[1][2]));
             }
+
+            /**
+             * @brief Заглушка для обновления внутренних матриц в подсистемах (например, в физическом движке).
+             */
             void updateMatrices() {
-                // Пока оставляем пустым, так как getMatrix() и так считает всё актуальное.
-                // Это нужно, чтобы PhysicsSystem не ругалась на отсутствие метода.
             }
-            // Повернуть объект в направлении вектора (lookAt)
+
+            /**
+             * @brief Поворачивает объект в сторону целевой точки в пространстве.
+             * @param target Точка в пространстве, на которую должен смотреть объект.
+             * @param up Направляющий вектор "вверх".
+             */
             void lookAt(const glm::vec3& target, const glm::vec3& up = glm::vec3(0.0f, 1.0f, 0.0f)) {
                 glm::vec3 direction = glm::normalize(target - position);
-
-                // Вычисляем матрицу lookAt и извлекаем углы Эйлера
                 glm::mat4 view = glm::lookAt(glm::vec3(0.0f), direction, up);
                 glm::quat q = glm::quat_cast(view);
 
-                // Конвертируем кватернион обратно в углы Эйлера (в градусах)
                 glm::vec3 euler = glm::eulerAngles(q);
                 rotation.x = glm::degrees(euler.x);
                 rotation.y = glm::degrees(euler.y);
                 rotation.z = glm::degrees(euler.z);
             }
-
         };
     }
 }

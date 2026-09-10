@@ -1,4 +1,5 @@
 #include "AssetManager.h"
+#include "Core/RenderAPI.h"
 #include "debug/DebugLogger.h"
 #include <fstream>
 #include <vector>
@@ -14,27 +15,59 @@ namespace Lindo {
     std::string AssetManager::resolvePath(const std::string& relativePath, const std::string& subDir) const {
         std::filesystem::path path(relativePath);
 
+        // ���� ���� ��� ���������� ��� ��� �������� ������� ���������� � ���������� ��� ����
         if (path.is_absolute() || (path.has_parent_path() && path.begin()->string() == m_basePath.string())) {
             return path.string();
         }
 
+        // ���� ������� ������������� (�������� "textures") � � ��� ��� � ����, ��������� �
         if (!subDir.empty() && path.parent_path().string().find(subDir) == std::string::npos) {
             return (m_basePath / subDir / path).lexically_normal().string();
         }
 
+        // ����� ������ �������� ���� �� ������� �����
         return (m_basePath / path).lexically_normal().string();
     }
 
     std::string AssetManager::getShaderPath(const std::string& shaderName) const {
-        std::string path = resolvePath(shaderName, "shaders");
-        LOG_DEBUG("[AssetManager] Resolved shader path for '" + shaderName + "': " + path);
-        return path;
+        const std::string name = std::filesystem::path(shaderName).filename().string();
+        std::string apiFolder = "";
+
+        switch (Lindo::Graphics::IRenderAPI::GetAPI()) {
+        case Lindo::Graphics::GraphicsAPI::OpenGL:
+        case Lindo::Graphics::GraphicsAPI::None:
+        default:
+            apiFolder = "Shaders/OpenGL";
+            break;
+        }
+
+        std::vector<std::filesystem::path> candidates = {
+            m_basePath / apiFolder / name,
+            m_basePath / "Shaders" / apiFolder / name,
+            m_basePath / "shaders" / name,
+            m_basePath / "shaders" / apiFolder / name,
+            std::filesystem::path(shaderName),
+            resolvePath(shaderName, "shaders")
+        };
+
+        for (const auto& candidate : candidates) {
+            if (std::filesystem::exists(candidate)) {
+                std::string result = candidate.lexically_normal().string();
+                LOG_DEBUG("[AssetManager] Resolved shader path for '" + shaderName + "': " + result);
+                return result;
+            }
+        }
+
+        std::string fallback = resolvePath(shaderName, "shaders");
+        LOG_WARN("[AssetManager] Shader not found in API-specific folders, falling back to legacy path: " + fallback);
+        return fallback;
     }
 
-    // ===== TEXTURES =====
+    // ===== �������� =====
     unsigned int AssetManager::loadTexture(const std::string& path) {
         std::string fullPath = resolvePath(path, "textures");
 
+        // �������� ���� �� ��������� ������������ ������� � ������
         if (textures.count(fullPath)) {
             LOG_DEBUG("[AssetManager] Texture already cached: " + fullPath);
             return textures[fullPath];
@@ -62,7 +95,7 @@ namespace Lindo {
         return loadTexture(path);
     }
 
-    // ===== MODELS =====
+    // ===== ������ =====
     Lindo::Graphics::Model* AssetManager::loadModel(const std::string& path) {
         std::string fullPath = resolvePath(path, "models");
 
@@ -92,7 +125,7 @@ namespace Lindo {
         return loadModel(path);
     }
 
-    // ===== AUDIO =====
+    // ===== ����� =====
     ALuint AssetManager::loadSound(const std::string& path) {
         std::string fullPath = resolvePath(path, "sounds");
         LOG_INFO("[AssetManager] Loading audio file (WAV): " + fullPath);
@@ -103,6 +136,7 @@ namespace Lindo {
             return 0;
         }
 
+        // ������� WAV-���������
         char riff[4];
         file.read(riff, 4);
         if (std::strncmp(riff, "RIFF", 4) != 0) {
@@ -118,6 +152,7 @@ namespace Lindo {
             return 0;
         }
 
+        // ���������� ���������� ����� (������, �������, ��������)
         file.seekg(22);
         short channels;
         file.read(reinterpret_cast<char*>(&channels), sizeof(short));
@@ -134,9 +169,11 @@ namespace Lindo {
         int dataSize;
         file.read(reinterpret_cast<char*>(&dataSize), sizeof(int));
 
+        // ������ ����� �����������
         std::vector<char> buffer(dataSize);
         file.read(buffer.data(), dataSize);
 
+        // ����������� ������� ��� OpenAL
         ALenum format = 0;
         if (channels == 1 && bitsPerSample == 16) {
             format = AL_FORMAT_MONO16;
@@ -149,6 +186,7 @@ namespace Lindo {
             return 0;
         }
 
+        // �������� ������ OpenAL � �������� � ���� ������
         ALuint alBuffer;
         alGenBuffers(1, &alBuffer);
         if (alGetError() != AL_NO_ERROR) {
@@ -176,10 +214,11 @@ namespace Lindo {
         return loadSound(path);
     }
 
-    // ===== CLEAR =====
+    // ===== ������� =====
     void AssetManager::clear() {
         LOG_INFO("[AssetManager] Clearing and releasing all cached assets...");
 
+        // ����������� ������ ����������
         if (!textures.empty()) {
             LOG_DEBUG("[AssetManager] Deleting " + std::to_string(textures.size()) + " textures from GPU memory.");
             for (auto& [path, tex] : textures) {
@@ -188,11 +227,13 @@ namespace Lindo {
             textures.clear();
         }
 
+        // Unique_ptr ������������� ������� ������ ��� ������ clear
         if (!models.empty()) {
             LOG_DEBUG("[AssetManager] Unloading " + std::to_string(models.size()) + " 3D models.");
             models.clear();
         }
 
+        // ����������� ������� OpenAL
         if (!sounds.empty()) {
             LOG_DEBUG("[AssetManager] Deleting " + std::to_string(sounds.size()) + " OpenAL audio buffers.");
             for (auto& [path, buf] : sounds) {

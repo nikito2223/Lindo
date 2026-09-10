@@ -1,6 +1,11 @@
 ﻿#pragma once
 #include <glm/glm.hpp>
-#include <Core/OGL.h> // Добавлено для GLFW_KEY_*
+#include <Core/OGL.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <functional>
+#include <Platform/Input/KeyCode.h>
 
 namespace Lindo {
     class Window;
@@ -8,99 +13,132 @@ namespace Lindo {
 
 namespace Lindo {
     namespace Debug {
-        class Console; // объявлена в debug/Console.h
+        class Console;
     }
 }
 
 namespace Lindo {
     namespace Input {
+        /**
+         * @brief Менеджер ввода в стиле Unity (GetKey, GetKeyDown, GetKeyUp).
+         */
         class Input {
         public:
-            void update(Lindo::Window* window); // вызывается каждый кадр для сброса одноразовых флагов
+            using CharCallback = std::function<void(unsigned int)>;
+            using KeyCallback = std::function<void(int key, int action)>;
 
-            // Состояние клавиш (удержание)
-            bool isForwardPressed() const { return m_forward; }
-            bool isBackwardPressed() const { return m_backward; }
-            bool isLeftPressed() const { return m_left; }
-            bool isRightPressed() const { return m_right; }
-            bool isJumpPressed() const { return m_jump; }
-            bool isCrouchPressed() const { return m_crouch; }
-            bool isF3Pressed() const { return m_f3Pressed; }
-            bool isF4Pressed() const { return m_f4Pressed; }
-            bool isF11Pressed() const { return m_f11Pressed; }
-            bool isEscapePressed() const { return m_escapePressed; }
+            static Input& Get() { return *s_Instance; }
 
-            // Универсальная проверка клавиши
-            bool isKeyPressed(int key) const {
-                switch (key) {
-                case GLFW_KEY_W:          return m_forward;
-                case GLFW_KEY_S:          return m_backward;
-                case GLFW_KEY_A:          return m_left;
-                case GLFW_KEY_D:          return m_right;
-                case GLFW_KEY_SPACE:      return m_jump;
-                case GLFW_KEY_LEFT_SHIFT: return m_crouch;
-                case GLFW_KEY_F3:         return m_f3Pressed;
-                case GLFW_KEY_F4:         return m_f4Pressed;
-                case GLFW_KEY_F11:        return m_f11Pressed;
-                case GLFW_KEY_ESCAPE:     return m_escapePressed;
-                default:                  return false;
-                }
-            }
+            Input();
+            ~Input() = default;
 
-            // Для обработки однократных нажатий (потребуются после проверки)
-            bool consumeF3();
-            bool consumeF4();
-            bool consumeF11();
-            bool consumeEscape();
+            /**
+             * @brief Обновляет состояния фаз клавиш (Down/Up) в конце кадра.
+             * @param window Указатель на окно для смены режима курсора.
+             */
+            void update(Lindo::Window* window);
 
-            // Мышь и ее компоненты
+            // --- API ВВОДА (Unity Style) ---
+
+            bool getKey(KeyCode key) const;
+            bool getKeyDown(KeyCode key) const;
+            bool getKeyUp(KeyCode key) const;
+
+            // Backward-compatible GLFW-style overloads for legacy engine code.
+            bool getKey(int glfwKey) const;
+            bool getKeyDown(int glfwKey) const;
+            bool getKeyUp(int glfwKey) const;
+
+            bool getMouseButton(int button) const;
+            bool getMouseButtonDown(int button) const;
+            bool getMouseButtonUp(int button) const;
+
+            bool getKey(const std::string& name) const;
+            bool getKeyDown(const std::string& name) const;
+            bool getKeyUp(const std::string& name) const;
+
+            float getAxis(const std::string& positive, const std::string& negative) const;
+            bool getAction(const std::string& action) const { return getKey(action); }
+            bool getActionDown(const std::string& action) const { return getKeyDown(action); }
+            bool getActionUp(const std::string& action) const { return getKeyUp(action); }
+
+            bool consumeKey(KeyCode key);
+            bool consumeKey(int glfwKey);
+            bool consumeF3() { return consumeKey(KeyCode::F3); }
+            bool consumeF4() { return consumeKey(KeyCode::F4); }
+            bool consumeF11() { return consumeKey(KeyCode::F11); }
+            bool consumeEscape() { return consumeKey(KeyCode::Escape); }
+
+            // Алиас для кнопок (GetButton в Unity)
+            bool getButton(const std::string& actionName) const { return getKey(actionName); }
+            bool getButtonDown(const std::string& actionName) const { return getKeyDown(actionName); }
+            bool getButtonUp(const std::string& actionName) const { return getKeyUp(actionName); }
+
+            /**
+             * @brief Привязывает строковый алиас к клавише (например, "Jump" -> KeyCode::Space).
+             */
+            void bindAction(const std::string& actionName, KeyCode key);
+
+            // --- МЫШЬ И СРОЛЛ ---
+
             glm::vec2 getMouseDelta() const { return m_mouseDelta; }
             float getMouseDeltaX() const { return m_mouseDelta.x; }
             float getMouseDeltaY() const { return m_mouseDelta.y; }
-
             float getScrollY() const { return m_scrollY; }
             void resetMouseDelta() { m_mouseDelta = glm::vec2(0.0f); }
 
-            // Для колбэков окна
+            // --- СИСТЕМНЫЕ КОЛБЭКИ (GLFW) ---
+
             void onKey(int key, int action);
-            void onChar(unsigned int codepoint); // текстовый ввод (для консоли), см. glfwSetCharCallback
+            void onChar(unsigned int codepoint);
             void onMouseMove(double x, double y);
             void onMouseButton(int button, int action);
             void onScroll(double yoffset);
 
-            // Состояние UI
+            // --- ПОДПИСКА НА СОБЫТИЯ ВВОДА ТЕКСТА И КЛАВИШ ---
+            void setCharCallback(CharCallback callback) { m_charCallback = callback; }
+            void setKeyCallback(KeyCallback callback) { m_keyCallback = callback; }
+
+            // --- СОСТОЯНИЯ И КОНСОЛЬ ---
+
             bool isUIActive() const { return m_uiActive; }
             void setUIActive(bool active);
-
-            // Игровая консоль: пока она открыта, Input перехватывает под неё клавиатуру/мышь/скролл
-            // и блокирует движение персонажа, чтобы набор команд не двигал игрока.
             void setConsole(Lindo::Debug::Console* console) { m_console = console; }
             bool isConsoleActive() const;
 
         private:
-            void handleConsoleKey(int key);
-            void clearMovementKeys();
+            void initKeyMappings();
+            KeyCode glfwKeyToKeyCode(int glfwKey) const;
+            KeyCode glfwButtonToKeyCode(int glfwButton) const;
 
         private:
-            // Флаги клавиш
-            bool m_forward = false, m_backward = false, m_left = false, m_right = false;
-            bool m_jump = false, m_crouch = false;
-            bool m_f3Pressed = false, m_f4Pressed = false, m_f11Pressed = false, m_escapePressed = false;
+            static Input* s_Instance;
 
-            // Для однократных нажатий
-            bool m_f3Consumed = true, m_f4Consumed = true, m_f11Consumed = true, m_escapeConsumed = true;
+            // Массивы фазовых состояний клавиш
+            static constexpr size_t KEY_COUNT = static_cast<size_t>(KeyCode::Count);
+            bool m_keysHeld[KEY_COUNT] = { false };
+            bool m_keysPressed[KEY_COUNT] = { false };
+            bool m_keysReleased[KEY_COUNT] = { false };
+
+            // Карты трансляции строк и кодов GLFW
+            std::unordered_map<std::string, KeyCode> m_stringToKeyMap;
+            std::unordered_map<int, KeyCode> m_glfwToKeyMap;
+
+            // Колбэки для передачи символов и спец-клавиш UI элементам
+            CharCallback m_charCallback = nullptr;
+            KeyCallback m_keyCallback = nullptr;
 
             // Мышь
-            double m_lastX = 0.0, m_lastY = 0.0;
+            double m_lastX = 0.0;
+            double m_lastY = 0.0;
             bool m_firstMouse = true;
             glm::vec2 m_mouseDelta = glm::vec2(0.0f);
             float m_scrollY = 0.0f;
 
-            // Флаг активности UI (курсор включен/выключен)
+            // UI и Консоль
             bool m_uiActive = false;
-
-            // Игровая консоль (Input ею не владеет, только указатель)
             Lindo::Debug::Console* m_console = nullptr;
         };
+
     }
 }

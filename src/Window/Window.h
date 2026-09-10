@@ -37,6 +37,7 @@ namespace Lindo {
         void setResizeCallback(std::function<void(int, int)> callback);
 
         static void showSplashScreen(int width, int height, const std::string& title);
+        static void windowSizeCallback(GLFWwindow* window, int width, int height);
 
     private:
         GLFWwindow* m_window = nullptr;

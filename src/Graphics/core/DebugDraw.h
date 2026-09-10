@@ -9,6 +9,15 @@ namespace Lindo {
     namespace Graphics {
         class DebugDraw {
         public:
+
+            static DebugDraw& GetInstance() {
+                static DebugDraw instance;
+                return instance;
+            }
+
+            DebugDraw(const DebugDraw&) = delete;
+            DebugDraw& operator=(const DebugDraw&) = delete;
+
             DebugDraw();
             ~DebugDraw();
 

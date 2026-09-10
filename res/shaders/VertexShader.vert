@@ -9,8 +9,8 @@ out vec3 Normal;
 out vec2 TexCoords;
 
 uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 viewMatrix;
+uniform mat4 projectionMatrix;
 uniform mat3 normalMatrix; // Передаем с CPU
 
 void main()
@@ -21,5 +21,5 @@ void main()
     Normal = normalMatrix * aNormal;
     TexCoords = aTexCoords;
 
-    gl_Position = projection * view * worldPos;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
 }

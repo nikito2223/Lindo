@@ -37,24 +37,27 @@ namespace Lindo {
     public:
         static SceneManager& getInstance();
 
-        // Инициализация и очистка
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         void Init();
         void Update(Input::Input* input);
-        void Render(Graphics::Shader& shader);
         void Cleanup();
 
-        // Управление сценами
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         template<typename T>
         void RegisterScene(const std::string& name);
+        void RegisterSceneFactory(const std::string& name,
+            std::function<std::unique_ptr<Lindo::World::Scene>()> creator);
 
         void LoadScene(const std::string& name);
+        void RequestLoadScene(const std::string& name);
         void UnloadCurrentScene();
         void ReloadCurrentScene();
 
         Lindo::World::Scene* GetCurrentScene() const { return currentScene.get(); }
         const std::string& GetCurrentSceneName() const { return currentSceneName; }
+        std::vector<std::string> GetRegisteredSceneNames() const;
 
-        // Поиск компонентов и объектов
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         template<typename T>
         T* FindComponentInScene() const;
 
@@ -64,7 +67,7 @@ namespace Lindo {
         Lindo::World::GameObject* FindGameObject(const std::string& name) const;
         glm::vec3 GetCharacterPosition() const;
 
-        // Добавление контента напрямую (для быстрого прототипирования)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         void AddGameObject(Lindo::World::GameObject* obj);
         void AddContent(std::function<void(Lindo::World::Scene*)> contentCallback);
 
@@ -84,13 +87,14 @@ namespace Lindo {
         std::unordered_map<std::string, SceneInfo> registeredScenes;
         std::unique_ptr<Lindo::World::Scene> currentScene;
         std::string currentSceneName;
+        std::string pendingSceneName;
 
-        // Для отложенного добавления контента
+        // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         std::vector<std::function<void(Lindo::World::Scene*)>> pendingContent;
         bool isInitialized = false;
     };
 
-    // Реализация шаблонов
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     template<typename T>
     void SceneManager::RegisterScene(const std::string& name) {
         registeredScenes[name] = {

@@ -12,5 +12,7 @@
     "glad",
     "freetype",
     "libpng"
+    ,"lua"
+    ,"sol2"
   ]
 }

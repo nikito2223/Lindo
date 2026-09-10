@@ -3,10 +3,11 @@
 #include "Component/GameObject/GameObject.h"
 #include "Component/PlayerController/Player.h"
 #include "Component/Camera/Camera.h"
-#include "Physics/Collider/CapsuleCollider.h"
+#include "Component/Physhcs/Colliders/CapsuleCollider.h"
 #include <algorithm>
+#include "Scripting/LuaApi.h"
+#include "Graphics/ui/UIManager.h"
 
-#include <world/GameScene.h>
 #include "Debug/DebugLogger.h"
 
 namespace Lindo {
@@ -18,32 +19,41 @@ namespace Lindo {
 
     void Lindo::SceneManager::Init() {
         isInitialized = true;
-
         LOG_INFO("[SceneManager] Initializing SceneManager...");
-
-        // Регистрация доступных сцен
-        // RegisterScene<MainMenuScene>("MainMenu");
-        RegisterScene<Lindo::Scenes::GameScene>("Game");
 
         LOG_INFO("[SceneManager] Initialized successfully.");
     }
 
+    void Lindo::SceneManager::RegisterSceneFactory(
+        const std::string& name,
+        std::function<std::unique_ptr<Lindo::World::Scene>()> creator) {
+        if (name.empty() || !creator) return;
+        registeredScenes[name] = { std::move(creator), name };
+        LOG_INFO("[SceneManager] Registered scene factory: '" + name + "'");
+    }
+
+    std::vector<std::string> Lindo::SceneManager::GetRegisteredSceneNames() const {
+        std::vector<std::string> names;
+        names.reserve(registeredScenes.size());
+        for (const auto& entry : registeredScenes) names.push_back(entry.first);
+        std::sort(names.begin(), names.end());
+        return names;
+    }
+
     void Lindo::SceneManager::Update(Input::Input* input) {
+        if (!pendingSceneName.empty()) {
+            std::string sceneName = std::move(pendingSceneName);
+            pendingSceneName.clear();
+            LoadScene(sceneName);
+        }
+
         if (!currentScene) return;
 
         ProcessPendingContent();
 
         if (currentScene->IsActive()) {
-            currentScene->Update();
             currentScene->ProcessInput(input);
-        }
-    }
-
-    void Lindo::SceneManager::Render(Graphics::Shader& shader) {
-        if (!currentScene) return;
-
-        if (currentScene->IsActive()) {
-            currentScene->Render(shader);
+            currentScene->Update();
         }
     }
 
@@ -57,6 +67,7 @@ namespace Lindo {
         }
         currentSceneName.clear();
         pendingContent.clear();
+        pendingSceneName.clear();
         isInitialized = false;
 
         LOG_INFO("[SceneManager] Cleaned up successfully.");
@@ -70,6 +81,12 @@ namespace Lindo {
             LOG_ERROR("[SceneManager] Failed to load scene! Scene '" + name + "' is not registered.");
             return;
         }
+
+        // --- РЕШЕНИЕ 1: АВТОМАТИЧЕСКАЯ ЗАЧИСТКА UI И СБРОС СОСТОЯНИЯ ---
+        if (auto* uiManager = Lindo::Scripting::LuaUI::GetManager()) {
+            uiManager->clearDynamicWidgets(); // Зачищаем динамические виджеты (панели, кнопки)
+        }
+        // -------------------------------------------------------------
 
         // Выгрузка текущей сцены
         if (currentScene) {
@@ -85,6 +102,7 @@ namespace Lindo {
         currentSceneName = name;
 
         if (currentScene) {
+            currentScene->SetName(name);
             LOG_INFO("[SceneManager] Calling OnCreate() for scene: '" + name + "'");
             currentScene->OnCreate();
 
@@ -97,6 +115,11 @@ namespace Lindo {
         else {
             LOG_ERROR("[SceneManager] Critical error: Failed to instantiate scene '" + name + "'!");
         }
+    }
+
+    void Lindo::SceneManager::RequestLoadScene(const std::string& name) {
+        if (name.empty()) return;
+        pendingSceneName = name;
     }
 
     void Lindo::SceneManager::UnloadCurrentScene() {
@@ -142,7 +165,9 @@ namespace Lindo {
     void Lindo::SceneManager::AddGameObject(Lindo::World::GameObject* obj) {
         if (!currentScene || !obj) return;
         LOG_DEBUG("[SceneManager] Adding GameObject to active scene...");
-        /*currentScene->AddGameObject(obj);*/
+
+        // Исправлено: добавление объекта в активную сцену
+        currentScene->AddGameObject(obj);
     }
 
     void Lindo::SceneManager::AddContent(std::function<void(Lindo::World::Scene*)> contentCallback) {
@@ -153,12 +178,15 @@ namespace Lindo {
     void Lindo::SceneManager::ProcessPendingContent() {
         if (pendingContent.empty()) return;
 
-        LOG_DEBUG("[SceneManager] Processing " + std::to_string(pendingContent.size()) + " pending content callbacks...");
-        for (auto& callback : pendingContent) {
+        // Копируем очереди callbacks, чтобы избежать ошибки при вызове AddContent во время итерации
+        auto callbacks = std::move(pendingContent);
+        pendingContent.clear();
+
+        LOG_DEBUG("[SceneManager] Processing " + std::to_string(callbacks.size()) + " pending content callbacks...");
+        for (auto& callback : callbacks) {
             if (currentScene) {
                 callback(currentScene.get());
             }
         }
-        pendingContent.clear();
     }
 }

@@ -7,32 +7,33 @@ namespace Lindo::Graphics {
     class RenderCommand {
     public:
         static void Init() {
-            s_renderAPI->Init();
+            GetAPIInstance()->Init();
         }
 
         static void SetViewport(int x, int y, int width, int height) {
-            s_renderAPI->SetViewport(x, y, width, height);
+            GetAPIInstance()->SetViewport(x, y, width, height);
         }
 
         static void SetClearColor(const glm::vec4& color) {
-            s_renderAPI->SetClearColor(color);
+            GetAPIInstance()->SetClearColor(color);
         }
 
         static void Clear(bool color = true, bool depth = true) {
-            s_renderAPI->Clear(color, depth);
+            GetAPIInstance()->Clear(color, depth);
         }
 
-        static void SetDepthTest(bool enabled) { s_renderAPI->SetDepthTest(enabled); }
-        static void SetDepthWrite(bool enabled) { s_renderAPI->SetDepthWrite(enabled); }
-        static void SetDepthFuncLess() { s_renderAPI->SetDepthFuncLess(); }
-        static void SetDepthFuncLEqual() { s_renderAPI->SetDepthFuncLEqual(); }
+        static void SetDepthTest(bool enabled) { GetAPIInstance()->SetDepthTest(enabled); }
+        static void SetDepthWrite(bool enabled) { GetAPIInstance()->SetDepthWrite(enabled); }
+        static void SetDepthFuncLess() { GetAPIInstance()->SetDepthFuncLess(); }
+        static void SetDepthFuncLEqual() { GetAPIInstance()->SetDepthFuncLEqual(); }
 
-        static void SetCullFace(bool enabled, bool backFace = true) { s_renderAPI->SetCullFace(enabled, backFace); }
-        static void SetBlending(bool enabled) { s_renderAPI->SetBlending(enabled); }
-        static void SetMultisampling(bool enabled) { s_renderAPI->SetMultisampling(enabled); }
+        static void SetCullFace(bool enabled, bool backFace = true) { GetAPIInstance()->SetCullFace(enabled, backFace); }
+        static void SetBlending(bool enabled) { GetAPIInstance()->SetBlending(enabled); }
+        static void SetMultisampling(bool enabled) { GetAPIInstance()->SetMultisampling(enabled); }
 
     private:
-        static std::unique_ptr<IRenderAPI> s_renderAPI;
+        // Ленивая инициализация: объект создастся только при первом обращении
+        static std::unique_ptr<IRenderAPI>& GetAPIInstance();
     };
 
 }

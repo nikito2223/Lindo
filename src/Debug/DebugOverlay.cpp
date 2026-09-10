@@ -1,121 +1,70 @@
 #include "DebugOverlay.h"
-#include "../Core/Application.h" // Для доступа к AppInfo
+#include "../Core/Application.h"
 #include <sstream>
 #include <iomanip>
 #include <Core/Time/Time.h>
+#include "Graphics/ui/UIWidget.h"
 
 namespace Lindo {
     namespace Debug {
-
-        DebugOverlay::DebugOverlay() = default;
 
         void DebugOverlay::init(Lindo::Graphics::UI::UIFont* font) {
             m_font = font;
         }
 
-        void DebugOverlay::update(int fps, const glm::vec3& playerPos, bool debugMode) {
-            float dt = Lindo::Time::GetDeltaTime();
-            m_currentPos = playerPos;
-            updateStats(fps, debugMode);
-        }
-
-        void DebugOverlay::updatePosition(const glm::vec3& playerPos) {
-            m_currentPos = playerPos;
-            if (m_visible) {
-                rebuildInfo();
-            }
-        }
-
-        void DebugOverlay::updateStats(int fps, bool debugMode) {
-            float dt = Lindo::Time::GetDeltaTime();
-            m_updateTimer += dt;
-            m_totalTime += dt;
+        void DebugOverlay::update(int fps, const glm::vec3& playerPos, float speed) {
             m_currentFPS = fps;
-            m_debugMode = debugMode;
+            m_currentPos = playerPos;
+            m_currentSpeed = speed;
 
             if (m_visible) {
                 rebuildInfo();
             }
-        }
-
-        void DebugOverlay::setTriangleCount(int count) {
-            m_triangleCount = count;
-            if (m_visible) {
-                rebuildInfo();
-            }
-        }
-
-        void DebugOverlay::onResize(int width, int height) {
-            // При необходимости пересчета UI под новое разрешение
         }
 
         void DebugOverlay::rebuildInfo() {
             m_infos.clear();
 
-            // 1. Движок и Версия
+            // Engine & Version
             addInfo("Engine", AppInfo::Name, Lindo::Graphics::UI::Color(0.2f, 0.8f, 1.0f, 1.0f));
             addInfo("Version", AppInfo::GetVersionString(), Lindo::Graphics::UI::Color(0.7f, 0.7f, 0.7f, 1.0f));
 
-            // 2. FPS & Время кадра (Frametime)
+            // FPS & Frame Time
             float frameTimeMs = m_currentFPS > 0 ? (1000.0f / m_currentFPS) : 0.0f;
             std::stringstream fpsStr;
             fpsStr << m_currentFPS << " (" << std::fixed << std::setprecision(1) << frameTimeMs << " ms)";
-            
-            Lindo::Graphics::UI::Color fpsColor = (m_currentFPS >= 60) 
-                ? Lindo::Graphics::UI::Color(0, 1, 0, 1) 
-                : ((m_currentFPS >= 30) ? Lindo::Graphics::UI::Color(1, 1, 0, 1) : Lindo::Graphics::UI::Color(1, 0, 0, 1));
-            
+            Lindo::Graphics::UI::Color fpsColor = (m_currentFPS >= 60) ? Lindo::Graphics::UI::Color(0, 1, 0, 1)
+                : ((m_currentFPS >= 30) ? Lindo::Graphics::UI::Color(1, 1, 0, 1)
+                    : Lindo::Graphics::UI::Color(1, 0, 0, 1));
             addInfo("FPS", fpsStr.str(), fpsColor);
 
-            // 3. Позиция игрока/камеры (X, Y, Z)
+            // Position
             std::stringstream posStr;
-            posStr << std::fixed << std::setprecision(2);
-            posStr << "X: " << m_currentPos.x << " | Y: " << m_currentPos.y << " | Z: " << m_currentPos.z;
+            posStr << std::fixed << std::setprecision(2) << "X: " << m_currentPos.x << " | Y: " << m_currentPos.y << " | Z: " << m_currentPos.z;
             addInfo("Position", posStr.str());
 
-            // 4. Треугольники (Triangles)
-            std::stringstream triStr;
-            if (m_triangleCount >= 1000000) {
-                triStr << std::fixed << std::setprecision(2) << (m_triangleCount / 1000000.0f) << " M";
-            }
-            else if (m_triangleCount >= 1000) {
-                triStr << std::fixed << std::setprecision(1) << (m_triangleCount / 1000.0f) << " K";
-            }
-            else {
-                triStr << m_triangleCount;
-            }
-            addInfo("Triangles", triStr.str());
+            // Speed
+            std::stringstream speedStr;
+            speedStr << std::fixed << std::setprecision(2) << m_currentSpeed << " m/s";
+            addInfo("Speed", speedStr.str(), Lindo::Graphics::UI::Color(0.2f, 0.9f, 0.9f, 1.0f));
 
-            // 5. Статус отладки физики / гизмо
-            addInfo("Debug Mode", m_debugMode ? "ON" : "OFF",
-                m_debugMode ? Lindo::Graphics::UI::Color(1, 0.3f, 0.3f, 1) : Lindo::Graphics::UI::Color(0.5f, 0.5f, 0.5f, 1));
+            // Memory
+            std::stringstream memStr;
+            memStr << std::fixed << std::setprecision(1) << m_memoryUsageMB << " MB";
+            addInfo("Memory", memStr.str(), Lindo::Graphics::UI::Color(0.6f, 0.9f, 0.6f, 1.0f));
 
-            // 6. Uptime (Время работы приложения)
-            int minutes = static_cast<int>(m_totalTime) / 60;
-            int seconds = static_cast<int>(m_totalTime) % 60;
-            std::stringstream timeStr;
-            timeStr << std::setfill('0') << std::setw(2) << minutes << ":"
-                    << std::setfill('0') << std::setw(2) << seconds;
-            addInfo("Uptime", timeStr.str(), Lindo::Graphics::UI::Color(0.8f, 0.8f, 0.8f, 1.0f));
+            // Objects Count
+            addInfo("Scene Objects", std::to_string(m_sceneObjectCount), Lindo::Graphics::UI::Color(1.0f, 0.8f, 0.2f, 1.0f));
         }
 
         void DebugOverlay::addInfo(const std::string& label, const std::string& value, const Lindo::Graphics::UI::Color& color) {
-            DebugInfo info;
-            info.label = label + ":";
-            info.value = value;
-            info.color = color;
-            m_infos.push_back(info);
-        }
-
-        void DebugOverlay::clearInfos() {
-            m_infos.clear();
+            m_infos.push_back({ label + ":", value, color });
         }
 
         void DebugOverlay::render(Lindo::Graphics::UI::UIRenderer& renderer) {
             if (!m_visible || !m_font) return;
 
             float y = START_Y;
-
             for (const auto& info : m_infos) {
                 std::string fullText = info.label + " " + info.value;
 

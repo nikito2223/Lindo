@@ -1,4 +1,4 @@
-#include "Window.h"
+п»ї#include "Window.h"
 #include "core/Input.h"
 #include "Graphics/ui/UIManager.h"
 #include "Core/Types/Settings.h"
@@ -55,7 +55,20 @@ namespace Lindo {
         glfwMakeContextCurrent(m_window);
         LOG_INFO("[Window] OpenGL context made current.");
 
-        // Применяем VSync
+        // meshes, textures, and framebuffers. Load GLAD before any subsystem
+        // creates those resources, regardless of the selected render API.
+        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+            LOG_CRITICAL("[Window] GLAD initialization failed after creating the OpenGL context.");
+            glfwDestroyWindow(m_window);
+            m_window = nullptr;
+            glfwTerminate();
+            throw std::runtime_error("GLAD initialization failed");
+        }
+        const char* glVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+        LOG_INFO(std::string("[Window] GLAD initialized. OpenGL version: ") +
+            (glVersion ? glVersion : "unknown"));
+
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ VSync
         setVSync(displaySettings.vsync);
 
         glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -64,6 +77,8 @@ namespace Lindo {
 
     Window::~Window() {
         LOG_INFO("[Window] Destroying window and terminating GLFW...");
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        DisplaySettings::getInstance().apply();
         if (m_window) {
             glfwDestroyWindow(m_window);
         }
@@ -98,8 +113,12 @@ namespace Lindo {
 
         if (fullscreen && !m_isFullscreen) {
             LOG_INFO("[Window] Switching to Fullscreen mode.");
+
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+            m_windowedW = displaySettings.windowWidth;
+            m_windowedH = displaySettings.windowHeight;
             glfwGetWindowPos(m_window, &m_windowedX, &m_windowedY);
-            glfwGetWindowSize(m_window, &m_windowedW, &m_windowedH);
+
             glfwSetWindowMonitor(m_window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
             m_width = mode->width;
             m_height = mode->height;
@@ -108,15 +127,34 @@ namespace Lindo {
         }
         else if (!fullscreen && m_isFullscreen) {
             LOG_INFO("[Window] Restoring Windowed mode.");
+
             glfwSetWindowMonitor(m_window, nullptr, m_windowedX, m_windowedY, m_windowedW, m_windowedH, 0);
             m_width = m_windowedW;
             m_height = m_windowedH;
             m_isFullscreen = false;
             displaySettings.fullscreen = false;
+
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+            displaySettings.windowWidth = m_windowedW;
+            displaySettings.windowHeight = m_windowedH;
         }
 
-        // Повторно восстанавливаем VSync после изменения состояния монитора
         setVSync(displaySettings.vsync);
+
+        // ROOT CAUSE FIX: glfwSetWindowMonitor() *should* fire the framebuffer
+        // size callback, but on some platforms/drivers it can be delayed by a
+        // frame (or not fire before the next render happens), leaving the GL
+        // viewport pointed at the pre-switch size for one frame. That stale,
+        // smaller viewport is exactly what produces the grey bars along the
+        // edges seen when entering fullscreen (and, symmetrically, when a
+        // resolution change is applied). Force the viewport to the real,
+        // current framebuffer size immediately so nothing is left stale.
+        int fbWidth = 0, fbHeight = 0;
+        glfwGetFramebufferSize(m_window, &fbWidth, &fbHeight);
+        glViewport(0, 0, fbWidth, fbHeight);
+
+        // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+        displaySettings.apply();
     }
 
     void Window::toggleFullscreen() {
@@ -149,19 +187,26 @@ namespace Lindo {
     void Window::framebufferSizeCallback(GLFWwindow* window, int w, int h) {
         if (h == 0) h = 1;
 
-        LOG_DEBUG(std::string("[Window] Framebuffer resized to: ") + std::to_string(w) + "x" + std::to_string(h));
-
-        Lindo::Graphics::RenderCommand::SetViewport(0, 0, w, h);
-
-        DisplaySettings& displaySettings = DisplaySettings::getInstance();
-        displaySettings.windowWidth = w;
-        displaySettings.windowHeight = h;
-
         Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
         if (!win) return;
 
+        DisplaySettings& displaySettings = DisplaySettings::getInstance();
+
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ
+        if (displaySettings.windowWidth != w || displaySettings.windowHeight != h) {
+            displaySettings.windowWidth = w;
+            displaySettings.windowHeight = h;
+        }
+
         win->m_width = w;
         win->m_height = h;
+
+        // ROOT CAUSE FIX: previously nothing here touched the GL viewport, so
+        // it kept whatever dimensions the last bound framebuffer (offscreen or
+        // default) had left it at. Sync it to the new size the instant we
+        // learn about a resize, instead of only relying on downstream
+        // consumers (UI manager / resize callback) to eventually do it.
+        glViewport(0, 0, w, h);
 
         if (win->m_uiManager) win->m_uiManager->onResize(w, h);
         if (win->m_resizeCallback) win->m_resizeCallback(w, h);
@@ -208,15 +253,23 @@ namespace Lindo {
             if (win->m_uiManager) {
                 auto* console = win->m_uiManager->getConsole();
                 if (console && console->isVisible()) {
-                    if (key == GLFW_KEY_TAB) {
-                        console->onTab();
-                    }
-                    else if (ctrlPressed) {
+                    if (ctrlPressed) {
                         if (key == GLFW_KEY_A) console->onSelectAll();
                         else if (key == GLFW_KEY_C) console->onCopy();
                         else if (key == GLFW_KEY_V) console->onPaste();
                         else if (key == GLFW_KEY_X) console->onCut();
                     }
+                    else if (key == GLFW_KEY_BACKSPACE) console->onBackspace();
+                    else if (key == GLFW_KEY_DELETE) console->onDeleteForward();
+                    else if (key == GLFW_KEY_ENTER || key == GLFW_KEY_KP_ENTER) console->onEnter();
+                    else if (key == GLFW_KEY_TAB) console->onTab();
+                    else if (key == GLFW_KEY_ESCAPE) console->onEscape();
+                    else if (key == GLFW_KEY_HOME) console->onHome();
+                    else if (key == GLFW_KEY_END) console->onEnd();
+                    else if (key == GLFW_KEY_LEFT) console->onMoveCursorLeft();
+                    else if (key == GLFW_KEY_RIGHT) console->onMoveCursorRight();
+                    else if (key == GLFW_KEY_UP) console->onHistoryUp();
+                    else if (key == GLFW_KEY_DOWN) console->onHistoryDown();
                 }
             }
         }
