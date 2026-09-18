@@ -11,8 +11,8 @@
     "nlohmann-json",
     "glad",
     "freetype",
-    "libpng"
-    ,"lua"
-    ,"sol2"
+    "libpng",
+    "lua",
+    "sol2"
   ]
 }

@@ -1,43 +1,20 @@
 # --- Lindo Engine ---
 
-**Lindo** — 3D игровой движок на **C++**, созданный для разработки игр и экспериментов с собственным игровым рендерингом, физикой, UI, аудио и другими системами.
+**Lindo** — 3D движок, который разработан для собственных проектов
 
-> 🎮 **One Engine — Multiple Games**
-
----
-
-## ✨ Возможности
-
-На данный момент Lindo включает:
-
-* 🎨 3D Rendering
-* 🖥️ UI System
-* 🎮 Input System
-* 📦 Asset Manager
-* 🧱 Collision & Physics
-* 💡 Lighting & Shadows
-* 🌌 Skybox
-* 🔊 OpenAL Audio
-* 🧩 Components
-* 🌍 Scene System
-* 🐛 Debug Overlay
-
-Проект находится в активной разработке.
-
----
+>- Проект находится в активной разработке.
 
 # 🛠️ Требования
 
 ## Windows
 
-Для сборки Lindo на Windows потребуется:
-
-* **Windows 10/11**
-* **Visual Studio 2022**
-* **C++ Desktop Development**
-* **CMake 3.15+**
-* **Git**
-* **vcpkg**
+>- Сборка под винду, требует -
+>>- **Windows 10/11**
+>>- **Visual Studio 2022**
+>>- **C++ Desktop Development**
+>>- **CMake 3.15+**
+>>- **Git**
+>>- **vcpkg**
 
 ### Visual Studio 2022
 
@@ -53,7 +30,7 @@
 
 ---
 
-## 📦 vcpkg
+## VCPKG часть
 
 Lindo использует **vcpkg** для установки C++ зависимостей.
 
@@ -69,7 +46,7 @@ bootstrap-vcpkg.bat
 
 ---
 
-# 📚 Зависимости
+# Зависимости
 
 Все основные зависимости проекта находятся в:
 
@@ -77,38 +54,29 @@ bootstrap-vcpkg.bat
 vcpkg.json
 ```
 
-Текущий список:
-
-* OpenGL
+Текущий список -
+#
+*  OpenGL
 * GLFW
+* OpenAL Soft
 * GLEW
 * GLM
 * Assimp
-* nlohmann-json
 * GLAD
-* OpenAL
+* JSON
 * FreeType
+* LibPNG
+* Lua
+#
 
-### Установка зависимостей
-
-Находясь в корневой папке проекта:
-
-```bash
-vcpkg install
-```
-
-vcpkg автоматически прочитает `vcpkg.json` и установит необходимые библиотеки.
-
----
-
-# 🔨 Сборка на Windows
+# Сборка на Windows
 
 После установки всех необходимых компонентов:
 
 ### 1. Клонировать репозиторий
 
 ```bash
-git clone <REPOSITORY_URL>
+git clone https://github.com/nikito2223/Lindo.git
 cd Lindo
 ```
 
@@ -131,12 +99,6 @@ cd build
 cmake ..
 ```
 
-Или, если CMake не видит установленный vcpkg:
-
-```bash
-cmake .. -DCMAKE_TOOLCHAIN_FILE=<VCPKG_PATH>/scripts/buildsystems/vcpkg.cmake
-```
-
 ### 5. Собрать проект
 
 ```bash
@@ -147,13 +109,11 @@ cmake --build . --config Release
 
 ---
 
-# 🐧 Linux
-
-Linux-версия Lindo **не требует vcpkg**.
+# Linux
 
 Зависимости можно установить непосредственно через пакетный менеджер системы.
 
-Для Ubuntu/Debian:
+Пример для Ubuntu/Debian:
 
 ```bash
 sudo apt update
@@ -178,12 +138,12 @@ sudo apt install libgl1-mesa-dev
 
 ---
 
-## 🔨 Сборка на Linux
+## Сборка на Linux
 
 Клонируем проект:
 
 ```bash
-git clone <REPOSITORY_URL>
+git clone https://github.com/nikito2223/Lindo.git
 cd Lindo
 ```
 
@@ -214,7 +174,7 @@ cmake --build . -j$(nproc)
 
 ---
 
-# 📁 Структура проекта
+# Структура проекта
 
 Примерная структура:
 
@@ -240,41 +200,13 @@ Lindo/
 │   ├── models/
 │   ├── textures/
 │   ├── shaders/
-│   ├── fonts/
+│   ├── ui/
 │   └── ...
 │
 └── build/
 ```
 
-> `build/` не должен храниться в Git-репозитории.
-
----
-
-# 🧩 CMake
-
-Lindo использует **CMake** как основную систему сборки.
-
-Минимальная версия CMake:
-
-```text
-3.15
-```
-
-Если у вас уже установлен CMake 3.15 — **этого достаточно**, если `CMakeLists.txt` проекта не требует более новую версию.
-
-Проверить версию:
-
-```bash
-cmake --version
-```
-
----
-
-# 🪟 IDE
-
-Основная IDE для разработки Lindo:
-
-**Visual Studio 2022**
+# IDE
 
 Также проект можно разрабатывать в других редакторах, поддерживающих CMake и C++.
 
@@ -289,69 +221,15 @@ cmake --version
 
 # 🌐 Платформы
 
-| Platform   | Status                     | Dependencies    |
-| ---------- | -------------------------- | --------------- |
-| 🪟 Windows | ✅ Supported                | vcpkg           |
-| 🐧 Linux   | 🚧 Supported / Development | System packages |
-| 🍎 macOS   | 🚧 Planned                 | —               |
-
----
-
-# 🚀 Development
-
-Lindo создаётся как универсальный движок:
-
-```text
-             ┌─────────────┐
-             │    Lindo    │
-             │    Engine   │
-             └──────┬──────┘
-                    │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-     Game 01     Game 02     Game 03
-```
-
-Идея заключается в том, чтобы основные системы движка не зависели от конкретной игры.
-
-Игровая логика, сцены и ресурсы могут использовать Lindo как основу для разных проектов.
-
----
-
-# 📌 Roadmap
-
-* [x] Rendering
-* [x] Input
-* [x] UI
-* [x] Audio
-* [x] Asset Manager
-* [x] Collision
-* [x] Physics
-* [x] Lighting
-* [x] Shadows
-* [x] Skybox
-* [x] Debug Tools
-* [ ] Editor
-* [ ] Advanced Physics
-* [ ] Networking
-* [ ] More rendering features
-
-Roadmap может изменяться по мере разработки.
-
+| Platform   | Status                      | Dependencies    |
+| ---------- | --------------------------  | --------------- |
+| Windows | ✅ Supported                | vcpkg            |
+| Linux   | 🚧 Planned                 | --              |
+| macOS   | 🚧 Planned                 | —               |
 ---
 
 # 📄 License
 
-License: **TBD**
+License: **GPL-3.0 license**
 
 ---
-
-<div align="center">
-
-### 🟧 Lindo Engine
-
-**One Engine — Multiple Games**
-
-Made with ❤️ and C++
-
-</div>
