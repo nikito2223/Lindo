@@ -14,18 +14,22 @@ namespace Lindo {
 
     std::string AssetManager::resolvePath(const std::string& relativePath, const std::string& subDir) const {
         std::filesystem::path path(relativePath);
-
-        // ���� ���� ��� ���������� ��� ��� �������� ������� ���������� � ���������� ��� ����
-        if (path.is_absolute() || (path.has_parent_path() && path.begin()->string() == m_basePath.string())) {
-            return path.string();
+    
+        if (path.is_absolute()) {
+            return path.lexically_normal().string();
         }
-
-        // ���� ������� ������������� (�������� "textures") � � ��� ��� � ����, ��������� �
+    
+        // Already rooted at m_basePath? Don't prefix it again.
+        std::string normalizedInput = path.lexically_normal().string();
+        std::string normalizedBase  = m_basePath.lexically_normal().string();
+        if (normalizedInput.rfind(normalizedBase, 0) == 0) {
+            return normalizedInput;
+        }
+    
         if (!subDir.empty() && path.parent_path().string().find(subDir) == std::string::npos) {
             return (m_basePath / subDir / path).lexically_normal().string();
         }
-
-        // ����� ������ �������� ���� �� ������� �����
+    
         return (m_basePath / path).lexically_normal().string();
     }
 
@@ -65,14 +69,14 @@ namespace Lindo {
 
     // ===== �������� =====
     unsigned int AssetManager::loadTexture(const std::string& path) {
-        std::string fullPath = resolvePath(path, "textures");
-
-        // �������� ���� �� ��������� ������������ ������� � ������
+        // Ищем относительно общей папки textures
+        std::string fullPath = resolvePath(path, "models");
+    
         if (textures.count(fullPath)) {
             LOG_DEBUG("[AssetManager] Texture already cached: " + fullPath);
             return textures[fullPath];
         }
-
+    
         LOG_DEBUG("[AssetManager] Requesting texture load: " + fullPath);
         unsigned int tex = Lindo::Graphics::loadTexture(fullPath);
         if (tex != 0) {
@@ -84,14 +88,9 @@ namespace Lindo {
         }
         return tex;
     }
-
+    
     unsigned int AssetManager::getTexture(const std::string& path) {
-        std::string fullPath = resolvePath(path, "textures");
-        if (textures.count(fullPath)) {
-            LOG_DEBUG("[AssetManager] Fetching texture from cache: " + fullPath);
-            return textures[fullPath];
-        }
-        LOG_WARN("[AssetManager] Texture not found in cache, triggering load: " + fullPath);
+        // Используем единую логику загрузки/кеширования
         return loadTexture(path);
     }
 
@@ -214,6 +213,42 @@ namespace Lindo {
         return loadSound(path);
     }
 
+    // ===== Fonts =====
+    Lindo::Graphics::UI::UIFont* AssetManager::loadFont(const std::string& path, float fontSize,
+        int atlasWidth, int atlasHeight, const std::string& charset) {
+        std::string fullPath = resolvePath(path, "fonts");
+        std::string cacheKey = fullPath + "#" + std::to_string(fontSize);
+
+        if (fonts.count(cacheKey)) {
+            LOG_DEBUG("[AssetManager] Font already cached: " + cacheKey);
+            return fonts[cacheKey].get();
+        }
+
+        LOG_INFO("[AssetManager] Loading font: " + fullPath + " (size " + std::to_string(fontSize) + ")");
+        auto font = std::make_unique<Lindo::Graphics::UI::UIFont>();
+        if (!font->loadFromFile(fullPath, fontSize, atlasWidth, atlasHeight, charset)) {
+            LOG_ERROR("[AssetManager] Failed to load font: " + fullPath);
+            return nullptr;
+        }
+
+        Lindo::Graphics::UI::UIFont* raw = font.get();
+        fonts[cacheKey] = std::move(font);
+        LOG_INFO("[AssetManager] Font loaded and cached successfully: " + cacheKey);
+        return raw;
+    }
+
+    Lindo::Graphics::UI::UIFont* AssetManager::getFont(const std::string& path, float fontSize,
+        int atlasWidth, int atlasHeight, const std::string& charset) {
+        std::string fullPath = resolvePath(path, "fonts");
+        std::string cacheKey = fullPath + "#" + std::to_string(fontSize);
+
+        if (fonts.count(cacheKey)) {
+            return fonts[cacheKey].get();
+        }
+        LOG_WARN("[AssetManager] Font not found in cache, triggering load: " + cacheKey);
+        return loadFont(path, fontSize, atlasWidth, atlasHeight, charset);
+    }
+
     // ===== ������� =====
     void AssetManager::clear() {
         LOG_INFO("[AssetManager] Clearing and releasing all cached assets...");
@@ -240,6 +275,12 @@ namespace Lindo {
                 alDeleteBuffers(1, &buf);
             }
             sounds.clear();
+        }
+
+        // Fonts own their GL texture via UIFont's destructor
+        if (!fonts.empty()) {
+            LOG_DEBUG("[AssetManager] Unloading " + std::to_string(fonts.size()) + " fonts.");
+            fonts.clear();
         }
 
         LOG_INFO("[AssetManager] All assets successfully cleared.");

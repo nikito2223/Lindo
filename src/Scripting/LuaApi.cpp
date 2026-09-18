@@ -1,4 +1,5 @@
 #include "LuaApi.h"
+#include <memory>
 #include "Core/AssetManager.h"
 #include "Core/Input.h"
 #include "Core/SceneManager.h"
@@ -6,6 +7,7 @@
 #include "Component/PlayerController/Player.h"
 #include "Component/Camera/Camera.h"
 #include "Component/Physhcs/MeshRenderer.h"
+#include "Component/Physhcs/RigidBody.h"
 #include "Component/Physhcs/Colliders/BoxCollider.h"
 #include "Component/Physhcs/Colliders/SphereCollider.h"
 #include "Component/Physhcs/Colliders/CapsuleCollider.h"
@@ -25,6 +27,7 @@
 #include <unordered_map>
 #include <GLFW/glfw3.h>
 #include "core/Types/Settings.h"
+#include "core/Application.h" 
 
 #include <world/managers/LayerManager.h>
 
@@ -73,24 +76,38 @@ namespace {
         return { values[0], values[1], values[2], values.size() > 3 ? values[3] : 1.0f };
     }
 
-    void applyRect(const std::shared_ptr<Lindo::Graphics::UI::UIWidget>& widget, 
-                   const std::string& text, 
-                   float parentX = 0.0f, 
-                   float parentY = 0.0f) {
-        widget->setPosition(parentX + number(text, "x"), parentY + number(text, "y"));
+    // 1. В applyRect НЕ прибавляем parentX и parentY:
+    void applyRect(const std::shared_ptr<Lindo::Graphics::UI::UIWidget>& widget,
+                   const std::string& text) {
+        if (!widget) return;
+                
+        widget->setPosition(number(text, "x"), number(text, "y"));
         widget->setSize(number(text, "width", 100.0f), number(text, "height", 40.0f));
         widget->setTextSize(number(text, "fontSize", 24.0f));
                 
-        // Считываем 'zOrder', а если его нет — ищем 'z' (по умолчанию 0)
         int zVal = integer(text, "zOrder", integer(text, "z", 0));
         widget->setZOrder(zVal);
+
+        // Разбор якорей (Unity Style)
+        std::string anchorStr = attr(text, "anchor");
+        if (!anchorStr.empty()) {
+            if (anchorStr == "Center")       widget->setAnchor(Lindo::Graphics::UI::UIAnchor::Center);
+            else if (anchorStr == "TopLeft")      widget->setAnchor(Lindo::Graphics::UI::UIAnchor::TopLeft);
+            else if (anchorStr == "TopCenter")    widget->setAnchor(Lindo::Graphics::UI::UIAnchor::TopCenter);
+            else if (anchorStr == "TopRight")     widget->setAnchor(Lindo::Graphics::UI::UIAnchor::TopRight);
+            else if (anchorStr == "CenterLeft")   widget->setAnchor(Lindo::Graphics::UI::UIAnchor::CenterLeft);
+            else if (anchorStr == "CenterRight")  widget->setAnchor(Lindo::Graphics::UI::UIAnchor::CenterRight);
+            else if (anchorStr == "BottomLeft")   widget->setAnchor(Lindo::Graphics::UI::UIAnchor::BottomLeft);
+            else if (anchorStr == "BottomCenter") widget->setAnchor(Lindo::Graphics::UI::UIAnchor::BottomCenter);
+            else if (anchorStr == "BottomRight")  widget->setAnchor(Lindo::Graphics::UI::UIAnchor::BottomRight);
+        }
     }
 }
 
 namespace Lindo::Scripting {
 
     void SetLuaEngineContext(Lindo::SceneManager* scenes, Lindo::Input::Input* input,
-        Lindo::Graphics::UI::UIManager* ui, Lindo::Graphics::Renderer* renderer) { // <--- ОБНОВЛЕНО
+        Lindo::Graphics::UI::UIManager* ui, Lindo::Graphics::Renderer* renderer) {
         g_sceneManager = scenes;
         g_input = input;
         g_ui = ui;
@@ -132,13 +149,12 @@ namespace Lindo::Scripting {
             if (type == "UI") continue;
 
             std::shared_ptr<Lindo::Graphics::UI::UIWidget> widget;
-            // Внутри цикла LuaUI::LoadXml при разборе тэгов:
             float px = (panels.size() > 1) ? panels.back()->getX() : 0.0f;
             float py = (panels.size() > 1) ? panels.back()->getY() : 0.0f;
 
             if (type == "Panel") {
                 auto panel = std::make_shared<Lindo::Graphics::UI::UIPanel>();
-                applyRect(panel, attributes, px, py);
+                applyRect(panel, attributes);
                 panel->SetColor(color(attributes, "color", { 0, 0, 0, 0 }));
                 panels.back()->addChild(panel);
                 widget = panel;
@@ -146,7 +162,7 @@ namespace Lindo::Scripting {
             }
             else if (type == "Label") {
                 auto label = std::make_shared<Lindo::Graphics::UI::UILabel>(attr(attributes, "text"));
-                applyRect(label, attributes, px, py);
+                applyRect(label, attributes);
                 label->setTextColor(color(attributes, "color", { 1, 1, 1, 1 }));
                 panels.back()->addChild(label);
                 widget = label;
@@ -168,7 +184,7 @@ namespace Lindo::Scripting {
                             }
                         }
                     });
-                applyRect(button, attributes, px, py);
+                applyRect(button, attributes);
                 button->setTextColor(color(attributes, "textColor", { 1, 1, 1, 1 }));
                 button->setNormalColor(color(attributes, "color", { 0.2f, 0.2f, 0.2f, 1 }));
                 panels.back()->addChild(button);
@@ -176,7 +192,7 @@ namespace Lindo::Scripting {
             }
             else if (type == "Input") {
                 auto inputField = std::make_shared<Lindo::Graphics::UI::UITextInput>(attr(attributes, "placeholder"));
-                applyRect(inputField, attributes, px, py);
+                applyRect(inputField, attributes);
 
                 sol::function callback;
                 const std::string handler = attr(attributes, "onSubmit");
@@ -197,7 +213,7 @@ namespace Lindo::Scripting {
                 float val = number(attributes, "value", minV);
 
                 auto slider = std::make_shared<Lindo::Graphics::UI::UISlider>(minV, maxV, val);
-                applyRect(slider, attributes, px, py);
+                applyRect(slider, attributes);
 
                 sol::function callback;
                 const std::string handler = attr(attributes, "onChange");
@@ -214,13 +230,28 @@ namespace Lindo::Scripting {
             }
             else if (type == "DropDown") {
                 std::vector<std::string> options;
-                std::string rawOptions = attr(attributes, "options"); // Например options="1920x1080,1280x720,800x600"
+                std::string rawOptions = attr(attributes, "options");
                 std::stringstream ss(rawOptions);
                 std::string opt;
                 while (std::getline(ss, opt, ',')) options.push_back(opt);
                         
                 auto dropdown = std::make_shared<Lindo::Graphics::UI::UIDropDown>(options);
-                applyRect(dropdown, attributes, px, py);
+                applyRect(dropdown, attributes);
+
+                // Начальное значение из XML: "value=2" или "value=High"
+                const std::string initial = attr(attributes, "value");
+                if (!initial.empty()) {
+                    try {
+                        dropdown->setSelectedIndex(std::stoi(initial), /*notify*/ false);
+                    } catch (...) {
+                        for (size_t i = 0; i < options.size(); ++i) {
+                            if (options[i] == initial) {
+                                dropdown->setSelectedIndex(static_cast<int>(i), false);
+                                break;
+                            }
+                        }
+                    }
+                }
                         
                 sol::function callback;
                 const std::string handler = attr(attributes, "onSelect");
@@ -238,7 +269,7 @@ namespace Lindo::Scripting {
             else if (type == "Toggle") {
                 bool checked = (attr(attributes, "checked") == "true" || attr(attributes, "checked") == "1");
                 auto toggle = std::make_shared<Lindo::Graphics::UI::UIToggle>(checked);
-                applyRect(toggle, attributes, px, py);
+                applyRect(toggle, attributes);
                 
                 toggle->setLabel(attr(attributes, "label"));
 
@@ -263,6 +294,8 @@ namespace Lindo::Scripting {
                 widget = toggle;
             }
 
+            
+
             if (widget && attributes.find("visible=\"false\"") != std::string::npos) widget->setVisible(false);
             if (widget) {
                 const std::string id = attr(attributes, "id");
@@ -272,7 +305,12 @@ namespace Lindo::Scripting {
                 }
             }
         }
+        if (g_ui && g_ui->getRootPanel()) {
+            auto root = g_ui->getRootPanel();
+            root->updateLayout(0.0f, 0.0f, root->getWidth(), root->getHeight());
+        }
         return true;
+
     }
     
     void LuaUI::SetChecked(const std::string& id, bool checked) {
@@ -323,7 +361,6 @@ namespace Lindo::Scripting {
         lua.new_usertype<Lindo::Settings>("Settings",
             sol::no_constructor,
 
-            // Properties
             "debugMode", &Lindo::Settings::debugMode,
             "showFPS", &Lindo::Settings::showFPS,
             "wireframeMode", &Lindo::Settings::wireframeMode,
@@ -344,7 +381,6 @@ namespace Lindo::Scripting {
             "sfxVolume", &Lindo::Settings::sfxVolume,
             "muteAudio", &Lindo::Settings::muteAudio,
 
-            // Methods
             "apply", sol::overload(
                 [](Lindo::Settings& s) { s.apply(); },
                 [](Lindo::Settings& s, const std::string& path) { s.apply(path); }
@@ -365,7 +401,6 @@ namespace Lindo::Scripting {
         lua.new_usertype<Lindo::DisplaySettings>("DisplaySettings",
             sol::no_constructor,
 
-            // Properties
             "windowWidth", &Lindo::DisplaySettings::windowWidth,
             "windowHeight", &Lindo::DisplaySettings::windowHeight,
             "fullscreen", &Lindo::DisplaySettings::fullscreen,
@@ -375,7 +410,6 @@ namespace Lindo::Scripting {
             "useFixedTimestep", &Lindo::DisplaySettings::useFixedTimestep,
             "fixedTimestep", &Lindo::DisplaySettings::fixedTimestep,
 
-            // Methods
             "getAspectRatio", &Lindo::DisplaySettings::getAspectRatio,
             "apply", sol::overload(
                 [](Lindo::DisplaySettings& ds) { ds.apply(); },
@@ -390,6 +424,36 @@ namespace Lindo::Scripting {
                 [](Lindo::DisplaySettings& ds, const std::string& path) { ds.loadFromFile(path); }
             ),
             "get", &Lindo::DisplaySettings::getInstance
+        );
+
+        // --- RigidBody Binding ---
+        lua.new_usertype<Lindo::Components::Physics::RigidBody>("RigidBody",
+            sol::no_constructor,
+
+            // Properties
+            "mass", sol::property(&Lindo::Components::Physics::RigidBody::GetMass, &Lindo::Components::Physics::RigidBody::SetMass),
+            "invMass", sol::property(&Lindo::Components::Physics::RigidBody::GetInvMass),
+            "velocity", sol::property(&Lindo::Components::Physics::RigidBody::GetVelocity, &Lindo::Components::Physics::RigidBody::SetVelocity),
+            "angularVelocity", &Lindo::Components::Physics::RigidBody::angularVelocity,
+            "acceleration", &Lindo::Components::Physics::RigidBody::acceleration,
+            "useGravity", sol::property([](Lindo::Components::Physics::RigidBody& rb) { return rb.useGravity; }, &Lindo::Components::Physics::RigidBody::SetUseGravity),
+            "gravityScale", sol::property([](Lindo::Components::Physics::RigidBody& rb) { return rb.gravityScale; }, &Lindo::Components::Physics::RigidBody::SetGravityScale),
+            "restitution", &Lindo::Components::Physics::RigidBody::restitution,
+            "friction", &Lindo::Components::Physics::RigidBody::friction,
+            "linearDamping", &Lindo::Components::Physics::RigidBody::linearDamping,
+            "angularDamping", &Lindo::Components::Physics::RigidBody::angularDamping,
+            "isKinematic", sol::property(&Lindo::Components::Physics::RigidBody::IsKinematic, &Lindo::Components::Physics::RigidBody::SetKinematic),
+            "isSleeping", &Lindo::Components::Physics::RigidBody::isSleeping,
+            "isGrounded", &Lindo::Components::Physics::RigidBody::isGrounded,
+
+            // Methods
+            "applyForce", &Lindo::Components::Physics::RigidBody::applyForce,
+            "applyForceAtPoint", &Lindo::Components::Physics::RigidBody::applyForceAtPoint,
+            "applyImpulse", &Lindo::Components::Physics::RigidBody::applyImpulse,
+            "applyImpulseAtPoint", &Lindo::Components::Physics::RigidBody::applyImpulseAtPoint,
+            "applyTorque", &Lindo::Components::Physics::RigidBody::applyTorque,
+            "clearForces", &Lindo::Components::Physics::RigidBody::clearForces,
+            "wake", &Lindo::Components::Physics::RigidBody::Wake
         );
 
         lua.new_usertype<Lindo::World::Scene>("Scene",
@@ -443,6 +507,10 @@ namespace Lindo::Scripting {
                 else if (type == "CapsuleCollider") object.getOrAddComponent<Lindo::Components::Physics::CapsuleCollider>();
                 else if (type == "MeshCollider") object.getOrAddComponent<Lindo::Components::Physics::MeshCollider>();
                 else if (type == "DirectionalLight") object.getOrAddComponent<Lindo::Components::Light::DirectionalLight>();
+                else if (type == "RigidBody") object.getOrAddComponent<Lindo::Components::Physics::RigidBody>();
+            },
+            "getRigidBody", [](Lindo::World::GameObject& object) {
+                return object.getComponent<Lindo::Components::Physics::RigidBody>();
             },
             "setModel", [](Lindo::World::GameObject& object, const std::string& path) {
                 auto* renderer = object.getOrAddComponent<Lindo::Components::Physics::MeshRenderer>();
@@ -450,10 +518,73 @@ namespace Lindo::Scripting {
             },
             "setMaterialColor", [](Lindo::World::GameObject& object, const glm::vec3& value) {
                 auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
-                material->color = value;
+                material->setColor(value);
                 if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>()) {
                     renderer->material = material;
                 }
+            },
+            // Assigns a diffuse texture (and optionally a specular map) to the object's material.
+            // Any color previously set with setMaterialColor keeps acting as a tint on top of the
+            // texture, so texture and color can be combined instead of one overriding the other.
+            "setMaterialTexture", [](Lindo::World::GameObject& object, const std::string& diffusePath,
+                sol::optional<std::string> specularPath) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                const unsigned int diffuseTex = Lindo::AssetManager::get().loadTexture(diffusePath);
+                material->setDiffuseTexture(diffuseTex);
+                if (specularPath) {
+                    const unsigned int specularTex = Lindo::AssetManager::get().loadTexture(*specularPath);
+                    material->setSpecularTexture(specularTex);
+                }
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>()) {
+                    renderer->material = material;
+                }
+            },
+            // Removes any texture from the object's material, falling back to a flat material.color.
+            "clearMaterialTexture", [](Lindo::World::GameObject& object) {
+                if (auto* material = object.getComponent<Lindo::Graphics::Material>()) {
+                    material->clearTexture();
+                }
+            },
+            "setMaterialShininess", [](Lindo::World::GameObject& object, float shininess) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                material->shininess = shininess;
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>()) {
+                    renderer->material = material;
+                }
+            },
+            "setMaterialTwoSided", [](Lindo::World::GameObject& object, bool twoSided) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                material->twoSided = twoSided;
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>()) {
+                    renderer->material = material;
+                }
+            },
+ 
+            "setMaterialTiling", [](Lindo::World::GameObject& object, float tx, float ty) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                material->setDiffuseTiling(tx, ty);
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>())
+                    renderer->material = material;
+            },
+            "setMaterialOffset", [](Lindo::World::GameObject& object, float ox, float oy) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                material->setDiffuseOffset(ox, oy);
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>())
+                    renderer->material = material;
+            },
+            "setMaterialUV", [](Lindo::World::GameObject& object,
+                                float tx, float ty, float ox, float oy) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                material->setDiffuseUV(tx, ty, ox, oy);
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>())
+                    renderer->material = material;
+            },
+            "setMaterialSpecularUV", [](Lindo::World::GameObject& object,
+                                        float tx, float ty, float ox, float oy) {
+                auto* material = object.getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                material->setSpecularUV(tx, ty, ox, oy);
+                if (auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>())
+                    renderer->material = material;
             },
             "fitCollider", [](Lindo::World::GameObject& object) {
                 auto* renderer = object.getComponent<Lindo::Components::Physics::MeshRenderer>();
@@ -472,46 +603,57 @@ namespace Lindo::Scripting {
         input["getKey"] = [](const std::string& name) { return g_input && g_input->getKey(name); };
         input["getKeyDown"] = [](const std::string& name) { return g_input && g_input->getKeyDown(name); };
         input["getKeyUp"] = [](const std::string& name) { return g_input && g_input->getKeyUp(name); };
-                
-        // --- ДОБАВЬТЕ ЭТУ СТРОКУ ---
         input["consumeEscape"] = []() { return g_input && g_input->consumeEscape(); };
-                
         input["axis"] = [](const std::string& positive, const std::string& negative) { return g_input ? g_input->getAxis(positive, negative) : 0.0f; };
         input["setUIActive"] = [](bool active) { if (g_input) g_input->setUIActive(active); };
         input["isUIActive"] = []() { return g_input && g_input->isUIActive(); };
 
+        lua.new_enum<Lindo::Graphics::UI::UIAnchor>("UIAnchor", {
+            {"None", Lindo::Graphics::UI::UIAnchor::None},
+            {"TopLeft", Lindo::Graphics::UI::UIAnchor::TopLeft},
+            {"TopCenter", Lindo::Graphics::UI::UIAnchor::TopCenter},
+            {"TopRight", Lindo::Graphics::UI::UIAnchor::TopRight},
+            {"CenterLeft", Lindo::Graphics::UI::UIAnchor::CenterLeft},
+            {"Center", Lindo::Graphics::UI::UIAnchor::Center},
+            {"CenterRight", Lindo::Graphics::UI::UIAnchor::CenterRight},
+            {"BottomLeft", Lindo::Graphics::UI::UIAnchor::BottomLeft},
+            {"BottomCenter", Lindo::Graphics::UI::UIAnchor::BottomCenter},
+            {"BottomRight", Lindo::Graphics::UI::UIAnchor::BottomRight}
+        });
+
+        // Добавь setAnchor в usertype UIWidget:
         lua.new_usertype<Lindo::Graphics::UI::UIWidget>("UIWidget",
             "tag", sol::property(&Lindo::Graphics::UI::UIWidget::getTag, &Lindo::Graphics::UI::UIWidget::setTag),
             "layer", sol::property(&Lindo::Graphics::UI::UIWidget::getLayer, &Lindo::Graphics::UI::UIWidget::setLayer),
             "layerName", sol::property(&Lindo::Graphics::UI::UIWidget::getLayerName, &Lindo::Graphics::UI::UIWidget::setLayerByName),
             "compareTag", &Lindo::Graphics::UI::UIWidget::compareTag,
             "zOrder", sol::property(&Lindo::Graphics::UI::UIWidget::getZOrder, &Lindo::Graphics::UI::UIWidget::setZOrder),
-            "visible", sol::property(&Lindo::Graphics::UI::UIWidget::isVisible, &Lindo::Graphics::UI::UIWidget::setVisible)
+            "visible", sol::property(&Lindo::Graphics::UI::UIWidget::isVisible, &Lindo::Graphics::UI::UIWidget::setVisible),
+            "setAnchor", &Lindo::Graphics::UI::UIWidget::setAnchor
         );
         lua.new_usertype<Lindo::Graphics::UI::UIPanel>("UIPanel", sol::base_classes, sol::bases<Lindo::Graphics::UI::UIWidget>(),
             "addChild", &Lindo::Graphics::UI::UIPanel::addChild);
         lua.new_usertype<Lindo::Graphics::UI::UILabel>("UILabel", sol::base_classes, sol::bases<Lindo::Graphics::UI::UIWidget>(),
             "setText", &Lindo::Graphics::UI::UILabel::setText);
 
-        
-        // Регистрация типов UITextInput и UISlider в Lua
         lua.new_usertype<Lindo::Graphics::UI::UITextInput>("UITextInput", 
             sol::base_classes, sol::bases<Lindo::Graphics::UI::UIWidget>(),
             "setText", &Lindo::Graphics::UI::UITextInput::setText,
             "getText", &Lindo::Graphics::UI::UITextInput::getText);
 
-        lua.new_usertype<Lindo::Graphics::UI::UISlider>("UISlider", 
+        lua.new_usertype<Lindo::Graphics::UI::UISlider>("UISlider",
             sol::base_classes, sol::bases<Lindo::Graphics::UI::UIWidget>(),
-            "setValue", &Lindo::Graphics::UI::UISlider::setValue,
+            "setValue", [](Lindo::Graphics::UI::UISlider& s, float v) { s.setValue(v); },
             "getValue", &Lindo::Graphics::UI::UISlider::getValue);
 
         lua.new_usertype<Lindo::Graphics::UI::UIDropDown>("UIDropDown",
             sol::base_classes, sol::bases<Lindo::Graphics::UI::UIWidget>(),
-            "getSelectedIndex", &Lindo::Graphics::UI::UIDropDown::getSelectedIndex,
+            "getSelectedIndex",  &Lindo::Graphics::UI::UIDropDown::getSelectedIndex,
             "getSelectedOption", &Lindo::Graphics::UI::UIDropDown::getSelectedOption,
-            "setSelectedIndex", &Lindo::Graphics::UI::UIDropDown::setSelectedIndex
-        );
-        // Регистрация UIToggle в Lua
+            "setSelectedIndex",  [](Lindo::Graphics::UI::UIDropDown& d, int i) {
+                d.setSelectedIndex(i);
+            });
+
         lua.new_usertype<Lindo::Graphics::UI::UIToggle>("UIToggle",
             sol::base_classes, sol::bases<Lindo::Graphics::UI::UIWidget>(),
             "setChecked", &Lindo::Graphics::UI::UIToggle::setChecked,
@@ -521,6 +663,18 @@ namespace Lindo::Scripting {
         );
 
         auto ui = lua.create_named_table("UI");
+
+        ui["setAnchor"] = [](const std::string& id, Lindo::Graphics::UI::UIAnchor anchor) {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return;
+        
+            it->second->setAnchor(anchor);
+        
+            if (g_ui && g_ui->getRootPanel()) {
+                auto root = g_ui->getRootPanel();
+                root->updateLayout(0.0f, 0.0f, root->getWidth(), root->getHeight());
+            }
+        };
         ui["createPanel"] = []() { return std::make_shared<Lindo::Graphics::UI::UIPanel>(); };
         ui["createLabel"] = [](const std::string& text) { return std::make_shared<Lindo::Graphics::UI::UILabel>(text); };
         ui["createButton"] = [](const std::string& text, sol::function callback) {
@@ -530,7 +684,7 @@ namespace Lindo::Scripting {
         ui["clear"] = []() {
             if (!g_ui) return;
             g_ui->clearDynamicWidgets();
-            g_namedWidgets.clear(); // Зачищаем кэш Lua-виджетов
+            g_namedWidgets.clear();
             restorePersistentWidgets();
         };
         ui["loadXml"] = [](const std::string& path, const sol::table& handlers) {
@@ -563,11 +717,121 @@ namespace Lindo::Scripting {
             if (auto dropdown = std::dynamic_pointer_cast<Lindo::Graphics::UI::UIDropDown>(it->second)) {
                 return sol::make_object(lua.lua_state(), dropdown->getSelectedOption());
             }
-            // Добавлено: получение значения Toggle
             if (auto toggle = std::dynamic_pointer_cast<Lindo::Graphics::UI::UIToggle>(it->second)) {
                 return sol::make_object(lua.lua_state(), toggle->isChecked());
             }
             return sol::nil;
+        };
+        
+
+        // --- Slider ---
+        ui["setSliderValue"] = [](const std::string& id, float value) {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return;
+            if (auto s = std::dynamic_pointer_cast<Lindo::Graphics::UI::UISlider>(it->second))
+                s->setValue(value, /*notify*/ false);   // тихо, без callback
+        };
+        ui["getSliderValue"] = [](const std::string& id) -> float {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return 0.0f;
+            if (auto s = std::dynamic_pointer_cast<Lindo::Graphics::UI::UISlider>(it->second))
+                return s->getValue();
+            return 0.0f;
+        };
+
+        // --- DropDown ---
+        ui["setDropdownIndex"] = [](const std::string& id, int index) {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return;
+            if (auto d = std::dynamic_pointer_cast<Lindo::Graphics::UI::UIDropDown>(it->second))
+                d->setSelectedIndex(index, /*notify*/ false);
+        };
+        ui["getDropdownIndex"] = [](const std::string& id) -> int {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return -1;
+            if (auto d = std::dynamic_pointer_cast<Lindo::Graphics::UI::UIDropDown>(it->second))
+                return d->getSelectedIndex();
+            return -1;
+        };
+
+        // --- TextInput ---
+        ui["setInputText"] = [](const std::string& id, const std::string& text) {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return;
+            if (auto inp = std::dynamic_pointer_cast<Lindo::Graphics::UI::UITextInput>(it->second))
+                inp->setText(text);
+        };
+        ui["focusInput"] = [](const std::string& id, bool focus) {
+            auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return;
+            if (auto inp = std::dynamic_pointer_cast<Lindo::Graphics::UI::UITextInput>(it->second))
+                inp->setFocused(focus);
+        };
+        // ============================================================
+        // UI CENTERING
+        // ============================================================
+            
+        ui["center"] = [](const std::string& id) {
+        
+            auto it = g_namedWidgets.find(id);
+        
+            if (it == g_namedWidgets.end()) {
+                LOG_WARN("[Lua UI] center: unknown widget id '" + id + "'");
+                return;
+            }
+        
+            GLFWwindow* win = glfwGetCurrentContext();
+        
+            if (!win)
+                return;
+        
+            int windowWidth = 0;
+            int windowHeight = 0;
+        
+            glfwGetWindowSize(win, &windowWidth, &windowHeight);
+        
+            auto& widget = it->second;
+        
+            const float widgetWidth  = widget->getWidth();
+            const float widgetHeight = widget->getHeight();
+        
+            const float x =
+                (static_cast<float>(windowWidth) - widgetWidth) * 0.5f;
+        
+            const float y =
+                (static_cast<float>(windowHeight) - widgetHeight) * 0.5f;
+        
+            widget->setPosition(x, y);
+        };
+        
+        
+        // ============================================================
+        // CENTER X
+        // ============================================================
+        
+        ui["centerX"] = [](const std::string& id) {
+        
+            auto it = g_namedWidgets.find(id);
+        
+            if (it == g_namedWidgets.end())
+                return;
+        
+            GLFWwindow* win = glfwGetCurrentContext();
+        
+            if (!win)
+                return;
+        
+            int windowWidth = 0;
+            int windowHeight = 0;
+        
+            glfwGetWindowSize(win, &windowWidth, &windowHeight);
+        
+            auto& widget = it->second;
+        
+            const float x =
+                (static_cast<float>(windowWidth) - widget->getWidth()) * 0.5f;
+        
+            widget->setPosition(x, widget->getY());
         };
 
         auto renderer = lua.create_named_table("Renderer");
@@ -599,5 +863,25 @@ namespace Lindo::Scripting {
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
             }
         };
+
+        application["windowWidth"] = []() {
+            int w = 0, h = 0;
+            if (GLFWwindow* win = glfwGetCurrentContext()) glfwGetWindowSize(win, &w, &h);
+            return w;
+        };
+        application["windowHeight"] = []() {
+            int w = 0, h = 0;
+            if (GLFWwindow* win = glfwGetCurrentContext()) glfwGetWindowSize(win, &w, &h);
+            return h;
+        };
+
+        // --- Информация о приложении (единый источник — AppInfo) ---
+        application["name"]       = Lindo::AppInfo::Name;
+        application["version"]    = Lindo::AppInfo::GetVersionString();      // "26.2.2-dev"
+        application["title"]      = Lindo::AppInfo::GetFormattedTitle();     // "Lindo v26.2.2-dev [Debug]"
+        application["major"]      = Lindo::AppInfo::VersionMajor;            // 26
+        application["minor"]      = Lindo::AppInfo::VersionMinor;            // 2
+        application["patch"]      = Lindo::AppInfo::VersionPatch;            // 2
+        application["stage"]      = Lindo::AppInfo::Stage;                   // "dev"
     }
 }

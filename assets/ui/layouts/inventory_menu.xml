@@ -1,0 +1,111 @@
+<UI>
+
+    <!-- ================================================================ -->
+    <!-- INVENTORY PANEL — стиль главного меню Lindo                      -->
+    <!-- ================================================================ -->
+
+    <Panel id="InventoryPanel"
+           x="0"
+           y="0"
+           width="440"
+           height="500"
+           color="0.06,0.07,0.08,0.94"
+           visible="false"
+           zOrder="20"
+           anchor="Center">
+
+        <!-- Неоновая верхняя полоса -->
+        <Panel x="0" y="0" width="440" height="5"
+               color="0,0.94,1,1" anchor="TopLeft" />
+
+        <!-- Заголовок -->
+        <Label id="invTitle"
+               x="30" y="28" width="300" height="45"
+               text="ИНВЕНТАРЬ"
+               fontSize="28"
+               color="0,0.94,1,1"
+               anchor="TopLeft" />
+
+        <!-- Счётчик валюты (правый верхний угол) -->
+        <Label id="invGold"
+               x="-30" y="38" width="160" height="30"
+               text="0 ◆"
+               fontSize="20"
+               color="0.98,0.75,0.14,1"
+               anchor="TopRight" />
+
+        <!-- Подзаголовок -->
+        <Label id="invSubtitle"
+               x="30" y="70" width="380" height="25"
+               text="ПРЕДМЕТЫ И РЕСУРСЫ"
+               fontSize="12"
+               color="0.39,0.45,0.55,1"
+               anchor="TopLeft" />
+
+        <!-- Разделитель -->
+        <Panel x="30" y="105" width="380" height="1"
+               color="0.06,0.09,0.16,1" anchor="TopLeft" />
+
+        <!-- Заголовок секции -->
+        <Label x="30" y="120" width="380" height="20"
+               text="СОДЕРЖИМОЕ"
+               fontSize="11"
+               color="0,0.64,1,1"
+               anchor="TopLeft" />
+
+        <!-- ============================================================ -->
+        <!-- СЕТКА СЛОТОВ — 5 × 4 = 20 ячеек, размер 56×56, отступ 6      -->
+        <!-- ============================================================ -->
+
+        <!-- Ряд 1 -->
+        <Panel id="slot_1"  x="68"  y="150" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_2"  x="130" y="150" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_3"  x="192" y="150" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_4"  x="254" y="150" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_5"  x="316" y="150" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+
+        <!-- Ряд 2 -->
+        <Panel id="slot_6"  x="68"  y="212" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_7"  x="130" y="212" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_8"  x="192" y="212" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_9"  x="254" y="212" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_10" x="316" y="212" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+
+        <!-- Ряд 3 -->
+        <Panel id="slot_11" x="68"  y="274" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_12" x="130" y="274" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_13" x="192" y="274" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_14" x="254" y="274" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_15" x="316" y="274" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+
+        <!-- Ряд 4 -->
+        <Panel id="slot_16" x="68"  y="336" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_17" x="130" y="336" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_18" x="192" y="336" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_19" x="254" y="336" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+        <Panel id="slot_20" x="316" y="336" width="56" height="56" color="0.09,0.11,0.14,0.90" anchor="TopLeft" />
+
+        <!-- Разделитель перед футером -->
+        <Panel x="30" y="415" width="380" height="1"
+               color="0.06,0.09,0.16,1" anchor="TopLeft" />
+
+        <!-- Подсказка по клавише -->
+        <Label x="30" y="435" width="180" height="25"
+               text="[TAB] ЗАКРЫТЬ"
+               fontSize="11"
+               color="0.39,0.45,0.55,1"
+               anchor="TopLeft" />
+
+        <!-- Кнопка закрытия -->
+        <Button id="invCloseButton"
+                x="260" y="430" width="150" height="32"
+                text="ЗАКРЫТЬ"
+                onClick="closeInventory"
+                color="0,0.55,1,1"
+                textColor="1,1,1,1"
+                fontSize="14"
+                anchor="TopLeft" />
+
+    </Panel>
+
+</UI>

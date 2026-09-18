@@ -98,17 +98,7 @@ namespace Lindo {
 
             void RigidBody::integrate(const glm::vec3& gravity) {
                 if (!gameObject || invMass == 0.0f || isKinematic || isSleeping) return;
-                // PhysicsSystem::Step() advances the world using the FIXED
-                // timestep, so integration must use the same value. Using the
-                // variable render-frame delta here means that after a frame
-                // hitch (or on a Step() that fires more than once per frame
-                // to catch up) the body gets integrated with a much larger dt
-                // than the collision solver expects, so it can plunge deep
-                // into/through another collider in a single step before the
-                // solver ever sees it. The next Step() then finds a huge
-                // penetration and shoves the body all the way back out in one
-                // go, which reads as "falls to the center, then teleports
-                // back up instantly".
+
                 float dt = Lindo::Time::GetFixedDeltaTime();
 
                 // 1. Применяем гравитацию
@@ -130,8 +120,37 @@ namespace Lindo {
                 ApplyDamping();
                 ClampVelocity(25.0f);
 
-                // 3. Шаг по позиции
-                gameObject->transform.position += velocity * dt;
+                // 3. Шаг по позиции с поддержкой CCD (Continuous Collision Detection / Raycast Sweep)
+
+                glm::vec3 moveVector = velocity * dt;
+                float moveDist = glm::length(moveVector);
+
+                if (moveDist > 1e-4f) {
+                    Collider* hitCollider = nullptr;
+                    glm::vec3 hitPoint(0.0f);
+                    glm::vec3 hitNormal(0.0f);
+                    float hitDist = 0.0f;
+                
+                    // Передаем `this` последним аргументом, чтобы не проверять столкновение с самим собой
+                    if (PhysicsSystem::GetInstance().Raycast(gameObject->transform.position, 
+                                                             glm::normalize(moveVector), 
+                                                             moveDist, hitCollider, hitPoint, hitNormal, hitDist, this)) {
+                                                            
+                        // Проверяем, что найденный коллайдер не принадлежит этому же GameObject
+                        if (hitCollider && hitCollider->gameObject != gameObject) {
+                            gameObject->transform.position += glm::normalize(moveVector) * std::max(0.0f, hitDist - 0.01f);
+
+                            float velAlongNormal = glm::dot(velocity, hitNormal);
+                            if (velAlongNormal < 0.0f) {
+                                velocity -= hitNormal * velAlongNormal;
+                            }
+                        } else {
+                            gameObject->transform.position += moveVector;
+                        }
+                    } else {
+                        gameObject->transform.position += moveVector;
+                    }
+                }
 
                 // 4. Вращение
                 if (glm::length(angularVelocity) > 1e-6f) {

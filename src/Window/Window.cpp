@@ -10,6 +10,87 @@
 
 namespace Lindo {
 
+    #ifdef _WIN32
+    // Должен совпадать с ID в res/app.rc
+    static constexpr int LINDO_ICON_RESOURCE_ID = 101;
+
+    // Достаёт иконку из ресурсов .exe (тот самый .ico, что зашит через .rc)
+    // и ставит её как иконку окна GLFW.
+    static void applyWindowIconFromResource(GLFWwindow* window) {
+        if (!window) return;
+
+        const int sizes[] = { 16, 32, 48, 256 };
+        std::vector<GLFWimage>              images;
+        std::vector<std::vector<uint8_t>>   buffers;
+        std::vector<HICON>                  icons;
+
+        images.reserve(std::size(sizes));
+        buffers.reserve(std::size(sizes));
+        icons.reserve(std::size(sizes));
+
+        for (int sz : sizes) {
+            HICON hIcon = static_cast<HICON>(LoadImageW(
+                GetModuleHandleW(nullptr),
+                MAKEINTRESOURCEW(LINDO_ICON_RESOURCE_ID),
+                IMAGE_ICON, sz, sz, LR_DEFAULTCOLOR));
+            if (!hIcon) continue;
+            icons.push_back(hIcon);
+
+            ICONINFO ii{};
+            if (!GetIconInfo(hIcon, &ii)) continue;
+
+            BITMAP bm{};
+            GetObject(ii.hbmColor, sizeof(BITMAP), &bm);
+
+            const int w = bm.bmWidth;
+            const int h = bm.bmHeight;
+            if (w <= 0 || h <= 0) {
+                DeleteObject(ii.hbmColor);
+                DeleteObject(ii.hbmMask);
+                continue;
+            }
+
+            BITMAPINFO bmi{};
+            bmi.bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+            bmi.bmiHeader.biWidth       = w;
+            bmi.bmiHeader.biHeight      = -h; // top-down
+            bmi.bmiHeader.biPlanes      = 1;
+            bmi.bmiHeader.biBitCount    = 32;
+            bmi.bmiHeader.biCompression = BI_RGB;
+
+            std::vector<uint8_t> pixels(static_cast<size_t>(w) * h * 4);
+            HDC hdc = GetDC(nullptr);
+            GetDIBits(hdc, ii.hbmColor, 0, h, pixels.data(), &bmi, DIB_RGB_COLORS);
+            ReleaseDC(nullptr, hdc);
+
+            // BGRA -> RGBA
+            for (int i = 0; i < w * h; ++i) {
+                std::swap(pixels[i * 4 + 0], pixels[i * 4 + 2]);
+            }
+
+            buffers.push_back(std::move(pixels));
+
+            GLFWimage img;
+            img.width  = w;
+            img.height = h;
+            img.pixels = buffers.back().data(); // стабильно: vector переносит владение буфером
+            images.push_back(img);
+
+            DeleteObject(ii.hbmColor);
+            DeleteObject(ii.hbmMask);
+        }
+
+        if (!images.empty()) {
+            glfwSetWindowIcon(window, static_cast<int>(images.size()), images.data());
+            LOG_INFO("[Window] Window icon applied from .exe resources.");
+        } else {
+            LOG_WARN("[Window] No icon resource loaded (ID=101) — window uses default icon.");
+        }
+
+        for (HICON h : icons) DestroyIcon(h);
+    }
+#endif
+
     Window::Window(int width, int height, const char* title) {
         DisplaySettings& displaySettings = DisplaySettings::getInstance();
         Settings& settings = Settings::getInstance();
@@ -50,6 +131,10 @@ namespace Lindo {
             throw std::runtime_error("Failed to create GLFW window");
         }
         LOG_INFO("[Window] GLFW window created successfully.");
+    
+#ifdef _WIN32
+        applyWindowIconFromResource(m_window);
+#endif
 
         glfwSetWindowUserPointer(m_window, this);
         glfwMakeContextCurrent(m_window);

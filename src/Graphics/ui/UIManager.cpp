@@ -1,4 +1,5 @@
 #include "UIManager.h"
+#include "core/AssetManager.h"
 #include <debug/DebugLogger.h>
 #include <debug/Console.h>
 #include <vector>
@@ -59,14 +60,13 @@ namespace Lindo {
                 m_renderer = std::make_unique<UIRenderer>();
                 m_renderer->init();
 
-                m_font = std::make_unique<UIFont>();
-
                 std::string charset = generateCharset();
 
                 // ��� ������� 24px ���� 512x512 ����� ��� ��������� ����� (����� ���������)
-                bool fontLoaded = m_font->loadFromFile("C:/Windows/Fonts/arial.ttf", 24.0f, 512, 512, charset);
+                // ����� ��������� � ���������� ����� AssetManager, ��� � ��������� � ��������.
+                m_font = AssetManager::get().loadFont("ui/fonts/Europeana One.ttf", 24.0f, 512, 512, charset);
 
-                if (!fontLoaded) {
+                if (!m_font) {
                     LOG_ERROR("Font loading failed!");
                 }
                 else {
@@ -77,10 +77,12 @@ namespace Lindo {
                 m_rootPanel->SetColor(Color(0.0f, 0.0f, 0.0f, 0.0f));
                 m_rootPanel->setSize(static_cast<float>(width), static_cast<float>(height));
                 m_rootPanel->setPosition(0, 0);
+                m_rootPanel->updateLayout(0.0f, 0.0f,
+                    static_cast<float>(width), static_cast<float>(height));
 
                 // ������������� ������� - ���������� ��� �� �����, ��� � ��������� UI
                 m_console = std::make_unique<Lindo::Debug::Console>();
-                m_console->init(m_font.get(), width, height);
+                m_console->init(m_font, width, height);
                 Lindo::Debug::Console::hookLogger(m_console.get()); // ��� LOG_INFO/LOG_WARN/... ������ ����� � � �������
 
                 m_initialized = true;
@@ -96,7 +98,7 @@ namespace Lindo {
             void UIManager::render() {
                 if (!m_initialized) return;
                 m_renderer->beginFrame(static_cast<int>(m_rootPanel->getWidth()), static_cast<int>(m_rootPanel->getHeight()));
-                m_rootPanel->render(*m_renderer, m_font.get());
+                m_rootPanel->render(*m_renderer, m_font);
 
                 // ������� �������� ��������� - ������ ����� ���������� UI
                 if (m_console) {
@@ -109,6 +111,10 @@ namespace Lindo {
             void UIManager::onResize(int width, int height) {
                 if (m_rootPanel) {
                     m_rootPanel->setSize(static_cast<float>(width), static_cast<float>(height));
+                    // root всегда в (0,0), его размер = размер окна
+                    m_rootPanel->updateLayout(
+                        0.0f, 0.0f,
+                        static_cast<float>(width), static_cast<float>(height));
                 }
                 if (m_console) {
                     m_console->onResize(width, height);

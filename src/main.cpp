@@ -17,21 +17,13 @@
 
 #pragma comment(lib, "gdiplus.lib")
 
+// Если нужно гарантированно скрыть консоль при запускe в MSVC/Windows без изменения CMake
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+
 using namespace Gdiplus;
 
 namespace {
-    void OpenDebugConsole() {
-        if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
-            AllocConsole();
-        }
-
-        FILE* stream = nullptr;
-        freopen_s(&stream, "CONIN$", "r", stdin);
-        freopen_s(&stream, "CONOUT$", "w", stdout);
-        freopen_s(&stream, "CONOUT$", "w", stderr);
-        SetConsoleTitleW(L"Lindo Debug Console");
-    }
-
+    // Процедура окна Splash Screen (заставки)
     LRESULT CALLBACK SplashWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         static Image* bannerImg = nullptr;
         switch (msg) {
@@ -66,6 +58,7 @@ namespace {
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
 
+    // Фоновый поток для отображения заставки во время загрузки
     void RunSplashThread() {
         HANDLE hCloseEvent = CreateEventW(NULL, TRUE, FALSE, L"Global\\LindoSplash");
 
@@ -128,8 +121,9 @@ namespace {
 int main() {
     Lindo::Core::LindoCrashHandle::SetApplicationName(Lindo::AppInfo::Name);
     Lindo::Core::LindoCrashHandle::Install();
+
 #ifdef _WIN32
-    OpenDebugConsole();
+    // Запускаем окно заставки без консольного окна
     std::thread splashThread(RunSplashThread);
 #endif
 

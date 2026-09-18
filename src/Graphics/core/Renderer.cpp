@@ -52,28 +52,29 @@ namespace Lindo {
 
         bool Renderer::setSkybox(const std::string& hdrRelativePath, int faceResolution) {
             auto& assets = AssetManager::get();
-            std::string finalPath = hdrRelativePath;
+
+            // 1. Нормализуем слэши и удаляем лишний префикс assets/ или ..\assets\ если он передался
+            std::string clean = hdrRelativePath;
+            std::replace(clean.begin(), clean.end(), '\\', '/');
         
-            // 1. Если передано просто имя (напр. "night_sky"), добавляем "skybox/"
-            if (finalPath.find('/') == std::string::npos && finalPath.find('\\') == std::string::npos) {
-                finalPath = "skybox/" + finalPath;
+            std::string marker = "assets/";
+            size_t pos = clean.find(marker);
+            if (pos != std::string::npos) {
+                clean = clean.substr(pos + marker.length());
             }
         
-            // 2. Если нет расширения, по умолчанию добавляем .hdr
-            if (!std::filesystem::path(finalPath).has_extension()) {
-                finalPath += ".hdr";
+            // 2. Добавляем расширение, если его нет
+            std::filesystem::path pathObj(clean);
+            if (!pathObj.has_extension()) {
+                pathObj.replace_extension(".hdr");
             }
         
-            // Резолвим путь через AssetManager
-            std::string hdrPath = assets.resolvePath(finalPath, "textures");
+            // 3. Резолвим путь. Передаем только чистое имя файла или подпуть
+            std::string hdrPath = assets.resolvePath(pathObj.string(), "skybox");
         
+            // 4. Проверяем существование файла
             if (!std::filesystem::exists(hdrPath)) {
-                // Запасная попытка через getTexturePath / прямое разрешение
-                hdrPath = assets.resolvePath(hdrRelativePath, "textures");
-            }
-        
-            if (!std::filesystem::exists(hdrPath)) {
-                LOG_WARN("[Renderer] Skybox HDR file missing at path: " + hdrRelativePath + " (" + hdrPath + ")");
+                LOG_WARN("[Renderer] Skybox HDR file missing at path: " + hdrRelativePath + " (resolved to: " + hdrPath + ")");
                 return false;
             }
         

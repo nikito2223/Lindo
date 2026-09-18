@@ -2,11 +2,9 @@ project(LindoSrc)
 
 file(GLOB_RECURSE headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB_RECURSE sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/core/Frustum.cpp)
-list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Editor/EditorSystem.cpp)
 list(REMOVE_DUPLICATES sources)
 list(REMOVE_ITEM sources ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/Graphics/core/DebugDraw.cpp)
+
 
 add_library(LindoSrc STATIC ${sources} ${headers}  "Debug/ConsoleCommands.cpp")
 

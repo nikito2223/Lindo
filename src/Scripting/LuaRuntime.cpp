@@ -19,13 +19,17 @@ namespace Lindo::Scripting {
         try {
             m_state = std::make_unique<sol::state>();
             m_state->open_libraries(
-                sol::lib::base, 
-                sol::lib::math, 
+                sol::lib::base,
+                sol::lib::package,
+                sol::lib::math,
                 sol::lib::table,
-                sol::lib::string, 
+                sol::lib::string,
                 sol::lib::coroutine,
                 sol::lib::debug
             );
+
+            (*m_state)["package"]["path"] =
+            "../assets/?.lua;../assets/?/init.lua";
 
             // Устанавливаем debug.traceback как дефолтный обработчик ошибок
             sol::object mainTraceback = (*m_state)["debug"]["traceback"];

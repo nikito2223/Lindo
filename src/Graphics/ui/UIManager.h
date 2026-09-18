@@ -32,7 +32,7 @@ namespace Lindo {
                 void onChar(unsigned int codepoint);
                 void onKey(int key, int scancode, int action, int mods);
 
-                UIFont* getFont() const { return m_font.get(); }
+                UIFont* getFont() const { return m_font; }
                 UIRenderer* getRenderer() const { return m_renderer.get(); } // ��������� ������ � ���������
                 // ������ ��� � UIManager.h ������ ������ UIManager:
                 std::shared_ptr<UIPanel> getRootPanel() const { return m_rootPanel; }
@@ -42,7 +42,7 @@ namespace Lindo {
             private:
 
                 std::unique_ptr<UIRenderer> m_renderer;
-                std::unique_ptr<UIFont> m_font;
+                UIFont* m_font = nullptr; // ���������: ��������� ��������� AssetManager, UIManager �� ��������
                 std::shared_ptr<UIPanel> m_rootPanel;
                 std::unique_ptr<Lindo::Debug::Console> m_console;
                 bool m_initialized = false;

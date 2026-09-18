@@ -410,13 +410,12 @@ namespace Lindo {
                         if (glm::length(normal) < 1e-6f) continue;
                         normal = glm::normalize(normal);
 
-                        // --- ИСПРАВЛЕНИЕ: ГАРАНТИЯ ВЫТАЛКИВАНИЯ ---
-                        // Защита от инверсии нормалей в Double Dispatch коллайдеров.
-                        // Если нормаль указывает вглубь препятствия (толкает нас в пол), 
-                        // мы её принудительно разворачиваем в сторону центра игрока.
-                        glm::vec3 dirToPlayer = collider.GetWorldCenter() - other->GetWorldCenter();
-                        if (glm::dot(normal, dirToPlayer) < 0.0f) {
-                            normal = -normal;
+                        glm::vec3 dirToPlayer = collider.GetWorldCenter() - info.contactPoint;
+                        if (glm::length(dirToPlayer) > 1e-6f) {
+                            dirToPlayer = glm::normalize(dirToPlayer);
+                            if (glm::dot(normal, dirToPlayer) < 0.0f) {
+                                normal = -normal;
+                            }
                         }
                         // ------------------------------------------
 
@@ -484,9 +483,6 @@ namespace Lindo {
                     state.isJumping = false;
                     state.isSliding = false;
 
-                    // Сбрасываем накопление падения при нахождении на земле.
-                    // Увеличиваем прижимную силу до -2.0f (вместо -0.1f), 
-                    // чтобы персонаж не отрывался от земли на склонах.
                     if (state.velocity.y < 0.0f) {
                         state.velocity.y = -2.0f;
                     }

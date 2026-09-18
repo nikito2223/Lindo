@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui name="DebugOverlay" version="1.0">
+    <panel id="debug_overlay"
+           x="10" y="10"
+           width="360" height="160"
+           anchor="top-left"
+           backgroundColor="0.0, 0.0, 0.0, 0.45"
+           borderColor="0.2, 0.8, 1.0, 1.0"
+           visible="true">
+
+        <label id="lbl_engine"
+               text="Engine: Lindo"
+               color="0.2, 0.8, 1.0, 1.0"
+               x="0" y="0"
+               fontSize="16"/>
+
+        <label id="lbl_version"
+               text="Version: 26.2.2-dev"
+               color="0.7, 0.7, 0.7, 1.0"
+               x="0" y="22"
+               fontSize="16"/>
+
+        <label id="lbl_fps"
+               text="FPS: 0 (0.0 ms)"
+               color="0, 1, 0, 1"
+               x="0" y="44"
+               fontSize="16"/>
+
+        <label id="lbl_pos"
+               text="Position: X: 0.00 | Y: 0.00 | Z: 0.00"
+               color="1, 1, 1, 1"
+               x="0" y="66"
+               fontSize="16"/>
+
+        <label id="lbl_speed"
+               text="Speed: 0.00 m/s"
+               color="0.2, 0.9, 0.9, 1.0"
+               x="0" y="88"
+               fontSize="16"/>
+
+        <label id="lbl_memory"
+               text="Memory: 0.0 MB"
+               color="0.6, 0.9, 0.6, 1.0"
+               x="0" y="110"
+               fontSize="16"/>
+
+        <label id="lbl_objects"
+               text="Scene Objects: 0"
+               color="1.0, 0.8, 0.2, 1.0"
+               x="0" y="132"
+               fontSize="16"/>
+
+    </panel>
+</ui>

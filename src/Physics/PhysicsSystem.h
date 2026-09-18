@@ -73,8 +73,9 @@ namespace Lindo {
 
                 // ----- Spatial queries -----
                 bool Raycast(const glm::vec3& origin, const glm::vec3& direction,
-                    float maxDistance, Collider*& outHit, glm::vec3& outPoint,
-                    glm::vec3& outNormal, float& outDistance) const;
+                float maxDistance, Collider*& outHit, glm::vec3& outPoint,
+                glm::vec3& outNormal, float& outDistance,
+                const RigidBody* ignoreBody = nullptr) const;
                 bool OverlapPoint(const glm::vec3& point, Collider*& outHit) const;
                 std::vector<Collider*> OverlapSphere(const glm::vec3& center, float radius) const;
                 std::vector<Collider*> OverlapBox(const glm::vec3& center, const glm::vec3& halfExtents) const;

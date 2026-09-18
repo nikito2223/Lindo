@@ -12,6 +12,19 @@ namespace Lindo {
     namespace Graphics {
         namespace UI {
 
+            enum class UIAnchor {
+                None,           // Фиксированные абсолютные координаты (X, Y)
+                TopLeft,        // Левый верхний угол
+                TopCenter,      // Центр сверху
+                TopRight,       // Правый верхний угол
+                CenterLeft,     // Центр слева
+                Center,         // Ровно по центру экрана / родителя
+                CenterRight,    // Центр справа
+                BottomLeft,     // Левый нижний угол
+                BottomCenter,   // Центр снизу
+                BottomRight     // Правый нижний угол
+            };
+
             // ====================================================================
             // UIWidget — базовый класс всех UI-элементов
             // Поддерживает Layer & Tag, а также Z-порядок рендеринга.
@@ -34,7 +47,69 @@ namespace Lindo {
                 virtual bool onChar(unsigned int codepoint) { return false; }
                 virtual bool onKey(int key, int scancode, int action, int mods) { return false; }
 
-                void setPosition(float x, float y) { m_rect.x = x; m_rect.y = y; }
+                void setAnchor(UIAnchor anchor) { m_anchor = anchor; }
+                UIAnchor getAnchor() const { return m_anchor; }
+
+                // Новая сигнатура — теперь знаем ещё и позицию родителя.
+                virtual void updateLayout(float parentX, float parentY, float parentW, float parentH) {
+                    if (m_anchor == UIAnchor::None) {
+                        // Без якоря — просто абсолютная позиция-офсет.
+                        m_rect.x = m_offsetX;
+                        m_rect.y = m_offsetY;
+                        return;
+                    }
+
+                    // Базовая точка = верх-лево родителя (для TopLeft).
+                    float anchorX = parentX;
+                    float anchorY = parentY;
+
+                    switch (m_anchor) {
+                        case UIAnchor::TopLeft:
+                            break;
+                        case UIAnchor::TopCenter:
+                            anchorX = parentX + (parentW - m_rect.w) * 0.5f;
+                            break;
+                        case UIAnchor::TopRight:
+                            anchorX = parentX + parentW - m_rect.w;
+                            break;
+                        case UIAnchor::CenterLeft:
+                            anchorY = parentY + (parentH - m_rect.h) * 0.5f;
+                            break;
+                        case UIAnchor::Center:
+                            anchorX = parentX + (parentW - m_rect.w) * 0.5f;
+                            anchorY = parentY + (parentH - m_rect.h) * 0.5f;
+                            break;
+                        case UIAnchor::CenterRight:
+                            anchorX = parentX + parentW - m_rect.w;
+                            anchorY = parentY + (parentH - m_rect.h) * 0.5f;
+                            break;
+                        case UIAnchor::BottomLeft:
+                            anchorY = parentY + parentH - m_rect.h;
+                            break;
+                        case UIAnchor::BottomCenter:
+                            anchorX = parentX + (parentW - m_rect.w) * 0.5f;
+                            anchorY = parentY + parentH - m_rect.h;
+                            break;
+                        case UIAnchor::BottomRight:
+                            anchorX = parentX + parentW - m_rect.w;
+                            anchorY = parentY + parentH - m_rect.h;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    // Итог: базовая точка якоря + сохранённый офсет.
+                    m_rect.x = anchorX + m_offsetX;
+                    m_rect.y = anchorY + m_offsetY;
+                }
+
+                virtual void setPosition(float x, float y) {
+                    // Запоминаем офсет и сразу ставим текущую позицию.
+                    m_offsetX = x;
+                    m_offsetY = y;
+                    m_rect.x  = x;
+                    m_rect.y  = y;
+                }
                 void setSize(float w, float h) { m_rect.w = w; m_rect.h = h; }
                 Rect getRect() const { return m_rect; }
                 float getX() const { return m_rect.x; }
@@ -80,14 +155,18 @@ namespace Lindo {
                 void setVisible(bool v) { m_visible = v; }
                 bool isVisible() const { return m_visible; }
 
-            protected:
-                Rect        m_rect;
-                float       m_textSize = 24.0f;
-                int         m_zOrder = 0;
-                bool        m_visible = true;
-
-                std::string m_tag = "Untagged";
-                uint8_t     m_layer = 4; // Индекс слоя по умолчанию (UI)
+                // в protected:
+                protected:
+                    Rect        m_rect;
+                    float       m_offsetX = 0.0f;   // Офсет из XML / setPosition — «якорная» позиция
+                    float       m_offsetY = 0.0f;
+                    UIAnchor    m_anchor = UIAnchor::None;
+                    float       m_textSize = 24.0f;
+                    int         m_zOrder = 0;
+                    bool        m_visible = true;
+                            
+                    std::string m_tag = "Untagged";
+                    uint8_t     m_layer = 4;
             };
 
             // ====================================================================
@@ -131,7 +210,7 @@ namespace Lindo {
                 void addChild(std::shared_ptr<UIWidget> child);
                 void removeChild(const std::shared_ptr<UIWidget>& child);
                 void setChildZOrder(const std::shared_ptr<UIWidget>& child, int z);
-
+                void updateLayout(float parentX, float parentY, float parentW, float parentH) override;
                 // Поиск потомков по тегу
                 std::shared_ptr<UIWidget> findChildByTag(const std::string& tag) {
                     for (auto& child : m_children) {
@@ -140,6 +219,7 @@ namespace Lindo {
                     return nullptr;
                 }
 
+                void setPosition(float x, float y) override;
                 void render(UIRenderer& renderer, UIFont* font) override;
                 bool onMouseMove(float x, float y) override;
                 bool onMouseButton(float x, float y, int button, bool down) override;
@@ -201,12 +281,13 @@ namespace Lindo {
                 bool onMouseButton(float x, float y, int button, bool down) override;
             
                 void setOptions(const std::vector<std::string>& options);
-                void setSelectedIndex(int index);
+                void setSelectedIndex(int index, bool notify = true);  // <- было (int)
                 int getSelectedIndex() const { return m_selectedIndex; }
                 std::string getSelectedOption() const;
             
                 void setOnSelect(std::function<void(int, const std::string&)> cb) { m_onSelect = cb; }
-            
+                
+                
                 void setMainColor(const Color& c) { m_mainColor = c; }
                 void setHoverColor(const Color& c) { m_hoverColor = c; }
                 void setDropdownColor(const Color& c) { m_dropdownColor = c; }
@@ -304,12 +385,14 @@ namespace Lindo {
                 bool onMouseMove(float x, float y) override;
                 bool onMouseButton(float x, float y, int button, bool down) override;
             
-                void setValue(float val);
+                void setValue(float val, bool notify = true);   // <- было setValue(float)
                 float getValue() const { return m_value; }
             
                 void setRange(float minVal, float maxVal);
                 void setOnChange(std::function<void(float)> cb) { m_onChange = cb; }
-            
+                
+
+                
                 void setTrackColor(const Color& c) { m_trackColor = c; }
                 void setFillColor(const Color& c) { m_fillColor = c; }
                 void setThumbColor(const Color& c) { m_thumbColor = c; }

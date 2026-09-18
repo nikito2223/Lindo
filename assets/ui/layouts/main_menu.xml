@@ -1,0 +1,96 @@
+<UI>
+
+    <!-- Base фон панели: #0F1115 → 0.06, 0.07, 0.08, 0.94 -->
+    <!-- Корневая панель центрируется по экрану -->
+    <Panel id="mainPanel"
+           x="0"
+           y="0"
+           width="500"
+           height="500"
+           color="0.06,0.07,0.08,0.94"
+           anchor="Center">
+
+        <!-- Неоновая линия сверху: #00F0FF -->
+        <Panel x="0" y="0"
+               width="500" height="5"
+               color="0,0.94,1,1"
+               anchor="TopLeft" />
+
+        <!-- Заголовок: #00F0FF (главный акцент) -->
+        <Label id="titleLabel"
+               x="0" y="45"
+               width="500" height="70"
+               text="LINDO"
+               color="0,0.94,1,1"
+               fontSize="54"
+               anchor="TopCenter" />
+
+        <!-- Подзаголовок: #64748B (приглушённый текст) -->
+        <Label id="subtitleLabel"
+               x="0" y="112"
+               width="500" height="35"
+               text="3D СИМУЛЯЦИЯ МИРА"
+               color="0.39,0.45,0.55,1"
+               fontSize="16"
+               anchor="TopLeft" />
+
+        <!-- Разделитель: #0F172A -->
+        <Panel x="65" y="165"
+               width="370" height="1"
+               color="0.06,0.09,0.16,1"
+               anchor="TopLeft" />
+
+        <!-- Кнопка Play: основной бренд #008DFF -->
+        <Button id="playButton"
+                x="50" y="195"
+                width="400" height="58"
+                text="НАЧАТЬ ИГРУ"
+                onClick="play"
+                color="0,0.55,1,1"
+                textColor="1,1,1,1"
+                fontSize="20"
+                anchor="TopLeft" />
+
+        <!-- Кнопка Настройки: вторичная панель #1E293B + текст #E2E8F0 -->
+        <Button id="settingsButton"
+                x="50" y="265"
+                width="400" height="52"
+                text="НАСТРОЙКИ"
+                onClick="openSettings"
+                color="0.12,0.16,0.23,1"
+                textColor="0.88,0.91,0.94,1"
+                fontSize="18"
+                anchor="TopLeft" />
+
+        <!-- Кнопка Выход: вторичная панель #1E293B + приглушённый текст #64748B -->
+        <Button id="quitButton"
+                x="50" y="329"
+                width="400" height="52"
+                text="ВЫХОД"
+                onClick="quit"
+                color="0.12,0.16,0.23,1"
+                textColor="0.39,0.45,0.55,1"
+                fontSize="18"
+                anchor="TopLeft" />
+
+        <!-- Версия: приглушённый текст #64748B -->
+        <Label id="versionLabel"
+               x="25" y="430"
+               width="450" height="25"
+               text=""
+               color="0.39,0.45,0.55,1"
+               fontSize="14"
+               anchor="TopLeft" />
+
+        <!-- Билд: ещё тише — используем #0F172A (границы) как «тень» -->
+        <Label id="buildLabel"
+               x="25" y="455"
+               width="450" height="25"
+               text=""
+               color="0.06,0.09,0.16,1"
+               fontSize="12"
+               anchor="TopLeft" />
+
+    </Panel>
+
+</UI>

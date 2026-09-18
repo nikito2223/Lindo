@@ -1,0 +1,311 @@
+<UI>
+
+    <!-- ================================================================ -->
+    <!-- SETTINGS PANEL — стиль главного меню Lindo                     -->
+    <!-- ================================================================ -->
+
+    <!-- Фон панели: Base #0F1115 -->
+    <!-- Корневая панель центрируется по экрану -->
+    <Panel id="settingsPanel"
+           x="0"
+           y="0"
+           width="660"
+           height="620"
+           color="0.06,0.07,0.08,0.94"
+           visible="false"
+           zOrder="10"
+           anchor="Center">
+
+        <!-- Неоновая верхняя полоса: Li #00F0FF -->
+        <Panel x="0" y="0"
+               width="660"
+               height="5"
+               color="0,0.94,1,1"
+               anchor="TopLeft" />
+
+        <!-- Заголовок: Li / неон #00F0FF -->
+        <Label id="settingsTitle"
+               x="30"
+               y="28"
+               width="600"
+               height="45"
+               text="НАСТРОЙКИ"
+               fontSize="28"
+               color="0,0.94,1,1"
+               anchor="TopLeft" />
+
+        <!-- Подзаголовок: Muted #64748B -->
+        <Label id="settingsSubtitle"
+               x="30"
+               y="70"
+               width="600"
+               height="25"
+               text="ПАРАМЕТРЫ ИГРЫ"
+               fontSize="12"
+               color="0.39,0.45,0.55,1"
+               anchor="TopLeft" />
+
+        <!-- Разделитель: Border #0F172A -->
+        <Panel x="30" y="105"
+               width="600"
+               height="1"
+               color="0.06,0.09,0.16,1"
+               anchor="TopLeft" />
+
+
+        <!-- ============================================================ -->
+        <!-- ИГРОВЫЕ НАСТРОЙКИ                                            -->
+        <!-- ============================================================ -->
+
+        <!-- Заголовок секции: Energy / Attention #00A3FF -->
+        <Label x="30" y="125"
+               width="600"
+               height="25"
+               text="ИГРА"
+               fontSize="13"
+               color="0,0.64,1,1"
+               anchor="TopLeft" />
+
+        <!-- Имя игрока -->
+        <Label x="30" y="160"
+               width="200"
+               height="30"
+               text="Имя игрока"
+               fontSize="16"
+               color="0.88,0.91,0.94,1"
+               anchor="TopLeft" />
+
+        <Input id="playerName"
+               x="240"
+               y="157"
+               width="390"
+               height="32"
+               placeholder="Введите ник..."
+               fontSize="14"
+               onSubmit="onNameChanged"
+               anchor="TopLeft" />
+
+
+        <!-- Громкость -->
+        <Label id="volLabel"
+               x="30"
+               y="205"
+               width="200"
+               height="30"
+               text="Громкость: 100%"
+               fontSize="16"
+               color="0.88,0.91,0.94,1"
+               anchor="TopLeft" />
+
+        <Slider id="volSlider"
+                x="240"
+                y="211"
+                width="390"
+                height="18"
+                min="0"
+                max="100"
+                value="100"
+                onChange="onVolumeChanged"
+                anchor="TopLeft" />
+
+
+        <!-- FOV -->
+        <Label id="fovLabel"
+               x="30"
+               y="250"
+               width="200"
+               height="30"
+               text="FOV: 75°"
+               fontSize="16"
+               color="0.88,0.91,0.94,1"
+               anchor="TopLeft" />
+
+        <Slider id="fovSlider"
+                x="240"
+                y="256"
+                width="390"
+                height="18"
+                min="60"
+                max="110"
+                value="75"
+                onChange="onFovChanged"
+                anchor="TopLeft" />
+
+
+        <!-- ============================================================ -->
+        <!-- ГРАФИКА                                                      -->
+        <!-- ============================================================ -->
+
+        <!-- Разделитель: Border #0F172A -->
+        <Panel x="30" y="295"
+               width="600"
+               height="1"
+               color="0.06,0.09,0.16,1"
+               anchor="TopLeft" />
+
+        <!-- Заголовок секции: Energy #00A3FF -->
+        <Label x="30" y="315"
+               width="600"
+               height="25"
+               text="ГРАФИКА"
+               fontSize="13"
+               color="0,0.64,1,1"
+               anchor="TopLeft" />
+
+
+        <!-- Качество теней -->
+        <Label x="30" y="350"
+               width="200"
+               height="30"
+               text="Качество теней"
+               fontSize="16"
+               color="0.88,0.91,0.94,1"
+               anchor="TopLeft" />
+
+        <DropDown id="shadowSelect"
+                  x="240"
+                  y="347"
+                  width="390"
+                  height="32"
+                  options="Выкл,Низкое,Среднее,Высокое,Ультра"
+                  onSelect="onShadowQualityChanged"
+                  zOrder="110"
+                  fontSize="14"
+                  anchor="TopLeft" />
+
+
+        <!-- Фильтрация -->
+        <Label x="30"
+               y="395"
+               width="200"
+               height="30"
+               text="Фильтрация"
+               fontSize="16"
+               color="0.88,0.91,0.94,1"
+               anchor="TopLeft" />
+
+        <DropDown id="texSelect"
+                  x="240"
+                  y="392"
+                  width="390"
+                  height="32"
+                  options="Bilinear,Trilinear,Anisotropic 2x,Anisotropic 8x,Anisotropic 16x"
+                  onSelect="onTextureFilteringChanged"
+                  zOrder="105"
+                  fontSize="14"
+                  anchor="TopLeft" />
+
+
+        <!-- FPS -->
+        <Label x="30"
+               y="440"
+               width="200"
+               height="30"
+               text="Лимит FPS"
+               fontSize="16"
+               color="0.88,0.91,0.94,1"
+               anchor="TopLeft" />
+
+        <DropDown id="fpsSelect"
+                  x="240"
+                  y="437"
+                  width="390"
+                  height="32"
+                  options="Без ограничений,60 FPS,120 FPS,144 FPS"
+                  onSelect="onFpsChanged"
+                  zOrder="100"
+                  fontSize="14"
+                  anchor="TopLeft" />
+
+
+        <!-- ============================================================ -->
+        <!-- ДОПОЛНИТЕЛЬНО                                                 -->
+        <!-- ============================================================ -->
+
+        <!-- Разделитель: Border #0F172A -->
+        <Panel x="30" y="480"
+               width="600"
+               height="1"
+               color="0.06,0.09,0.16,1"
+               anchor="TopLeft" />
+
+        <!-- Заголовок секции: Energy #00A3FF -->
+        <Label x="30" y="500"
+               width="600"
+               height="25"
+               text="ДОПОЛНИТЕЛЬНО"
+               fontSize="13"
+               color="0,0.64,1,1"
+               anchor="TopLeft" />
+
+
+        <!-- Bloom -->
+        <Toggle id="bloomToggle"
+                x="30"
+                y="535"
+                width="180"
+                height="30"
+                label="Bloom"
+                checked="true"
+                onChange="onBloomToggle"
+                fontSize="15"
+                anchor="TopLeft" />
+
+        <!-- VSync -->
+        <Toggle id="vsyncToggle"
+                x="230"
+                y="535"
+                width="180"
+                height="30"
+                label="VSync"
+                checked="true"
+                onChange="onVSyncToggle"
+                fontSize="15"
+                anchor="TopLeft" />
+
+        <!-- Debug -->
+        <Toggle id="debugToggle"
+                x="430"
+                y="535"
+                width="200"
+                height="30"
+                label="Отладка (FPS)"
+                checked="false"
+                onChange="onDebugToggle"
+                fontSize="15"
+                anchor="TopLeft" />
+
+
+        <!-- ============================================================ -->
+        <!-- КНОПКИ                                                        -->
+        <!-- ============================================================ -->
+
+        <!-- Reset: второстепенная панель #1E293B + muted текст #64748B -->
+        <Button id="resetButton"
+                x="30"
+                y="575"
+                width="180"
+                height="32"
+                text="СБРОСИТЬ"
+                onClick="resetSettings"
+                color="0.12,0.16,0.23,1"
+                textColor="0.39,0.45,0.55,1"
+                fontSize="13"
+                anchor="TopLeft" />
+
+        <!-- Back: основная бренд-кнопка #008DFF + белый текст -->
+        <Button id="backButton"
+                x="450"
+                y="575"
+                width="180"
+                height="32"
+                text="НАЗАД"
+                onClick="closeSettings"
+                color="0,0.55,1,1"
+                textColor="1,1,1,1"
+                fontSize="14"
+                anchor="TopLeft" />
+
+    </Panel>
+
+</UI>

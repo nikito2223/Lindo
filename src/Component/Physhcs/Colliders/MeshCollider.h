@@ -15,6 +15,7 @@ namespace Lindo {
             struct MeshTriangle {
                 glm::vec3 v0, v1, v2;
                 glm::vec3 normal; // face normal, precomputed
+                Lindo::Math::AABB aabb;
             };
 
             // MeshCollider stores the actual mesh triangles and performs

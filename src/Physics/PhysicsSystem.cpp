@@ -241,15 +241,22 @@ namespace Lindo {
                     // which looks like a teleport. maxPenetration was already
                     // exposed via SetMaxPenetration() but never actually used
                     // here.
-                    float penetration = std::min(contact.penetration, maxPenetration);
+                    float penetration = std::min(contact.penetration, maxPenetration); // maxPenetration уже объявлен в PhysicsSystem.h
                     if (penetration > slop) {
-                        glm::vec3 correction = normal * ((penetration - slop) / invMassSum) * percent;
-
+                        // Ограничиваем максимальное смещение за один кадр (например, не более 0.02 м)
+                        float maxCorrectionPerFrame = 0.02f;
+                        float currentCorrection = std::min((penetration - slop) * percent, maxCorrectionPerFrame);
+                        
+                        glm::vec3 correction = normal * (currentCorrection / invMassSum);
+                    
                         if (bodyA && !bodyA->IsKinematic() && bodyA->gameObject) {
                             bodyA->gameObject->transform.position -= correction * invMassA;
+                            // Гасим накопленную скорость в сторону сжатия
+                            bodyA->SetVelocity(bodyA->GetVelocity() * 0.5f);
                         }
                         if (bodyB && !bodyB->IsKinematic() && bodyB->gameObject) {
                             bodyB->gameObject->transform.position += correction * invMassB;
+                            bodyB->SetVelocity(bodyB->GetVelocity() * 0.5f);
                         }
                     }
                 }
@@ -360,20 +367,25 @@ namespace Lindo {
             }
 
             bool PhysicsSystem::Raycast(const glm::vec3& origin, const glm::vec3& direction,
-                float maxDistance, Collider*& outHit, glm::vec3& outPoint,
-                glm::vec3& outNormal, float& outDistance) const {
+                            float maxDistance, Collider*& outHit, glm::vec3& outPoint,
+                            glm::vec3& outNormal, float& outDistance,
+                            const RigidBody* ignoreBody) const {
                 glm::vec3 dir = glm::normalize(direction);
                 bool hit = false;
                 float closest = maxDistance;
 
                 for (Collider* collider : colliders) {
                     if (!collider || !collider->IsEnabled()) continue;
+                
+                    // Пропускаем коллайдер, принадлежащий вызывающему объект
+                    if (ignoreBody && collider->gameObject == ignoreBody->gameObject) continue;
+                
                     Lindo::Math::AABB aabb = collider->GetAABB();
                     float tmin, tmax;
                     if (!aabb.intersectRay(origin, dir, tmin, tmax)) continue;
                     if (tmin < 0.0f) tmin = 0.0f;
                     if (tmin > closest) continue;
-
+                
                     closest = tmin;
                     outHit = collider;
                     outDistance = tmin;

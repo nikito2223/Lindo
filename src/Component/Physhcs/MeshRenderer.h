@@ -40,6 +40,24 @@ namespace Lindo {
 
                 bool IsEnabled() const { return enabled; }
 
+                // --- UV helpers (Unity-style) ---
+                void setTextureTiling(float tx, float ty) {
+                    auto* mat = getOrCreateMaterial();
+                    if (mat) mat->setDiffuseTiling(tx, ty);
+                }
+                void setTextureOffset(float ox, float oy) {
+                    auto* mat = getOrCreateMaterial();
+                    if (mat) mat->setDiffuseOffset(ox, oy);
+                }
+                void setTextureUV(float tx, float ty, float ox, float oy) {
+                    auto* mat = getOrCreateMaterial();
+                    if (mat) mat->setDiffuseUV(tx, ty, ox, oy);
+                }
+                void setSpecularUV(float tx, float ty, float ox, float oy) {
+                    auto* mat = getOrCreateMaterial();
+                    if (mat) mat->setSpecularUV(tx, ty, ox, oy);
+                }
+
                 void DrawShadow(Lindo::Graphics::Shader& shader) const {
                     if (!gameObject || !IsEnabled()) return;
 
@@ -74,9 +92,33 @@ namespace Lindo {
 
                 static Lindo::Graphics::Material* GetDefaultMaterial() {
                     static Lindo::Graphics::Material defaultMat(0, 0, 32.0f, false);
-                    defaultMat.useTexture = false;
                     defaultMat.color = glm::vec3(1.0f); // Белый цвет
                     return &defaultMat;
+                }
+
+                // Возвращает материал этого MeshRenderer'а, создавая (и присоединяя
+                // к тому же GameObject'у) новый Material-компонент при необходимости.
+                Lindo::Graphics::Material* getOrCreateMaterial() {
+                    if (material) return material;
+                    if (!gameObject) return nullptr;
+                    material = gameObject->getOrAddComponent<Lindo::Graphics::Material>(0, 0, 32.0f, false);
+                    return material;
+                }
+
+                // Назначает диффузную (и опционально спекулярную) текстуру, сохраняя
+                // текущий цвет материала как тонирующий множитель поверх неё.
+                void setTexture(unsigned int diffuseTex, unsigned int specularTex = 0) {
+                    auto* mat = getOrCreateMaterial();
+                    if (!mat) return;
+                    mat->setDiffuseTexture(diffuseTex);
+                    if (specularTex != 0) mat->setSpecularTexture(specularTex);
+                }
+
+                // Задаёт цвет материала. Если текстура уже назначена, цвет действует
+                // как тонирующий множитель поверх неё, а не заменяет её.
+                void setColor(const glm::vec3& c) {
+                    auto* mat = getOrCreateMaterial();
+                    if (mat) mat->setColor(c);
                 }
 
                 void OnDraw(Lindo::Graphics::Shader& shader) override {

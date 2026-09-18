@@ -29,7 +29,7 @@ namespace Lindo {
                 std::vector<float> splits(count + 1, 0.0f);
                 if (count <= 0) return splits;
 
-                constexpr float lambda = 0.5f;
+                constexpr float lambda = 0.85f;
                 splits[0] = zNear;
                 splits[count] = zFar;
 
@@ -125,29 +125,38 @@ namespace Lindo {
                 for (int c = 0; c < 8; ++c) center += corners[c];
                 center /= 8.0f;
 
+                // 1. Вычисляем сферическую оболочку (Bounding Sphere) каскада, чтобы размер сплита не менялся при повороте камеры
                 float radius = 0.0f;
                 for (int c = 0; c < 8; ++c) {
                     radius = glm::max(radius, glm::length(corners[c] - center));
                 }
+                radius = std::ceil(radius * 16.0f) / 16.0f; // Зафиксируем радиус
+                
+                glm::vec3 maxExtents = glm::vec3(radius);
+                glm::vec3 minExtents = -maxExtents;
+                
+                // 2. Строим временно lightView относительно центра сферы
                 const float lightDist = radius * 2.0f + 50.0f;
                 const glm::vec3 lightEye = center - lightDir * lightDist;
-                const glm::mat4 lightView = glm::lookAt(lightEye, center, upv);
-
-                glm::vec3 minAABB(FLT_MAX);
-                glm::vec3 maxAABB(-FLT_MAX);
-                for (int c = 0; c < 8; ++c) {
-                    const glm::vec4 lsp = lightView * glm::vec4(corners[c], 1.0f);
-                    minAABB = glm::min(minAABB, glm::vec3(lsp));
-                    maxAABB = glm::max(maxAABB, glm::vec3(lsp));
-                }
-
-                const float margin = glm::max((maxAABB.z - minAABB.z) * 0.5f, 1.0f);
-                minAABB.z -= margin;
-
-                const glm::mat4 lightProj = glm::ortho(minAABB.x, maxAABB.x,
-                    minAABB.y, maxAABB.y,
-                    minAABB.z, maxAABB.z);
-
+                glm::mat4 lightView = glm::lookAt(lightEye, center, upv);
+                
+                // 3. Рассчитываем размер одного текселя в пространстве света
+                float shadowMapSize = static_cast<float>(m_target ? m_target->size() : 2048);
+                glm::mat4 lightProj = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z + 100.0f);
+                
+                glm::mat4 shadowMatrix = lightProj * lightView;
+                glm::vec4 shadowOrigin = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+                shadowOrigin = shadowMatrix * shadowOrigin;
+                shadowOrigin *= (shadowMapSize / 2.0f);
+                
+                glm::vec4 roundedOrigin = glm::round(shadowOrigin);
+                glm::vec4 roundOffset = roundedOrigin - shadowOrigin;
+                roundOffset = roundOffset * (2.0f / shadowMapSize);
+                roundOffset.z = 0.0f;
+                roundOffset.w = 0.0f;
+                
+                lightProj[3] += roundOffset; // Сдвигаем матрицу на дробную часть текселя
+                
                 m_lightSpaceMatrices[i] = lightProj * lightView;
                 m_splitDepths[i] = farZ;
             }

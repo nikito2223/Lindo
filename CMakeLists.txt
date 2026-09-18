@@ -6,26 +6,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ==============================================================================
-# ��������� �������� ���������� (bin/ � lib/)
+# Директории вывода: бинарники и .dll в bin/, статические либы в lib/
 # ==============================================================================
-# ���������� ��� .exe � .dll ����� � ����� bin/ ������ ���������� ������
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Lindo/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Lindo/bin")
-# ����������� ���������� (.lib / .a) ������� � lib/
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Lindo/lib")
 
-# ��� MSVC / Multi-configuration ����������� (Debug/Release), ����� �� �����������
-# ������ �������� bin/Debug, � �� ������ ������ � bin/
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Lindo/bin")
+# Для MSVC / Multi-config (Debug/Release), чтобы не создавались подпапки
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/Lindo/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Lindo/bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Lindo/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG   "${CMAKE_BINARY_DIR}/Lindo/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Lindo/bin")
 # ==============================================================================
 
 execute_process(COMMAND ${CMAKE_COMMAND} --version)
 
 option(LINDO_BUILD_APPDIR "Pack linux build" OFF)
-option(LINDO_BUILD_TESTS "Build tests" OFF)
+option(LINDO_BUILD_TESTS  "Build tests"      OFF)
 
 add_compile_definitions(VC_BUILD_NAME="${VC_BUILD_NAME}")
 
@@ -36,7 +33,31 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 add_subdirectory(src)
-add_executable(Lindo WIN32 src/main.cpp)
+
+# ==============================================================================
+# Иконка приложения (только Windows) через .rc файл
+# ==============================================================================
+set(LINDO_APP_SOURCES src/main.cpp)
+
+if(WIN32)
+    # Файл ресурсов, в котором описана иконка (см. assets/app.rc)
+    set(LINDO_RC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Windows/icon.rc")
+
+    if(EXISTS "${LINDO_RC_FILE}")
+        list(APPEND LINDO_APP_SOURCES "${LINDO_RC_FILE}")
+
+        # Для MSVC включаем кодировку UTF-8 для rc-компилятора,
+        # чтобы пути с кириллицей/юникодом не ломались.
+        if(MSVC)
+            set_source_files_properties("${LINDO_RC_FILE}" PROPERTIES
+                COMPILE_FLAGS "-c65001")
+        endif()
+    else()
+        message(WARNING "app.rc not found, executable will use default icon: ${LINDO_RC_FILE}")
+    endif()
+endif()
+
+add_executable(Lindo WIN32 ${LINDO_APP_SOURCES})
 
 if(MSVC)
     target_link_options(Lindo PRIVATE /ENTRY:mainCRTStartup)
@@ -51,16 +72,14 @@ target_link_libraries(Lindo PRIVATE LindoSrc
 
 target_link_options(Lindo PRIVATE $<$<CXX_COMPILER_ID:GNU>:-no-pie>)
 
-# Deploy res to build/bin/res
-# ��������� $<TARGET_FILE_DIR:Lindo>, CMake ������������� ��������� ����� res
-# ����� ����, ��� ����� Lindo.exe (�� ���� � build/bin/res/)
+# Deploy assets -> build/Lindo/assets
 add_custom_command(
     TARGET Lindo
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
-            ${CMAKE_CURRENT_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/Lindo/res)
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets ${CMAKE_BINARY_DIR}/Lindo/assets)
 
-# ���� � ������� ���� ����� config/, �������� � � build/config/
+# config/ -> build/Lindo/config
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config")
     add_custom_command(
         TARGET Lindo
@@ -68,9 +87,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config")
         COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
                 ${CMAKE_CURRENT_SOURCE_DIR}/config ${CMAKE_BINARY_DIR}/Lindo/config)
 else()
-    # ���� ����� config ��� ��� � ����������, ������ �������� ������ ����� build/config
     add_custom_command(
         TARGET Lindo
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/config)
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/Lindo/config)
 endif()

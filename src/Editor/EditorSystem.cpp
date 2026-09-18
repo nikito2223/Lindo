@@ -61,8 +61,8 @@ namespace Lindo::Editor {
 
         auto& runtime = Lindo::Scripting::LuaRuntime::Get();
         if (runtime.initialize()) {
-            sol::environment environment(runtime.state(), sol::create, runtime.state().globals());
-            runtime.executeFile(AssetManager::get().resolvePath("editor.lua", "scripts"), environment);
+            // sol::environment environment(runtime.state(), sol::create, runtime.state().globals());
+            // runtime.executeFile(AssetManager::get().resolvePath("editor.lua", "scripts"), environment);
         }
     }
 

@@ -141,6 +141,7 @@ namespace Lindo {
             if (!m_initialized) initialize(scene);
 
             discoverCasters(scene);
+            updatePointCasters(scene);   
 
             if (!m_diagnosticsLogged) {
                 LOG_INFO("[Shadow Diagnostics] casters=" + std::to_string(m_shadowCasters.size()) +
@@ -159,7 +160,11 @@ namespace Lindo {
             auto* dirLight = directionalLight;
             m_directionalActive = false;
             if (dirLight && dirLight->enabled && dirLight->castShadows && m_directionalCaster) {
-                m_directionalCaster->setLight(dirLight->direction);
+                glm::vec3 dirLightWorld = dirLight->direction;
+                if (dirLight->gameObject) {
+                    dirLightWorld = glm::normalize(glm::mat3(dirLight->gameObject->getWorldMatrix()) * dirLight->direction);
+                }
+                m_directionalCaster->setLight(dirLightWorld);
                 m_directionalCaster->setLightPosition(dirLight->getPosition());
                 m_directionalCaster->setCamera(viewProj, nearPlane, farPlane);
                 m_directionalCaster->render(m_shadowCasters);

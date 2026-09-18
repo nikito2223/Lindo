@@ -137,10 +137,41 @@ namespace Lindo {
 
         unsigned int Model::textureFromFile(const char* path, const std::string& directory)
         {
-            std::string filename = directory + '/' + std::string(path);
-
-            // 🔥 ФИКС: Используем метод твоего AssetManager, который гарантирует синглтон-доступ
-            return Lindo::AssetManager::get().loadTexture(filename);
+            namespace fs = std::filesystem;
+        
+            std::string filename = std::string(path);
+            std::string cleanFileName = fs::path(filename).filename().string();
+        
+            // Вспомогательный лямбда-метод для очистки пути от дублирующегося префикса "assets/" или "..\assets\"
+            auto sanitizeForAssetManager = [](const fs::path& fullPath) -> std::string {
+                std::string pathStr = fullPath.string();
+                std::replace(pathStr.begin(), pathStr.end(), '\\', '/');
+            
+                // Если путь содержит "assets/", обрезаем все до этой папки включительно,
+                // так как AssetManager сам подставляет корневой путь
+                std::string target = "assets/";
+                size_t pos = pathStr.find(target);
+                if (pos != std::string::npos) {
+                    return pathStr.substr(pos + target.length());
+                }
+                return pathStr;
+            };
+        
+            // 1. Приоритетная проверка: папка assets/models/textures/
+            fs::path targetTexturesPath = fs::path(directory) / "textures" / cleanFileName;
+            if (fs::exists(targetTexturesPath)) {
+                return Lindo::AssetManager::get().loadTexture(sanitizeForAssetManager(targetTexturesPath));
+            }
+        
+            // 2. Вторичная проверка: прямая ссылка из файла модели (если там прописан относительный путь)
+            fs::path directPath = fs::path(directory) / filename;
+            if (fs::exists(directPath)) {
+                return Lindo::AssetManager::get().loadTexture(sanitizeForAssetManager(directPath));
+            }
+        
+            // 3. Фолбэк: если файл не найден физически, формируем путь к assets/models/textures/
+            fs::path fallbackPath = fs::path(directory) / "textures" / cleanFileName;
+            return Lindo::AssetManager::get().loadTexture(sanitizeForAssetManager(fallbackPath));
         }
     }
 }

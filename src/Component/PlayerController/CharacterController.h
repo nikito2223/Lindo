@@ -82,8 +82,6 @@ namespace Lindo {
                 bool Jump();
                 bool Crouch();
                 bool UnCrouch();
-                // Вызывается каждый кадр из системы ввода с текущим состоянием клавиши приседания
-                // (например Ctrl), как в Source: держим — приседаем, отпустили — встаём (если есть место).
                 void SetCrouchHeld(bool held);
                 bool IsCrouchHeld() const { return crouchHeld; }
                 bool Slide();

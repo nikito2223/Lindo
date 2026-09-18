@@ -1,0 +1,112 @@
+<UI>
+
+    <!-- ================================================================ -->
+    <!-- PAUSE PANEL — стиль главного меню Lindo                        -->
+    <!-- ================================================================ -->
+
+    <!-- Фон панели: Deep #050608 (чуть темнее Base для акцента поверх игры) -->
+    <!-- Корневая панель центрируется по экрану -->
+    <Panel id="PausePanel"
+           x="0"
+           y="0"
+           width="300"
+           height="360"
+           color="0.02,0.02,0.03,0.96"
+           visible="false"
+           zOrder="50"
+           anchor="Center">
+
+        <!-- Неоновая верхняя полоса: Li #00F0FF -->
+        <Panel x="0"
+               y="0"
+               width="300"
+               height="5"
+               color="0,0.94,1,1"
+               anchor="TopLeft" />
+
+        <!-- Заголовок: Li / неон #00F0FF -->
+        <Label id="pauseTitle"
+               x="20"
+               y="28"
+               width="260"
+               height="40"
+               text="ПАУЗА"
+               fontSize="28"
+               color="0,0.94,1,1"
+               anchor="TopLeft" />
+
+        <!-- Подзаголовок: Muted #64748B -->
+        <Label id="pauseSubtitle"
+               x="20"
+               y="65"
+               width="260"
+               height="25"
+               text="ИГРА ПРИОСТАНОВЛЕНА"
+               fontSize="10"
+               color="0.39,0.45,0.55,1"
+               anchor="TopLeft" />
+
+        <!-- Разделитель: Border #0F172A -->
+        <Panel x="20"
+               y="98"
+               width="260"
+               height="1"
+               color="0.06,0.09,0.16,1"
+               anchor="TopLeft" />
+
+
+        <!-- Продолжить: Primary #008DFF — главное действие -->
+        <Button id="resumeButton"
+                x="30"
+                y="120"
+                width="240"
+                height="45"
+                text="ПРОДОЛЖИТЬ"
+                onClick="onResume"
+                color="0,0.55,1,1"
+                textColor="1,1,1,1"
+                fontSize="15"
+                anchor="TopLeft" />
+
+        <!-- Настройки: Secondary #1E293B + #E2E8F0 -->
+        <Button id="settingsButton"
+                x="30"
+                y="178"
+                width="240"
+                height="45"
+                text="НАСТРОЙКИ"
+                onClick="onOpenSettings"
+                color="0.12,0.16,0.23,1"
+                textColor="0.88,0.91,0.94,1"
+                fontSize="15"
+                anchor="TopLeft" />
+
+        <!-- Заново: Secondary #1E293B + #E2E8F0 -->
+        <Button id="restartButton"
+                x="30"
+                y="236"
+                width="240"
+                height="45"
+                text="ЗАНОВО"
+                onClick="onRestart"
+                color="0.12,0.16,0.23,1"
+                textColor="0.88,0.91,0.94,1"
+                fontSize="15"
+                anchor="TopLeft" />
+
+        <!-- Главное меню: Secondary #1E293B + Muted #64748B (тихий выход) -->
+        <Button id="quitButton"
+                x="30"
+                y="294"
+                width="240"
+                height="45"
+                text="ГЛАВНОЕ МЕНЮ"
+                onClick="onQuit"
+                color="0.12,0.16,0.23,1"
+                textColor="0.39,0.45,0.55,1"
+                fontSize="15"
+                anchor="TopLeft" />
+
+    </Panel>
+
+</UI>

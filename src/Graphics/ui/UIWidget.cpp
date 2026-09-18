@@ -84,11 +84,36 @@ namespace Lindo {
                 }
             }
 
+            void UIPanel::updateLayout(float parentX, float parentY, float parentW, float parentH) {
+                // Сначала раскладываем саму панель относительно родителя
+                UIWidget::updateLayout(parentX, parentY, parentW, parentH);
+
+                // Детей раскладываем уже относительно фактической позиции и размера панели
+                for (auto& child : m_children) {
+                    if (child) {
+                        child->updateLayout(m_rect.x, m_rect.y, m_rect.w, m_rect.h);
+                    }
+                }
+            }
+
             void UIPanel::removeChild(const std::shared_ptr<UIWidget>& child) {
                 auto it = std::find(m_children.begin(), m_children.end(), child);
                 if (it != m_children.end()) {
                     m_children.erase(it);
                     m_sortDirty = true;
+                }
+            }
+
+            void UIPanel::setPosition(float x, float y) {
+                // Обновляем свою позицию/офсет
+                UIWidget::setPosition(x, y);
+                        
+                // Пересчитываем детей через updateLayout — так их offset не портится,
+                // а позиция корректно пересчитывается от новой базы.
+                for (auto& child : m_children) {
+                    if (child) {
+                        child->updateLayout(m_rect.x, m_rect.y, m_rect.w, m_rect.h);
+                    }
                 }
             }
 
@@ -110,6 +135,8 @@ namespace Lindo {
                     });
                 m_sortDirty = false;
             }
+
+            
 
             void UIPanel::render(UIRenderer& renderer, UIFont* font) {
                 if (!m_visible) return;
@@ -345,9 +372,11 @@ namespace Lindo {
             UISlider::UISlider(float minVal, float maxVal, float currentVal)
                 : m_min(minVal), m_max(maxVal), m_value(currentVal) {}
             
-            void UISlider::setValue(float val) {
-                m_value = std::clamp(val, m_min, m_max);
-                if (m_onChange) m_onChange(m_value);
+            void UISlider::setValue(float val, bool notify) {
+                const float clamped = std::clamp(val, m_min, m_max);
+                if (m_value == clamped) return;           // не дёргаем callback без изменений
+                m_value = clamped;
+                if (notify && m_onChange) m_onChange(m_value);
             }
             
             void UISlider::setRange(float minVal, float maxVal) {
@@ -424,11 +453,11 @@ namespace Lindo {
                 m_selectedIndex = m_options.empty() ? -1 : 0;
             }
             
-            void UIDropDown::setSelectedIndex(int index) {
-                if (index >= 0 && index < static_cast<int>(m_options.size())) {
-                    m_selectedIndex = index;
-                    if (m_onSelect) m_onSelect(m_selectedIndex, m_options[m_selectedIndex]);
-                }
+            void UIDropDown::setSelectedIndex(int index, bool notify) {
+                if (index < 0 || index >= static_cast<int>(m_options.size())) return;
+                if (m_selectedIndex == index) return;     // не дёргаем callback без изменений
+                m_selectedIndex = index;
+                if (notify && m_onSelect) m_onSelect(m_selectedIndex, m_options[m_selectedIndex]);
             }
             
             std::string UIDropDown::getSelectedOption() const {

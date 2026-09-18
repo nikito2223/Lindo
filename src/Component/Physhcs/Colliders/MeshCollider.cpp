@@ -64,17 +64,13 @@ namespace Lindo {
                 localVertices.clear();
                 localIndices.clear();
             
-                // ─────────────────────────────────────────────
                 // Одиночный Mesh
-                // ─────────────────────────────────────────────
                 if (mr->mesh) {
                     SetMesh(*mr->mesh);
                     return;
                 }
             
-                // ─────────────────────────────────────────────
                 // Model, состоящий из нескольких Mesh
-                // ─────────────────────────────────────────────
                 if (mr->model) {
                     const auto& meshes = mr->model->getMeshes();
                 
@@ -113,12 +109,10 @@ namespace Lindo {
 
                 if (localVertices.empty() || localIndices.size() < 3) return;
 
-                // Build transform matrix: gameObject world transform + collider offset.
                 glm::mat4 matrix(1.0f);
                 if (gameObject) {
                     matrix = gameObject->transform.getMatrix();
                 }
-                // Apply offset as an additional translation.
                 matrix = glm::translate(matrix, offset);
 
                 worldTriangles.reserve(localIndices.size() / 3);
@@ -143,6 +137,11 @@ namespace Lindo {
                     float len = glm::length(cross);
                     tri.normal = (len > 1e-8f) ? cross / len : glm::vec3(0, 1, 0);
 
+                    // Локальный AABB для каждого треугольника
+                    glm::vec3 minB = glm::min(tri.v0, glm::min(tri.v1, tri.v2));
+                    glm::vec3 maxB = glm::max(tri.v0, glm::max(tri.v1, tri.v2));
+                    tri.aabb = Lindo::Math::AABB(minB, maxB);
+
                     worldTriangles.push_back(tri);
                 }
             }
@@ -152,8 +151,8 @@ namespace Lindo {
                 glm::vec3 maxB(std::numeric_limits<float>::lowest());
 
                 for (const auto& tri : worldTriangles) {
-                    minB = glm::min(minB, glm::min(tri.v0, glm::min(tri.v1, tri.v2)));
-                    maxB = glm::max(maxB, glm::max(tri.v0, glm::max(tri.v1, tri.v2)));
+                    minB = glm::min(minB, tri.aabb.min);
+                    maxB = glm::max(maxB, tri.aabb.max);
                 }
 
                 if (worldTriangles.empty()) {
@@ -171,17 +170,12 @@ namespace Lindo {
                 return worldAABB;
             }
 
-            // Dispatch to the other collider's CheckCollision(MeshCollider*).
-            // Since the base Collider interface doesn't have CheckCollision(MeshCollider*),
-            // we implement narrow-phase here directly for each known type.
             bool MeshCollider::CheckCollision(Collider* other, CollisionInfo& outInfo) const {
                 if (!other) return false;
 
-                // Добавляем проверку на другой MeshCollider
                 if (auto* mesh = dynamic_cast<MeshCollider*>(other))
                     return CheckCollision(mesh, outInfo);
 
-                // Let the other collider handle it via double-dispatch.
                 if (auto* box = dynamic_cast<BoxCollider*>(other))
                     return CheckCollision(box, outInfo);
                 if (auto* sphere = dynamic_cast<SphereCollider*>(other))
@@ -194,25 +188,29 @@ namespace Lindo {
             // ── Mesh vs Mesh ──────────────────────────────────────────────
             bool MeshCollider::CheckCollision(const MeshCollider* other, CollisionInfo& outInfo) const {
                 if (!other) return false;
-            
+
                 // Broad-phase: AABB vs AABB
-                if (!worldAABB.intersectAABB(other->GetAABB())) return false;
-            
+                const auto otherAABB = other->GetAABB();
+                if (!worldAABB.intersectAABB(otherAABB)) return false;
+
                 float minDepth = std::numeric_limits<float>::max();
                 glm::vec3 bestNormal(0.0f);
                 glm::vec3 bestContact(0.0f);
                 bool hit = false;
-            
-                CollisionInfo triInfo;
 
-                // Narrow-phase: перебираем треугольники
+                CollisionInfo triInfo;
                 const auto& otherTriangles = other->GetWorldTriangles();
+
                 for (const auto& triA : worldTriangles) {
+                    // Раннее отсечение: если треугольник A не пересекает общие границы B
+                    if (!triA.aabb.intersectAABB(otherAABB)) continue;
+
                     for (const auto& triB : otherTriangles) {
-                        // Простая оптимизация: отсечение по нормалям (если треугольники смотрят в одну сторону,
-                        // они вряд ли столкнутся корректно, но для сложной геометрии это можно закомментировать)
+                        // Раннее отсечение: сравнение индивидуальных AABB треугольников
+                        if (!triA.aabb.intersectAABB(triB.aabb)) continue;
+
                         if (glm::dot(triA.normal, triB.normal) > 0.0f) continue;
-                    
+
                         if (TriVsTri(triA, triB, triInfo)) {
                             if (triInfo.penetrationDepth < minDepth) {
                                 minDepth = triInfo.penetrationDepth;
@@ -223,7 +221,7 @@ namespace Lindo {
                         }
                     }
                 }
-            
+
                 if (hit) {
                     outInfo.other = const_cast<MeshCollider*>(other);
                     outInfo.contactNormal = bestNormal;
@@ -238,8 +236,8 @@ namespace Lindo {
             bool MeshCollider::CheckCollision(const BoxCollider* other, CollisionInfo& outInfo) const {
                 if (!other) return false;
 
-                // Broad-phase: AABB vs AABB.
-                if (!worldAABB.intersectAABB(other->GetAABB())) return false;
+                const auto boxAABB = other->GetAABB();
+                if (!worldAABB.intersectAABB(boxAABB)) return false;
 
                 glm::vec3 boxCenter = other->GetWorldCenter();
                 glm::vec3 boxHalf   = other->GetWorldHalfExtents();
@@ -251,6 +249,9 @@ namespace Lindo {
 
                 CollisionInfo triInfo;
                 for (const auto& tri : worldTriangles) {
+                    // Раннее отсечение треугольника по AABB коробки
+                    if (!tri.aabb.intersectAABB(boxAABB)) continue;
+
                     if (AABBVsTriangle(boxCenter, boxHalf, tri, triInfo)) {
                         if (triInfo.penetrationDepth < minDepth) {
                             minDepth    = triInfo.penetrationDepth;
@@ -275,8 +276,8 @@ namespace Lindo {
             bool MeshCollider::CheckCollision(const SphereCollider* other, CollisionInfo& outInfo) const {
                 if (!other) return false;
 
-                // Broad-phase.
-                if (!worldAABB.intersectAABB(other->GetAABB())) return false;
+                const auto sphereAABB = other->GetAABB();
+                if (!worldAABB.intersectAABB(sphereAABB)) return false;
 
                 glm::vec3 sphereCenter = other->GetWorldCenter();
                 float     sphereRadius = other->GetWorldRadius();
@@ -288,6 +289,9 @@ namespace Lindo {
 
                 CollisionInfo triInfo;
                 for (const auto& tri : worldTriangles) {
+                    // Раннее отсечение треугольника по AABB сферы
+                    if (!tri.aabb.intersectAABB(sphereAABB)) continue;
+
                     if (SphereVsTriangle(sphereCenter, sphereRadius, tri, triInfo)) {
                         if (triInfo.penetrationDepth < minDepth) {
                             minDepth    = triInfo.penetrationDepth;
@@ -309,66 +313,58 @@ namespace Lindo {
             }
 
             // ── Mesh vs Capsule ──────────────────────────────────────────
-            // A capsule = two spheres swept along a segment.
-            // We test each triangle against both the segment and each cap sphere.
             bool MeshCollider::CheckCollision(const CapsuleCollider* other, CollisionInfo& outInfo) const {
                 if (!other) return false;
-
-                if (!worldAABB.intersectAABB(other->GetAABB())) return false;
-
-                // Decompose capsule into top/bottom sphere centers + radius.
+                        
+                const auto capsuleAABB = other->GetAABB();
+                if (!worldAABB.intersectAABB(capsuleAABB)) return false;
+                        
                 glm::vec3 capTop;
                 glm::vec3 capBottom;
                 other->GetEndpoints(capTop, capBottom);
-
-                float     radius    = other->GetWorldRadius();
-
-                float     minDepth = std::numeric_limits<float>::max();
+                        
+                float     radius   = other->GetWorldRadius();
+                float     maxDepth = -1.0f; // Ищем НАИБОЛЬШЕЕ проникновение
                 glm::vec3 bestNormal(0.0f);
                 glm::vec3 bestContact(0.0f);
                 bool      hit = false;
-
+                        
+                auto clampSeg = [&](const glm::vec3& p) -> glm::vec3 {
+                    glm::vec3 d = capTop - capBottom;
+                    float t = glm::dot(p - capBottom, d) / glm::dot(d, d);
+                    t = glm::clamp(t, 0.0f, 1.0f);
+                    return capBottom + t * d;
+                };
+            
                 for (const auto& tri : worldTriangles) {
-                    // Test the segment (capBottom -> capTop) against the triangle
-                    // by finding the point on the segment closest to the triangle,
-                    // then running a sphere test.
-                    glm::vec3 closestOnTri, closestOnSeg;
-
-                    // Closest point on segment to triangle (iterate: clamp point on
-                    // segment to triangle then re-clamp back).
-                    auto clampSeg = [&](const glm::vec3& p) -> glm::vec3 {
-                        glm::vec3 d = capTop - capBottom;
-                        float t = glm::dot(p - capBottom, d) / glm::dot(d, d);
-                        t = glm::clamp(t, 0.0f, 1.0f);
-                        return capBottom + t * d;
-                    };
-
-                    closestOnTri = ClosestPointOnTriangle(capBottom, tri.v0, tri.v1, tri.v2);
-                    closestOnSeg = clampSeg(closestOnTri);
+                    if (!tri.aabb.intersectAABB(capsuleAABB)) continue;
+                
+                    glm::vec3 closestOnTri = ClosestPointOnTriangle(capBottom, tri.v0, tri.v1, tri.v2);
+                    glm::vec3 closestOnSeg = clampSeg(closestOnTri);
                     closestOnTri = ClosestPointOnTriangle(closestOnSeg, tri.v0, tri.v1, tri.v2);
-
+                
                     glm::vec3 delta = closestOnSeg - closestOnTri;
                     float dist = glm::length(delta);
-
+                
                     if (dist < radius) {
                         float depth = radius - dist;
-                        glm::vec3 normal = (dist > 1e-8f)
-                            ? delta / dist
-                            : tri.normal;
-
-                        if (depth < minDepth) {
-                            minDepth    = depth;
+                        
+                        // Если расстояние слишком мало, берем чистую нормаль треугольника
+                        glm::vec3 normal = (dist > 1e-6f) ? (delta / dist) : tri.normal;
+                    
+                        if (depth > maxDepth) {
+                            maxDepth    = depth;
                             bestNormal  = normal;
                             bestContact = closestOnTri;
                         }
                         hit = true;
                     }
                 }
-
+            
                 if (hit) {
                     outInfo.other            = const_cast<CapsuleCollider*>(other);
                     outInfo.contactNormal    = bestNormal;
-                    outInfo.penetrationDepth = minDepth;
+                    outInfo.penetrationDepth = maxDepth;
                     outInfo.contactPoint     = bestContact;
                     outInfo.relativeVelocity = 0.0f;
                 }
@@ -428,8 +424,8 @@ namespace Lindo {
             }
 
             bool MeshCollider::TriVsTri(const MeshTriangle& triA, 
-                            const MeshTriangle& triB, 
-                            CollisionInfo& outInfo) 
+                                        const MeshTriangle& triB, 
+                                        CollisionInfo& outInfo) 
             {
                 glm::vec3 edgesA[3] = {
                     triA.v1 - triA.v0,
@@ -478,7 +474,7 @@ namespace Lindo {
                     float maxB = std::max({pB0, pB1, pB2});
                 
                     if (minA > maxB || minB > maxA) {
-                        return false; // Найдена разделяющая ось, пересечения нет
+                        return false;
                     }
                 
                     float overlap = std::min(maxA - minB, maxB - minA);
@@ -488,7 +484,6 @@ namespace Lindo {
                     }
                 }
             
-                // Нормаль выталкивания должна указывать от B (земли) к A (проваливающемуся объекту)
                 glm::vec3 centerA = (triA.v0 + triA.v1 + triA.v2) / 3.0f;
                 glm::vec3 centerB = (triB.v0 + triB.v1 + triB.v2) / 3.0f;
                 if (glm::dot(bestAxis, centerA - centerB) < 0.0f) {
@@ -497,14 +492,13 @@ namespace Lindo {
             
                 outInfo.contactNormal = bestAxis;
                 outInfo.penetrationDepth = minOverlap;
-                // Аппроксимация точки контакта (для честной нужно делать полигональный клиппинг)
                 outInfo.contactPoint = (centerA + centerB) * 0.5f; 
                 return true;
             }
 
             bool MeshCollider::SphereVsTriangle(
                 const glm::vec3& center,
-                float             radius,
+                float            radius,
                 const MeshTriangle& tri,
                 CollisionInfo&    outInfo)
             {
@@ -523,14 +517,12 @@ namespace Lindo {
                 return true;
             }
 
-            // SAT: AABB vs triangle — 13 potential separating axes.
             bool MeshCollider::AABBVsTriangle(
                 const glm::vec3& boxCenter,
                 const glm::vec3& half,
                 const MeshTriangle& tri,
                 CollisionInfo&    outInfo)
             {
-                // Translate triangle to box-local space.
                 glm::vec3 v0 = tri.v0 - boxCenter;
                 glm::vec3 v1 = tri.v1 - boxCenter;
                 glm::vec3 v2 = tri.v2 - boxCenter;
@@ -539,7 +531,6 @@ namespace Lindo {
                 glm::vec3 e1 = v2 - v1;
                 glm::vec3 e2 = v0 - v2;
 
-                // AABB face normals.
                 const glm::vec3 boxAxes[3] = {
                     glm::vec3(1, 0, 0),
                     glm::vec3(0, 1, 0),
@@ -551,7 +542,7 @@ namespace Lindo {
 
                 auto testAxis = [&](glm::vec3 axis) -> bool {
                     float axisLen = glm::length(axis);
-                    if (axisLen < 1e-8f) return true; // degenerate, skip
+                    if (axisLen < 1e-8f) return true;
                     axis /= axisLen;
 
                     float p0 = glm::dot(v0, axis);
@@ -565,7 +556,7 @@ namespace Lindo {
                                  half.y * std::abs(axis.y) +
                                  half.z * std::abs(axis.z);
 
-                    if (triMin > boxR || triMax < -boxR) return false; // gap found
+                    if (triMin > boxR || triMax < -boxR) return false;
 
                     float overlap = std::min(boxR - triMin, triMax + boxR);
                     if (overlap < minOverlap) {
@@ -575,25 +566,21 @@ namespace Lindo {
                     return true;
                 };
 
-                // 3 AABB face normals.
                 for (const auto& ax : boxAxes)
                     if (!testAxis(ax)) return false;
 
-                // 1 triangle face normal.
                 if (!testAxis(tri.normal)) return false;
 
-                // 9 edge cross products.
                 for (const auto& triEdge : { e0, e1, e2 })
                     for (const auto& ax : boxAxes)
                         if (!testAxis(glm::cross(triEdge, ax))) return false;
 
-                // Ensure normal points from triangle toward box center (away from mesh).
                 if (glm::dot(bestAxis, boxCenter - tri.v0) < 0.0f)
                     bestAxis = -bestAxis;
 
                 outInfo.contactNormal    = bestAxis;
                 outInfo.penetrationDepth = minOverlap;
-                outInfo.contactPoint     = (tri.v0 + tri.v1 + tri.v2) / 3.0f; // triangle centroid
+                outInfo.contactPoint     = (tri.v0 + tri.v1 + tri.v2) / 3.0f;
                 return true;
             }
 
@@ -605,7 +592,6 @@ namespace Lindo {
                 glm::mat4 world = gameObject->getWorldMatrix();
                 glm::vec3 pos = GetWorldPosition();
 
-                // 1. Отрисовка локальных осей координат
                 glm::vec3 xAxis = glm::vec3(world[0]) * 0.5f;
                 glm::vec3 yAxis = glm::vec3(world[1]) * 0.5f;
                 glm::vec3 zAxis = glm::vec3(world[2]) * 0.5f;
@@ -614,8 +600,7 @@ namespace Lindo {
                 debugDraw.DrawLine(pos, pos + yAxis, glm::vec3(0.0f, 1.0f, 0.0f));
                 debugDraw.DrawLine(pos, pos + zAxis, glm::vec3(0.0f, 0.0f, 1.0f));
 
-                // 2. Отрисовка всех треугольников меша
-                const glm::vec3 meshColor(1.0f, 0.0f, 1.0f); // Пурпурный цвет
+                const glm::vec3 meshColor(1.0f, 0.0f, 1.0f);
                 const auto& triangles = GetWorldTriangles();
 
                 for (const auto& tri : triangles) {
@@ -623,14 +608,6 @@ namespace Lindo {
                     debugDraw.DrawLine(tri.v1, tri.v2, meshColor);
                     debugDraw.DrawLine(tri.v2, tri.v0, meshColor);
                 }
-
-                // 3. (Опционально) Отрисовка AABB для Broad-phase
-                /*
-                const auto aabb = GetAABB();
-                glm::mat4 transform = glm::translate(glm::mat4(1.0f), (aabb.min + aabb.max) * 0.5f);
-                transform = glm::scale(transform, aabb.max - aabb.min);
-                debugDraw.DrawWireBox(transform, glm::vec3(0.3f, 0.0f, 0.3f));
-                */
             }
 
         }

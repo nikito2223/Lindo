@@ -14,7 +14,7 @@ namespace Lindo {
         static constexpr const char* Name = "Lindo";
         static constexpr int VersionMajor = 26;
         static constexpr int VersionMinor = 2;
-        static constexpr int VersionPatch = 2;
+        static constexpr int VersionPatch = 4;
         static constexpr const char* Stage = "dev";
 
         /**
@@ -32,7 +32,7 @@ namespace Lindo {
          * @return ��������� ���� � ����������� �� ������ _DEBUG / Release.
          */
         static std::string GetFormattedTitle() {
-            std::string title = std::string(Name) + " v" + GetVersionString();
+            std::string title = std::string(Name);
 #ifdef _DEBUG
             title += " [Debug]";
 #else

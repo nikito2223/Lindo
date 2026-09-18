@@ -16,6 +16,7 @@ namespace Lindo::Scripting {
     class LuaUI {
     public:
         static void SetManager(Lindo::Graphics::UI::UIManager* manager);
+        static void Shutdown();
         static Lindo::Graphics::UI::UIManager* GetManager();
         static bool LoadXml(const std::string& path, const sol::table& handlers, bool clearExisting = true);
         static void SetChecked(const std::string& id, bool checked);
