@@ -10,7 +10,7 @@
            x="0"
            y="0"
            width="660"
-           height="620"
+           height="660"
            color="0.06,0.07,0.08,0.94"
            visible="false"
            zOrder="10"
@@ -82,7 +82,7 @@
                height="32"
                placeholder="Введите ник..."
                fontSize="14"
-               onSubmit="onNameChanged"
+               onSubmit="onPlayerNameChanged"
                anchor="TopLeft" />
 
 
@@ -275,6 +275,28 @@
                 fontSize="15"
                 anchor="TopLeft" />
 
+       <Toggle id="ssaoToggle"
+              x="30"
+              y="570"
+              width="180"
+              height="30"
+              label="SSAO"
+              checked="false"
+              onChange="onSSAOToggle"
+              fontSize="15"
+              anchor="TopLeft" />
+
+       <Toggle id="shadowsToggle"
+              x="230"
+              y="570"
+              width="200"
+              height="30"
+              label="Тени"
+              checked="true"
+              onChange="onShadowsToggle"
+              fontSize="15"
+              anchor="TopLeft" />
+
 
         <!-- ============================================================ -->
         <!-- КНОПКИ                                                        -->
@@ -283,7 +305,7 @@
         <!-- Reset: второстепенная панель #1E293B + muted текст #64748B -->
         <Button id="resetButton"
                 x="30"
-                y="575"
+              y="615"
                 width="180"
                 height="32"
                 text="СБРОСИТЬ"
@@ -296,7 +318,7 @@
         <!-- Back: основная бренд-кнопка #008DFF + белый текст -->
         <Button id="backButton"
                 x="450"
-                y="575"
+              y="615"
                 width="180"
                 height="32"
                 text="НАЗАД"

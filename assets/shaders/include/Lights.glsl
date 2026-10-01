@@ -1,19 +1,5 @@
-#ifndef LIGHTING_GLSL
-#define LIGHTING_GLSL
-
-struct Material {
-    sampler2D diffuse;
-    sampler2D specular;
-    vec3      color;
-    float     shininess;
-    bool      useTexture;
-
-    // --- UV transform (Unity-style) ---
-    vec2      diffuseTiling;
-    vec2      diffuseOffset;
-    vec2      specularTiling;
-    vec2      specularOffset;
-};
+#ifndef LINDO_LIGHTS_GLSL
+#define LINDO_LIGHTS_GLSL
 
 struct DirLight {
     vec3 direction;
@@ -49,10 +35,11 @@ struct SpotLight {
     float constant;
     float linear;
     float quadratic;
+    float radius;
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
     bool enabled;
 };
 
-#endif // LIGHTING_GLSL
+#endif

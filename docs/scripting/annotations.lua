@@ -42,11 +42,60 @@
 ---| "Anisotropic8x"
 ---| "Anisotropic16x"
 
+---@class ShadowQualityEnum
+---@field Off ShadowQuality
+---@field Low ShadowQuality
+---@field Medium ShadowQuality
+---@field High ShadowQuality
+---@field Ultra ShadowQuality
+---@type ShadowQualityEnum
+ShadowQuality = {
+	Off = "Off",
+	Low = "Low",
+	Medium = "Medium",
+	High = "High",
+	Ultra = "Ultra",
+}
+
+---@class TextureFilteringEnum
+---@field Bilinear TextureFiltering
+---@field Trilinear TextureFiltering
+---@field Anisotropic2x TextureFiltering
+---@field Anisotropic8x TextureFiltering
+---@field Anisotropic16x TextureFiltering
+---@type TextureFilteringEnum
+TextureFiltering = {
+	Bilinear = "Bilinear",
+	Trilinear = "Trilinear",
+	Anisotropic2x = "Anisotropic2x",
+	Anisotropic8x = "Anisotropic8x",
+	Anisotropic16x = "Anisotropic16x",
+}
+
+--------------------------------------------------------------------------------
+--- Time
+--------------------------------------------------------------------------------
+
+---@class TimeAPI
+---@field deltaTime fun(): number
+---@field unscaledDeltaTime fun(): number
+---@field time fun(): number
+---@field timeScale fun(): number
+---@field setTimeScale fun(value: number)
+---@type TimeAPI
+Time = {
+	deltaTime = function() return 0 end,
+	unscaledDeltaTime = function() return 0 end,
+	time = function() return 0 end,
+	timeScale = function() return 1 end,
+	setTimeScale = function(value) end,
+}
+
 --------------------------------------------------------------------------------
 --- Settings
 --------------------------------------------------------------------------------
 
----@class Settings
+---@class SettingsInstance
 ---@field debugMode boolean
 ---@field showFPS boolean
 ---@field wireframeMode boolean
@@ -66,29 +115,36 @@
 ---@field musicVolume number
 ---@field sfxVolume number
 ---@field muteAudio boolean
-local Settings = {}
+local SettingsInstance = {}
 
 ---Применяет настройки (опционально — из указанного пути)
 ---@param path? string
-function Settings:apply(path) end
+function SettingsInstance:apply(path) end
 
 ---Сбрасывает настройки на значения по умолчанию
-function Settings:resetToDefaults() end
+function SettingsInstance:resetToDefaults() end
 
 ---Сохраняет настройки в файл
 ---@param path? string
-function Settings:saveToFile(path) end
+function SettingsInstance:saveToFile(path) end
 
 ---Загружает настройки из файла
 ---@param path? string
-function Settings:loadFromFile(path) end
+function SettingsInstance:loadFromFile(path) end
 
 ---Возвращает singleton-экземпляр настроек
----@return Settings
-function Settings.get() end
+---@return SettingsInstance
+function SettingsInstance.get() end
+
+---@class Settings
+---@field get fun(): SettingsInstance
+---@type Settings
+Settings = {
+	get = function() end,
+}
 
 
----@class DisplaySettings
+---@class DisplaySettingsInstance
 ---@field windowWidth integer
 ---@field windowHeight integer
 ---@field fullscreen boolean
@@ -97,22 +153,53 @@ function Settings.get() end
 ---@field targetFPS integer
 ---@field useFixedTimestep boolean
 ---@field fixedTimestep number
-local DisplaySettings = {}
+local DisplaySettingsInstance = {}
 
 ---@return number
-function DisplaySettings:getAspectRatio() end
+function DisplaySettingsInstance:getAspectRatio() end
 
 ---@param path? string
-function DisplaySettings:apply(path) end
+function DisplaySettingsInstance:apply(path) end
 
 ---@param path? string
-function DisplaySettings:saveToFile(path) end
+function DisplaySettingsInstance:saveToFile(path) end
 
 ---@param path? string
-function DisplaySettings:loadFromFile(path) end
+function DisplaySettingsInstance:loadFromFile(path) end
 
----@return DisplaySettings
-function DisplaySettings.get() end
+---@return DisplaySettingsInstance
+function DisplaySettingsInstance.get() end
+
+---@class DisplaySettings
+---@field get fun(): DisplaySettingsInstance
+---@type DisplaySettings
+DisplaySettings = {
+	get = function() end,
+}
+
+---@class UserSettingsInstance
+---@field userName string
+---@field id integer
+local UserSettingsInstance = {}
+
+---@param path? string
+function UserSettingsInstance:apply(path) end
+
+---@param path? string
+function UserSettingsInstance:saveToFile(path) end
+
+---@param path? string
+function UserSettingsInstance:loadFromFile(path) end
+
+---@return UserSettingsInstance
+function UserSettingsInstance.get() end
+
+---@class UserSettings
+---@field get fun(): UserSettingsInstance
+---@type UserSettings
+UserSettings = {
+	get = function() end,
+}
 
 --------------------------------------------------------------------------------
 --- Core Scene Types
@@ -390,6 +477,23 @@ function UI.setText(id, text) end
 ---@param id string
 ---@param visible boolean
 function UI.setVisible(id, visible) end
+---@param id string
+---@return boolean
+function UI.exists(id) end
+---@param id string
+---@param x number
+---@param y number
+function UI.setPosition(id, x, y) end
+---@param id string
+---@param width number
+---@param height number
+function UI.setSize(id, width, height) end
+---@param id string
+---@return {x:number, y:number}|nil
+function UI.getPosition(id) end
+---@param id string
+---@return {width:number, height:number}|nil
+function UI.getSize(id) end
 
 ---Устанавливает состояние Toggle по ID
 ---@param id string

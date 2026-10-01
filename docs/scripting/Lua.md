@@ -1040,8 +1040,26 @@ Input           -> action, actionDown, actionUp,
                    axis, setUIActive, isUIActive
 UI              -> root, createPanel, createLabel, createButton,
                    clear, loadXml, addXml,
-                   setText, setVisible, setChecked, isChecked, getValue
+                   setText, setVisible, setPosition, setSize,
+                   getPosition, getSize, exists,
+                   setChecked, isChecked, getValue
 ```
+
+### UI XML styles
+
+Layouts can load one or more style sheets from `assets/ui/styles` using the
+`styles` attribute on the root element. A widget's `style` attribute accepts
+one or more comma- or whitespace-separated style names. Inline widget
+attributes override style values.
+
+```xml
+<UI styles="common.xml">
+    <Button id="start" style="primaryButton" text="Start" />
+</UI>
+```
+
+Style sheets use a `<Styles>` root and named `<Style>` elements whose attributes
+are defaults for matching widgets.
 
 ---
 

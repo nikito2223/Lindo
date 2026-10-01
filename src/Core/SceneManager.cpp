@@ -42,9 +42,27 @@ namespace Lindo {
 
     void Lindo::SceneManager::Update(Input::Input* input) {
         if (!pendingSceneName.empty()) {
+            if (loadingFramesRemaining > 0) {
+                --loadingFramesRemaining;
+                return;
+            }
+
             std::string sceneName = std::move(pendingSceneName);
             pendingSceneName.clear();
             LoadScene(sceneName);
+            if (auto* uiManager = Lindo::Scripting::LuaUI::GetManager()) {
+                uiManager->updateLoadingScreen("Сцена готова: " + sceneName, 100.0f);
+            }
+            loadingScreenReady = true;
+            return;
+        }
+
+        if (loadingScreenVisible && loadingScreenReady) {
+            if (auto* uiManager = Lindo::Scripting::LuaUI::GetManager()) {
+                uiManager->hideLoadingScreen();
+            }
+            loadingScreenVisible = false;
+            loadingScreenReady = false;
         }
 
         if (!currentScene) return;
@@ -68,6 +86,12 @@ namespace Lindo {
         currentSceneName.clear();
         pendingContent.clear();
         pendingSceneName.clear();
+        loadingFramesRemaining = 0;
+        loadingScreenVisible = false;
+        loadingScreenReady = false;
+        if (auto* uiManager = Lindo::Scripting::LuaUI::GetManager()) {
+            uiManager->hideLoadingScreen();
+        }
         isInitialized = false;
 
         LOG_INFO("[SceneManager] Cleaned up successfully.");
@@ -120,6 +144,12 @@ namespace Lindo {
     void Lindo::SceneManager::RequestLoadScene(const std::string& name) {
         if (name.empty()) return;
         pendingSceneName = name;
+        loadingFramesRemaining = 1;
+        loadingScreenVisible = true;
+        loadingScreenReady = false;
+        if (auto* uiManager = Lindo::Scripting::LuaUI::GetManager()) {
+            uiManager->showLoadingScreen(name);
+        }
     }
 
     void Lindo::SceneManager::UnloadCurrentScene() {

@@ -1,6 +1,7 @@
 #include "Light.h"
 #include "Debug/DebugLogger.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 
 namespace Lindo {
     namespace Components {
@@ -61,7 +62,7 @@ namespace Lindo {
             }
 
             void PointLight::SetRadius(float newRadius) {
-                radius = newRadius;
+                radius = std::max(newRadius, 0.01f);
                 constant = 1.0f;
                 linear = 4.5f / radius;
                 quadratic = 75.0f / (radius * radius);
@@ -92,7 +93,7 @@ namespace Lindo {
             }
 
             void SpotLight::SetRadius(float newRadius) {
-                radius = newRadius;
+                radius = std::max(newRadius, 0.01f);
                 constant = 1.0f;
                 linear = 4.5f / radius;
                 quadratic = 75.0f / (radius * radius);

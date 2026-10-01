@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 #include "UIRenderer.h"
 #include "UIFont.h"
 #include "UIWidget.h"
@@ -28,6 +29,9 @@ namespace Lindo {
                 void onMouseMove(float x, float y);
                 void onMouseButton(float x, float y, int button, bool pressed);
                 void clearDynamicWidgets();
+                void showLoadingScreen(const std::string& sceneName);
+                void updateLoadingScreen(const std::string& status, float progress);
+                void hideLoadingScreen();
 
                 void onChar(unsigned int codepoint);
                 void onKey(int key, int scancode, int action, int mods);
@@ -44,6 +48,10 @@ namespace Lindo {
                 std::unique_ptr<UIRenderer> m_renderer;
                 UIFont* m_font = nullptr; // ���������: ��������� ��������� AssetManager, UIManager �� ��������
                 std::shared_ptr<UIPanel> m_rootPanel;
+                std::shared_ptr<UIPanel> m_loadingPanel;
+                std::shared_ptr<UILabel> m_loadingTitle;
+                std::shared_ptr<UILabel> m_loadingStatus;
+                std::shared_ptr<UISlider> m_loadingProgress;
                 std::unique_ptr<Lindo::Debug::Console> m_console;
                 bool m_initialized = false;
             };

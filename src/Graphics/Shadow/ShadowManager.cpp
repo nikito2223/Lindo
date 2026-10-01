@@ -3,7 +3,7 @@
 #include "Graphics/Shadow/ShadowCaster.h"
 #include "Graphics/core/mesh.h"
 #include "Component/Graphics/Light.h"
-#include "Component/Physhcs/MeshRenderer.h"
+#include "Component/Graphics/MeshRenderer.h"
 #include "Component/Camera/Camera.h"
 #include "Component/GameObject/GameObject.h"
 #include "world/Scene.h"
@@ -12,6 +12,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include <exception>
 
 namespace Lindo {
     namespace Graphics {
@@ -68,7 +69,15 @@ namespace Lindo {
 
                 auto* meshRenderer = obj->getComponent<Lindo::Components::Physics::MeshRenderer>();
                 if (!meshRenderer || !meshRenderer->IsEnabled()) continue;
-                meshRenderer->DrawShadow(depthShader);
+                try {
+                    meshRenderer->DrawShadow(depthShader);
+                }
+                catch (const std::exception& error) {
+                    LOG_ERROR("[Shadow] Skipping a shadow caster after draw failure: " + std::string(error.what()));
+                }
+                catch (...) {
+                    LOG_ERROR("[Shadow] Skipping a shadow caster after an unknown draw failure.");
+                }
             }
         }
 
@@ -95,6 +104,7 @@ namespace Lindo {
             m_pointLightPositions.clear();
             m_pointLightFarPlanes.clear();
             m_pointLightSources.clear();
+            m_pointShadowAvailable.clear();
             if (maxPoint <= 0) {
                 m_pointCasters.clear();
                 return;
@@ -111,12 +121,17 @@ namespace Lindo {
             if (m_pointCasters.size() < needed) {
                 m_pointCasters.resize(needed);
             }
+            m_pointShadowAvailable.assign(needed, false);
             for (size_t i = 0; i < m_pointCasters.size(); ++i) {
                 if (!m_pointCasters[i]) {
                     m_pointCasters[i] = std::make_unique<PointShadowCaster>(&ShadowManager::renderSceneCallback);
                 }
                 if (m_pointCasters[i]) {
                     m_pointCasters[i]->update(m_settings);
+                    if (i < needed) {
+                        m_pointCasters[i]->setLight(m_pointLightPositions[i], m_pointLightFarPlanes[i]);
+                        m_pointShadowAvailable[i] = m_pointCasters[i]->valid();
+                    }
                 }
             }
         }
@@ -129,19 +144,36 @@ namespace Lindo {
             auto* spotLight = scene->FindComponentOfType<Lindo::Components::Light::SpotLight>();
             const bool hasDirectionalShadows = directionalLight && directionalLight->enabled && directionalLight->castShadows;
             const bool hasSpotShadows = spotLight && spotLight->enabled && spotLight->castShadows;
-            if (!hasDirectionalShadows && !hasSpotShadows) {
+            bool hasPointShadows = false;
+            if (m_settings.maxPointShadows > 0) {
+                const auto pointLights = scene->FindComponentsOfType<Lindo::Components::Light::PointLight>();
+                for (const auto* pointLight : pointLights) {
+                    if (pointLight && pointLight->enabled && pointLight->castShadows) {
+                        hasPointShadows = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasDirectionalShadows && !hasSpotShadows && !hasPointShadows) {
                 m_directionalActive = false;
                 m_spotActive = false;
                 m_pointLightPositions.clear();
                 m_pointLightFarPlanes.clear();
                 m_pointLightSources.clear();
+                m_pointShadowAvailable.clear();
                 return;
             }
 
             if (!m_initialized) initialize(scene);
 
             discoverCasters(scene);
-            updatePointCasters(scene);   
+            updatePointCasters(scene);
+
+            for (size_t i = 0; i < m_pointLightSources.size() && i < m_pointCasters.size(); ++i) {
+                if (!m_pointLightSources[i] || !m_pointCasters[i]) continue;
+                m_pointCasters[i]->setLight(m_pointLightPositions[i], m_pointLightFarPlanes[i]);
+                m_pointShadowAvailable[i] = m_pointCasters[i]->render(m_shadowCasters);
+            }
 
             if (!m_diagnosticsLogged) {
                 LOG_INFO("[Shadow Diagnostics] casters=" + std::to_string(m_shadowCasters.size()) +
@@ -167,12 +199,12 @@ namespace Lindo {
                 m_directionalCaster->setLight(dirLightWorld);
                 m_directionalCaster->setLightPosition(dirLight->getPosition());
                 m_directionalCaster->setCamera(viewProj, nearPlane, farPlane);
-                m_directionalCaster->render(m_shadowCasters);
+                const bool rendered = m_directionalCaster->render(m_shadowCasters);
                 Shader::logOpenGLErrors("after directional shadow pass");
 
                 m_lightSpaceMatrices = m_directionalCaster->lightSpaceMatrices();
                 m_splitDepths = m_directionalCaster->splitDepths();
-                m_directionalActive = m_directionalCaster->valid();
+                m_directionalActive = rendered && m_directionalCaster->valid();
             }
 
             // --- Spot light pass ---
@@ -185,13 +217,13 @@ namespace Lindo {
                 float coneAngle = glm::degrees(glm::acos(glm::clamp(spotLight->cutOff, -1.0f, 1.0f)));
                 m_spotCaster->setLight(spotLight->getPosition(), lightDirection,
                     spotLight->farPlane, coneAngle);
-                m_spotCaster->render(m_shadowCasters);
+                const bool rendered = m_spotCaster->render(m_shadowCasters);
                 Shader::logOpenGLErrors("after spot shadow pass");
                 m_spotLightSpaceMatrix = m_spotCaster->lightSpaceMatrix();
                 m_spotLightPosition = spotLight->getPosition();
                 m_spotLightDirection = lightDirection;
                 m_spotLightFarPlane = spotLight->farPlane;
-                m_spotActive = m_spotCaster->valid();
+                m_spotActive = rendered && m_spotCaster->valid();
             }
 
             // Сброс фреймбуфера по умолчанию
@@ -209,6 +241,11 @@ namespace Lindo {
             forwardShader.setInt("u_pcfKernel", m_settings.pcfKernel);
 
             // --- Directional CSM ---
+            // Sampler uniforms still participate in GL validation when shadow
+            // evaluation is disabled, so keep their texture units distinct
+            // from material samplers on units 0 and 1.
+            forwardShader.setInt("u_shadowMap", 5);
+
             // Текстуру CSM (юнит 5) держим забинженной ВСЕГДА, даже когда нет
             // активного направленного света: FBO/текстура-массив создаются
             // один раз в initialize() и не зависят от наличия Sun на сцене.
@@ -218,7 +255,6 @@ namespace Lindo {
             // тихо проваливает весь draw call вместо рендера.
             if (m_directionalCaster && m_directionalCaster->valid()) {
                 m_directionalCaster->bindForReading(5);
-                forwardShader.setInt("u_shadowMap", 5);
                 Shader::logOpenGLErrors("after binding directional shadow texture");
             }
 
@@ -242,19 +278,18 @@ namespace Lindo {
             }
 
             // --- Point shadows ---
-            const int pointCount = static_cast<int>(m_pointLightPositions.size());
+            const int pointCount = glm::clamp(static_cast<int>(m_pointLightPositions.size()), 0, 4);
             forwardShader.setInt("u_pointShadowCount", pointCount);
+            for (int i = 0; i < 4; ++i) {
+                forwardShader.setInt("u_pointShadowMaps[" + std::to_string(i) + "]", 6 + i);
+            }
             for (int i = 0; i < pointCount && i < 4; ++i) {
                 if (!m_pointCasters[i]) continue;
                 m_pointCasters[i]->bindForReading(6 + i);
-                forwardShader.setInt("u_pointShadowMaps[" + std::to_string(i) + "]", 6 + i);
                 forwardShader.setFloat("u_pointShadowFarPlanes[" + std::to_string(i) + "]",
                     m_pointLightFarPlanes[i]);
                 forwardShader.setVec3("u_pointShadowPositions[" + std::to_string(i) + "]",
                     m_pointLightPositions[i]);
-            }
-            for (int i = pointCount; i < 4; ++i) {
-                forwardShader.setInt("u_pointShadowMaps[" + std::to_string(i) + "]", -1);
             }
 
             if (scene) {
@@ -274,9 +309,11 @@ namespace Lindo {
             }
 
             // --- Spot shadows ---
-            if (m_spotActive && m_spotCaster && m_spotCaster->valid()) {
+            forwardShader.setInt("u_spotShadowMap", 10);
+            if (m_spotCaster && m_spotCaster->valid()) {
                 m_spotCaster->bindForReading(10);
-                forwardShader.setInt("u_spotShadowMap", 10);
+            }
+            if (m_spotActive && m_spotCaster && m_spotCaster->valid()) {
                 forwardShader.setMat4("u_spotShadowMatrix", m_spotLightSpaceMatrix);
                 forwardShader.setVec3("u_spotLightPosition", m_spotLightPosition);
                 forwardShader.setVec3("u_spotLightDirection", m_spotLightDirection);
@@ -296,7 +333,7 @@ namespace Lindo {
             if (!light) return -1;
             for (int i = 0; i < static_cast<int>(m_pointLightSources.size()); ++i) {
                 if (m_pointLightSources[i] == light) {
-                    return i;
+                    return i < static_cast<int>(m_pointShadowAvailable.size()) && m_pointShadowAvailable[i] ? i : -1;
                 }
             }
             return -1;

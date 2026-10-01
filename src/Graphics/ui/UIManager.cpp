@@ -80,6 +80,47 @@ namespace Lindo {
                 m_rootPanel->updateLayout(0.0f, 0.0f,
                     static_cast<float>(width), static_cast<float>(height));
 
+                m_loadingPanel = std::make_shared<UIPanel>();
+                m_loadingPanel->setPosition(0.0f, 0.0f);
+                m_loadingPanel->setSize(static_cast<float>(width), static_cast<float>(height));
+                m_loadingPanel->SetColor(Color(0.025f, 0.035f, 0.045f, 1.0f));
+                m_loadingPanel->setVisible(false);
+
+                auto loadingCard = std::make_shared<UIPanel>();
+                loadingCard->setAnchor(UIAnchor::Center);
+                loadingCard->setSize(560.0f, 190.0f);
+                loadingCard->setPosition(0.0f, 0.0f);
+                loadingCard->SetColor(Color(0.055f, 0.075f, 0.085f, 1.0f));
+
+                auto loadingAccent = std::make_shared<UIPanel>();
+                loadingAccent->setPosition(0.0f, 0.0f);
+                loadingAccent->setSize(560.0f, 4.0f);
+                loadingAccent->SetColor(Color(0.0f, 0.82f, 0.78f, 1.0f));
+                loadingCard->addChild(loadingAccent);
+
+                m_loadingTitle = std::make_shared<UILabel>("ЗАГРУЗКА СЦЕНЫ");
+                m_loadingTitle->setPosition(28.0f, 34.0f);
+                m_loadingTitle->setSize(500.0f, 34.0f);
+                m_loadingTitle->setTextSize(24.0f);
+                m_loadingTitle->setTextColor(Color(0.0f, 0.9f, 0.84f, 1.0f));
+                loadingCard->addChild(m_loadingTitle);
+
+                m_loadingStatus = std::make_shared<UILabel>("Подготовка сцены...");
+                m_loadingStatus->setPosition(28.0f, 83.0f);
+                m_loadingStatus->setSize(500.0f, 28.0f);
+                m_loadingStatus->setTextSize(17.0f);
+                m_loadingStatus->setTextColor(Color(0.88f, 0.92f, 0.94f, 1.0f));
+                loadingCard->addChild(m_loadingStatus);
+
+                m_loadingProgress = std::make_shared<UISlider>(0.0f, 100.0f, 0.0f);
+                m_loadingProgress->setPosition(28.0f, 139.0f);
+                m_loadingProgress->setSize(500.0f, 18.0f);
+                loadingCard->addChild(m_loadingProgress);
+
+                m_loadingPanel->addChild(loadingCard);
+                m_loadingPanel->updateLayout(0.0f, 0.0f,
+                    static_cast<float>(width), static_cast<float>(height));
+
                 // ������������� ������� - ���������� ��� �� �����, ��� � ��������� UI
                 m_console = std::make_unique<Lindo::Debug::Console>();
                 m_console->init(m_font, width, height);
@@ -99,6 +140,9 @@ namespace Lindo {
                 if (!m_initialized) return;
                 m_renderer->beginFrame(static_cast<int>(m_rootPanel->getWidth()), static_cast<int>(m_rootPanel->getHeight()));
                 m_rootPanel->render(*m_renderer, m_font);
+                if (m_loadingPanel && m_loadingPanel->isVisible()) {
+                    m_loadingPanel->render(*m_renderer, m_font);
+                }
 
                 // ������� �������� ��������� - ������ ����� ���������� UI
                 if (m_console) {
@@ -116,9 +160,32 @@ namespace Lindo {
                         0.0f, 0.0f,
                         static_cast<float>(width), static_cast<float>(height));
                 }
+                if (m_loadingPanel) {
+                    m_loadingPanel->setSize(static_cast<float>(width), static_cast<float>(height));
+                    m_loadingPanel->updateLayout(0.0f, 0.0f,
+                        static_cast<float>(width), static_cast<float>(height));
+                }
                 if (m_console) {
                     m_console->onResize(width, height);
                 }
+            }
+
+            void UIManager::showLoadingScreen(const std::string& sceneName) {
+                if (!m_loadingPanel) return;
+                m_loadingTitle->setText("ЗАГРУЗКА СЦЕНЫ");
+                m_loadingStatus->setText("Подготовка: " + sceneName);
+                m_loadingProgress->setValue(12.0f, false);
+                m_loadingPanel->setVisible(true);
+            }
+
+            void UIManager::updateLoadingScreen(const std::string& status, float progress) {
+                if (!m_loadingPanel) return;
+                m_loadingStatus->setText(status);
+                m_loadingProgress->setValue(progress, false);
+            }
+
+            void UIManager::hideLoadingScreen() {
+                if (m_loadingPanel) m_loadingPanel->setVisible(false);
             }
 
             void UIManager::onMouseMove(float x, float y) {

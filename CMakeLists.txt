@@ -76,6 +76,8 @@ target_link_options(Lindo PRIVATE $<$<CXX_COMPILER_ID:GNU>:-no-pie>)
 add_custom_command(
     TARGET Lindo
     POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E remove_directory
+            ${CMAKE_BINARY_DIR}/Lindo/assets/shaders
     COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/assets ${CMAKE_BINARY_DIR}/Lindo/assets)
 

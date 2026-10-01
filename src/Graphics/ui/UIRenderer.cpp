@@ -1,4 +1,6 @@
 #include "UIRenderer.h"
+#include "Core/AssetManager.h"
+#include "Graphics/core/Shader.h"
 #include <glad/glad.h>
 #include <iostream>
 #include <string>
@@ -6,40 +8,6 @@
 namespace Lindo {
     namespace Graphics {
         namespace UI {
-            static const char* vertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec2 aPos;       // ������� �� ������ (� ��������)
-layout (location = 1) in vec2 aTexCoords; // ���������� ������ ������ [0, 1]
-layout (location = 2) in vec4 aColor;     // ���� ������ (���������� �� UIFont)
-
-out vec2 TexCoords;
-out vec4 FragColor;
-
-// ���� ����������� ��������������� ������� ��������, 
-// ��������: glm::ortho(0.0f, screenWidth, screenHeight, 0.0f)
-uniform mat4 projection; 
-
-void main() {
-    gl_Position = projection * vec4(aPos, 0.0, 1.0);
-    TexCoords = aTexCoords;
-    FragColor = aColor;
-}
-            )";
-
-            static const char* fragmentShaderSource = R"(
-#version 330 core
-in vec2 TexCoords;
-in vec4 FragColor;
-
-out vec4 color;
-
-uniform sampler2D uTexture; // �������, ����� ��� ���� uTexture, � �� textTexture
-
-void main() {
-    color = FragColor * texture(uTexture, TexCoords);
-}
-)";
-
             UIRenderer::UIRenderer() : m_projection(1.0f) {
                 m_vertices.reserve(MAX_VERTICES);
             }
@@ -48,38 +16,18 @@ void main() {
                 if (m_whiteTexture) glDeleteTextures(1, &m_whiteTexture);
                 glDeleteVertexArrays(1, &m_vao);
                 glDeleteBuffers(1, &m_vbo);
-                glDeleteProgram(m_shaderProgram);
             }
 
             bool UIRenderer::init() {
                 LOG_INFO("[UIRenderer] Creating OpenGL UI shader program...");
-                // ���������� �������� (���������, ����� ������� � �������)
-                unsigned int vs = glCreateShader(GL_VERTEX_SHADER);
-                glShaderSource(vs, 1, &vertexShaderSource, nullptr);
-                glCompileShader(vs);
-                GLint vertexCompiled = GL_FALSE;
-                glGetShaderiv(vs, GL_COMPILE_STATUS, &vertexCompiled);
-                LOG_INFO(std::string("[UIRenderer] UI vertex shader compile: ") +
-                    (vertexCompiled == GL_TRUE ? "OK" : "FAILED"));
-                unsigned int fs = glCreateShader(GL_FRAGMENT_SHADER);
-                glShaderSource(fs, 1, &fragmentShaderSource, nullptr);
-                glCompileShader(fs);
-                GLint fragmentCompiled = GL_FALSE;
-                glGetShaderiv(fs, GL_COMPILE_STATUS, &fragmentCompiled);
-                LOG_INFO(std::string("[UIRenderer] UI fragment shader compile: ") +
-                    (fragmentCompiled == GL_TRUE ? "OK" : "FAILED"));
-
-                m_shaderProgram = glCreateProgram();
-                glAttachShader(m_shaderProgram, vs);
-                glAttachShader(m_shaderProgram, fs);
-                glLinkProgram(m_shaderProgram);
-                GLint programLinked = GL_FALSE;
-                glGetProgramiv(m_shaderProgram, GL_LINK_STATUS, &programLinked);
-                LOG_INFO(std::string("[UIRenderer] UI shader program link: ") +
-                    (programLinked == GL_TRUE ? "OK" : "FAILED"));
-
-                glDeleteShader(vs);
-                glDeleteShader(fs);
+                auto& assets = AssetManager::get();
+                const std::string vertexPath = assets.getShaderPath("UI.gslv");
+                const std::string fragmentPath = assets.getShaderPath("UI.gslf");
+                m_shader = std::make_unique<Lindo::Graphics::Shader>(vertexPath, fragmentPath);
+                if (!m_shader->isValid()) {
+                    LOG_ERROR("[UIRenderer] Failed to load UI shader program.");
+                    return false;
+                }
 
                 // �������� VAO/VBO
                 glGenVertexArrays(1, &m_vao);
@@ -112,6 +60,10 @@ void main() {
                     std::to_string(m_vao) + ", VBO=" + std::to_string(m_vbo) +
                     ", WhiteTexture=" + std::to_string(m_whiteTexture));
                 return true;
+            }
+
+            unsigned int UIRenderer::getShaderProgram() const {
+                return m_shader ? m_shader->getID() : 0;
             }
 
             void UIRenderer::drawRoundedRect(const Rect& rect, const Color& color, float radius, int segments) {
@@ -162,8 +114,9 @@ void main() {
             void UIRenderer::beginFrame(int screenWidth, int screenHeight) {
                 // ��������������� ��������: ����=0, �����=screenWidth, ���=screenHeight, ����=0 (������� ��� UI)
                 m_projection = glm::ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -1.0f, 1.0f);
-                glUseProgram(m_shaderProgram);
-                glUniformMatrix4fv(glGetUniformLocation(m_shaderProgram, "projection"), 1, GL_FALSE, &m_projection[0][0]);
+                if (!m_shader || !m_shader->isValid()) return;
+                m_shader->use();
+                glUniformMatrix4fv(glGetUniformLocation(m_shader->getID(), "projection"), 1, GL_FALSE, &m_projection[0][0]);
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glDisable(GL_DEPTH_TEST);
@@ -264,7 +217,7 @@ void main() {
                     glBindTexture(GL_TEXTURE_2D, 0);
                 }
 
-                glUniform1i(glGetUniformLocation(m_shaderProgram, "uTexture"), 0);
+                glUniform1i(glGetUniformLocation(m_shader->getID(), "uTexture"), 0);
 
                 glDrawArrays(GL_TRIANGLES, 0, (GLsizei)m_vertices.size());
 

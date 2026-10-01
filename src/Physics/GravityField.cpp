@@ -1,4 +1,5 @@
 #include "GravityField.h"
+#include <Physics/PhysicsSystem.h>
 #include <cmath>
 
 namespace Lindo {
@@ -6,6 +7,14 @@ namespace Lindo {
         namespace Physics {
 
             glm::vec3 GravityField::s_globalGravity(0.0f, -9.81f, 0.0f);
+
+            void GravityField::OnStart() {
+                PhysicsSystem::GetInstance().RegisterGravityField(this);
+            }
+
+            void GravityField::OnDestroy() {
+                PhysicsSystem::GetInstance().UnregisterGravityField(this);
+            }
 
             glm::vec3 GravityField::GetAccelerationAt(const glm::vec3& worldPoint) const {
                 if (!isEnabled) {
@@ -22,7 +31,7 @@ namespace Lindo {
                 case FieldType::Radial: {
                     glm::vec3 toFocal = focalPoint - worldPoint;
                     float dist = glm::length(toFocal);
-                    if (dist < 1e-6f) {
+                    if (dist < 1e-6f || dist > radius) {
                         return glm::vec3(0.0f);
                     }
                     // Attract toward focal point with 1/r^2 falloff, clamped

@@ -91,15 +91,16 @@ namespace Lindo {
                 float ix = (1.0f / 12.0f) * m * (half.y * half.y + half.z * half.z) * 4.0f;
                 float iy = (1.0f / 12.0f) * m * (half.x * half.x + half.z * half.z) * 4.0f;
                 float iz = (1.0f / 12.0f) * m * (half.x * half.x + half.y * half.y) * 4.0f;
-                return glm::mat3(ix, 0, 0,
-                    0, iy, 0,
-                    0, 0, iz);
+                return glm::mat3(std::max(ix, 1e-6f), 0, 0,
+                    0, std::max(iy, 1e-6f), 0,
+                    0, 0, std::max(iz, 1e-6f));
             }
 
             void RigidBody::integrate(const glm::vec3& gravity) {
                 if (!gameObject || invMass == 0.0f || isKinematic || isSleeping) return;
 
                 float dt = Lindo::Time::GetFixedDeltaTime();
+                if (dt <= 0.0f) return;
 
                 // 1. Применяем гравитацию
                 if (useGravity) {
@@ -107,6 +108,7 @@ namespace Lindo {
                 }
 
                 // 2. Линейное и угловое ускорение
+                acceleration = glm::vec3(0.0f);
                 if (forceAccumulator != glm::vec3(0.0f)) {
                     acceleration = forceAccumulator * invMass;
                     velocity += acceleration * dt;
@@ -170,8 +172,8 @@ namespace Lindo {
 
             void RigidBody::ApplyDamping() {
                 float dt = Lindo::Time::GetFixedDeltaTime();
-                float linearF = std::max(0.0f, 1.0f - linearDamping * dt * 60.0f);
-                float angularF = std::max(0.0f, 1.0f - angularDamping * dt * 60.0f);
+                float linearF = std::max(0.0f, 1.0f - std::max(0.0f, linearDamping) * dt * 60.0f);
+                float angularF = std::max(0.0f, 1.0f - std::max(0.0f, angularDamping) * dt * 60.0f);
                 velocity *= linearF;
                 angularVelocity *= angularF;
             }

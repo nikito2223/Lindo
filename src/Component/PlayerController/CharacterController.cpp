@@ -267,9 +267,8 @@ namespace Lindo {
                 }
 
                 float dt = Lindo::Time::GetDeltaTime();
-
-                float gravity = 9.81f * settings.gravityScale;
-                state.velocity.y -= gravity * dt;
+                glm::vec3 gravity = Lindo::Components::Physics::PhysicsSystem::GetInstance().GetGravityAt(getPosition());
+                state.velocity += gravity * settings.gravityScale * dt;
 
                 float maxFallSpeed = 50.0f;
                 state.velocity.y = std::max(state.velocity.y, -maxFallSpeed);
@@ -394,6 +393,7 @@ namespace Lindo {
             void CharacterController::ResolveCollisions() {
                 auto& physics = Lindo::Components::Physics::PhysicsSystem::GetInstance();
                 bool foundGroundContact = false;
+                bool appliedPushImpulse = false;
                 float dt = Lindo::Time::GetDeltaTime();
 
                 for (int pass = 0; pass < 3; ++pass) {
@@ -452,13 +452,15 @@ namespace Lindo {
                                     collider.SetOffset(glm::vec3(0.0f, collider.GetHeight() * 0.5f, 0.0f));
                                 }
 
-                                // 2. Импульс от толкания
+                                // Only side impacts push bodies; standing contacts must not add lateral momentum.
                                 glm::vec3 pushDir = pushVelocity;
                                 pushDir.y = 0.0f;
-                                if (glm::length(pushDir) > 0.01f) {
+                                float velocityIntoContact = glm::dot(pushDir, normal);
+                                if (!appliedPushImpulse && normal.y < 0.5f && velocityIntoContact < -0.01f && glm::length(pushDir) > 0.01f) {
                                     pushDir = glm::normalize(pushDir);
                                     float pushForce = 2.0f;
                                     rb->applyImpulse(pushDir * pushForce);
+                                    appliedPushImpulse = true;
                                 }
                             }
                             else {

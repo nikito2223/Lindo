@@ -21,6 +21,33 @@ namespace Lindo {
         Anisotropic16x
     };
 
+    struct UserSettings {
+        std::string userName = "Player";
+        int id = 0;        
+
+        using UserChangedCallback = std::function<void(const UserSettings&)>;
+
+        void addOnChangedCallback(UserChangedCallback callback) {
+            m_onChangeCallbacks.push_back(callback);
+        }
+
+        void apply(const std::string& filepath = "../config/user.ini") {
+            saveToFile(filepath);
+            for (auto& cb : m_onChangeCallbacks) {
+                if (cb) cb(*this);
+            }
+        }
+
+        void saveToFile(const std::string& filepath = "../config/user.ini");
+        void loadFromFile(const std::string& filepath = "../config/user.ini");
+
+        static UserSettings& getInstance();
+
+        private: 
+            UserSettings() = default;
+            std::vector<UserChangedCallback> m_onChangeCallbacks;
+    };
+
     struct Settings {
         // --- Debug & Engine ---
         bool debugMode = false;

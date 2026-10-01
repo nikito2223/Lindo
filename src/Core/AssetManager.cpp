@@ -41,7 +41,7 @@ namespace Lindo {
         case Lindo::Graphics::GraphicsAPI::OpenGL:
         case Lindo::Graphics::GraphicsAPI::None:
         default:
-            apiFolder = "Shaders/OpenGL";
+            apiFolder = "Shaders";
             break;
         }
 

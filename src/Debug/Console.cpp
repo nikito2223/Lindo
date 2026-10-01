@@ -3,6 +3,7 @@
 #include <cctype>
 #include <cmath>
 #include <Core/Time/Time.h>
+#include <Core/Types/Settings.h>
 
 namespace Lindo {
     namespace Debug {
@@ -46,6 +47,9 @@ namespace Lindo {
         void Console::render(UIRenderer& renderer) {
             if (!m_font || m_openAmount <= 0.001f) return;
 
+            auto& settings = UserSettings::getInstance();
+
+            std::string User = settings.userName + "_ID" + std::to_string(settings.id);
             float panelHeight = m_screenHeight * m_heightRatio * m_openAmount;
 
             // 1. ����������� ������� ���� ������� ������ ������
@@ -66,7 +70,7 @@ namespace Lindo {
             if (hasSelection()) {
                 size_t mn = getSelectionMin();
                 size_t mx = getSelectionMax();
-                std::string beforeMin = "> " + m_inputBuffer.substr(0, mn);
+                std::string beforeMin = User + "> " + m_inputBuffer.substr(0, mn);
                 std::string selectedStr = m_inputBuffer.substr(mn, mx - mn);
 
                 float selStartX = PADDING + m_font->getStringWidthWithSize(beforeMin, TEXT_SIZE);
@@ -77,14 +81,14 @@ namespace Lindo {
             }
 
             // ��������� �������� ������
-            std::string prompt = "> " + m_inputBuffer;
+            std::string prompt = User + "> " + m_inputBuffer;
             std::vector<UIRenderer::Vertex> inputVerts;
             m_font->getTextVerticesWithSize(prompt, PADDING, inputBaseline, TEXT_SIZE, Color(1.0f, 1.0f, 1.0f, 1.0f), inputVerts);
             if (!inputVerts.empty()) renderer.drawRaw(inputVerts, m_font->getTextureID());
 
             // ������
             if (m_cursorVisible) {
-                std::string beforeCursor = "> " + m_inputBuffer.substr(0, m_cursorPos);
+                std::string beforeCursor = User + "> " + m_inputBuffer.substr(0, m_cursorPos);
                 float cursorX = PADDING + m_font->getStringWidthWithSize(beforeCursor, TEXT_SIZE);
                 renderer.drawRect(Rect(cursorX, inputY + 4.0f, 2.0f, INPUT_HEIGHT - 8.0f), Color(0.45f, 1.0f, 0.45f, 1.0f));
             }

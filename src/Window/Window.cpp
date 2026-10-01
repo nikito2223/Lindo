@@ -9,6 +9,41 @@
 #include <debug/Console.h>
 
 namespace Lindo {
+    namespace {
+        void APIENTRY OpenGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+            GLsizei, const GLchar* message, const void*) {
+            if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+
+            const std::string details = "source=" + std::to_string(source) +
+                ", type=" + std::to_string(type) + ", id=" + std::to_string(id) +
+                ", severity=" + std::to_string(severity) + ": " +
+                (message ? message : "no driver message");
+            if (type == GL_DEBUG_TYPE_ERROR || severity == GL_DEBUG_SEVERITY_HIGH) {
+                LOG_ERROR("[OpenGL Driver Debug] " + details);
+            } else {
+                LOG_WARN("[OpenGL Driver Debug] " + details);
+            }
+        }
+
+        void EnableOpenGLDebugOutput() {
+            const bool khrDebugSupported = glfwExtensionSupported("GL_KHR_debug") == GLFW_TRUE;
+            auto callback = reinterpret_cast<PFNGLDEBUGMESSAGECALLBACKPROC>(glfwGetProcAddress("glDebugMessageCallback"));
+            if ((!GLAD_GL_VERSION_4_3 && !khrDebugSupported) || !callback) {
+                LOG_WARN("[OpenGL Driver Debug] KHR_debug is unavailable; using explicit GL error checks.");
+                return;
+            }
+
+            glEnable(GL_DEBUG_OUTPUT);
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+            callback(OpenGLDebugCallback, nullptr);
+
+            auto control = reinterpret_cast<PFNGLDEBUGMESSAGECONTROLPROC>(glfwGetProcAddress("glDebugMessageControl"));
+            if (control) {
+                control(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
+            }
+            LOG_INFO("[OpenGL Driver Debug] KHR_debug callback enabled.");
+        }
+    }
 
     #ifdef _WIN32
     // Должен совпадать с ID в res/app.rc
@@ -116,6 +151,7 @@ namespace Lindo {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_SAMPLES, settings.msaaSamples);
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
         if (displaySettings.borderless) {
             LOG_INFO("[Window] Applying window hint: Borderless (GLFW_DECORATED = FALSE)");
@@ -124,6 +160,11 @@ namespace Lindo {
 
         GLFWmonitor* monitor = displaySettings.fullscreen ? glfwGetPrimaryMonitor() : nullptr;
         m_window = glfwCreateWindow(m_width, m_height, title, monitor, nullptr);
+        if (!m_window) {
+            LOG_WARN("[Window] Driver could not create a debug OpenGL context; retrying with a standard OpenGL 3.3 context.");
+            glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
+            m_window = glfwCreateWindow(m_width, m_height, title, monitor, nullptr);
+        }
 
         if (!m_window) {
             LOG_ERROR("[Window] Failed to create GLFW window!");
@@ -152,6 +193,7 @@ namespace Lindo {
         const char* glVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
         LOG_INFO(std::string("[Window] GLAD initialized. OpenGL version: ") +
             (glVersion ? glVersion : "unknown"));
+        EnableOpenGLDebugOutput();
 
         // ��������� VSync
         setVSync(displaySettings.vsync);

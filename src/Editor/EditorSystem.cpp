@@ -5,7 +5,7 @@
 #include "Component/GameObject/GameObject.h"
 #include "Component/Camera/Camera.h"
 #include "Component/PlayerController/Player.h"
-#include "Component/Physhcs/MeshRenderer.h"
+#include "Component/Graphics/MeshRenderer.h"
 #include "Graphics/core/Frustum.h"
 #include "Graphics/core/Model.h"
 #include "Graphics/ui/UIManager.h"

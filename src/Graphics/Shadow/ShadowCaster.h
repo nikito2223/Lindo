@@ -45,7 +45,7 @@ public:
     ShadowCaster& operator=(const ShadowCaster&) = delete;
 
     virtual void update(const ShadowQualitySettings& quality) = 0;
-    virtual void render(const std::vector<Lindo::World::GameObject*>& shadowCasters) = 0;
+    virtual bool render(const std::vector<Lindo::World::GameObject*>& shadowCasters) = 0;
 
 unsigned int textureID() const { return m_target ? m_target->textureID() : 0; }
     bool valid() const { return m_target && m_target->valid(); }
@@ -75,7 +75,7 @@ public:
     void setCamera(const glm::mat4& viewProj, float nearPlane, float farPlane);
 
     void update(const ShadowQualitySettings& quality) override;
-    void render(const std::vector<Lindo::World::GameObject*>& shadowCasters) override;
+    bool render(const std::vector<Lindo::World::GameObject*>& shadowCasters) override;
 
     int cascadeCount() const { return m_cascadeCount; }
     const std::vector<glm::mat4>& lightSpaceMatrices() const { return m_lightSpaceMatrices; }
@@ -106,7 +106,7 @@ public:
 
     void setLight(const glm::vec3& pos, float farPlane);
     void update(const ShadowQualitySettings& quality) override;
-    void render(const std::vector<Lindo::World::GameObject*>& shadowCasters) override;
+    bool render(const std::vector<Lindo::World::GameObject*>& shadowCasters) override;
 
 private:
     glm::vec3 m_lightPos = glm::vec3(0.0f);
@@ -123,7 +123,7 @@ public:
     void setLight(const glm::vec3& pos, const glm::vec3& direction,
                   float farPlane, float fullFovDegrees);
     void update(const ShadowQualitySettings& quality) override;
-    void render(const std::vector<Lindo::World::GameObject*>& shadowCasters) override;
+    bool render(const std::vector<Lindo::World::GameObject*>& shadowCasters) override;
 
     const glm::mat4& lightSpaceMatrix() const { return m_lightSpaceMatrix; }
 

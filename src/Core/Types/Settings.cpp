@@ -3,7 +3,7 @@
 #include <sstream>
 #include <filesystem>
 #include <iostream>
-#include "Debug/DebugLogger.h" // ��� LOG_INFO / LOG_ERROR
+#include "Debug/DebugLogger.h" // ��� LOG_INFO / LOG_ERROR
 
 namespace Lindo {
 
@@ -31,6 +31,87 @@ namespace Lindo {
         muteAudio = false;
     }
 
+    void UserSettings::loadFromFile(const std::string& filepath) {
+        std::filesystem::path absPath = std::filesystem::absolute(filepath);
+    LOG_INFO("[Settings] Loading config from: " + absPath.string());
+
+    if (!std::filesystem::exists(filepath)) {
+        LOG_INFO("[Settings] Config file not found at " + absPath.string() + ". Using defaults and creating file.");
+        saveToFile(filepath);
+        return;
+    }
+
+    std::ifstream inFile(filepath);
+    if (!inFile.is_open()) {
+        LOG_ERROR("[Settings] Failed to open file for reading: " + absPath.string());
+        return;
+    }
+
+    std::string line;
+    while (std::getline(inFile, line)) {
+        std::istringstream ss(line);
+        std::string key;
+        if (std::getline(ss, key, '=')) {
+            std::string value;
+            if (std::getline(ss, value)) {
+                try {
+                    if (key == "id") {
+                        id = std::stoi(value); // Преобразуем строку в int
+                    }
+                    else if (key == "userName") {
+                        userName = value; // Присваиваем имя прямо из файла
+                    }
+                }
+                catch (...) {
+                    LOG_ERROR("[Settings] Failed to parse key: " + key);
+                    }
+                }
+            }
+        }
+        inFile.close();
+        LOG_INFO("[Settings] Config loaded successfully.");
+    }
+
+    void UserSettings::saveToFile(const std::string& filepath) {
+        std::filesystem::path path(filepath);
+        std::filesystem::path absPath = std::filesystem::absolute(path);
+
+        LOG_INFO("[User Settings] Attempting to save config to: " + absPath.string());
+
+        if (path.has_parent_path()) {
+            std::error_code ec;
+            std::filesystem::create_directories(path.parent_path(), ec);
+            if (ec) {
+                LOG_ERROR("[User Settings] Failed to create directories: " + ec.message());
+            }
+        }
+
+        std::ofstream outFile(filepath, std::ios::out | std::ios::trunc);
+        if (!outFile.is_open()) {
+            LOG_ERROR("[User Settings] Failed to open file for writing: " + absPath.string());
+            return;
+        }
+
+        // Сохраняем имя и id прямо в файл
+        outFile << "userName=" << userName << "\n";
+        outFile << "id=" << id << "\n";
+
+        outFile.flush();
+        outFile.close();
+
+        if (outFile.fail()) {
+            LOG_ERROR("[User Settings] Error occurred during writing to file: " + absPath.string());
+        }
+        else {
+            LOG_INFO("[User Settings] Config saved successfully to: " + absPath.string());
+        }
+    }
+    
+    UserSettings& UserSettings::getInstance() {
+        static UserSettings instance;
+        return instance;
+    }
+    
     void Settings::saveToFile(const std::string& filepath) {
         std::filesystem::path path(filepath);
         std::filesystem::path absPath = std::filesystem::absolute(path);

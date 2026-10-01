@@ -18,9 +18,9 @@ struct ShadowQualitySettings {
     bool  pcssEnabled       = true;   // percentage-closer soft shadows
     int   pcfKernel         = 3;      // 3 => 3x3, 5 => 5x5 (used when !PCSS)
     float texelSpacing      = 1.0f;   // spacing multiplier for PCF taps
-    float minDepthBias      = 0.005f; // constant component of depth bias
-    float maxDepthBias      = 0.05f;  // slope-scaled component of depth bias
-    float normalBias        = 0.02f;  // offset cast surface along normal
+    float minDepthBias      = 0.00015f; // constant component of normalized depth bias
+    float maxDepthBias      = 0.0015f;  // slope-scaled component of normalized depth bias
+    float normalBias        = 0.015f;  // world-space offset along the surface normal
     float penumbraScale     = 1.0f;   // PCSS blocker-search scale
     float cascadeBlend      = 0.1f;   // blend band between cascades (view depth)
     int   maxPointShadows   = 2;      // simultaneous point-light shadow maps
@@ -44,8 +44,8 @@ inline ShadowQualitySettings qualitySettingsOf(ShadowQuality q) {
             s.pcssEnabled = false;
             s.pcfKernel = 3;
             s.texelSpacing = 1.0f;
-            s.maxDepthBias = 0.06f;
-            s.normalBias = 0.03f;
+            s.maxDepthBias = 0.0025f;
+            s.normalBias = 0.02f;
             s.pointShadowSize = 512;
             s.maxPointShadows = 0;
             s.spotShadowSize = 512;
@@ -56,8 +56,8 @@ inline ShadowQualitySettings qualitySettingsOf(ShadowQuality q) {
             s.pcssEnabled = false;
             s.pcfKernel = 5;
             s.texelSpacing = 1.0f;
-            s.maxDepthBias = 0.05f;
-            s.normalBias = 0.025f;
+            s.maxDepthBias = 0.002f;
+            s.normalBias = 0.0175f;
             s.pointShadowSize = 1024;
             s.maxPointShadows = 1;
             s.spotShadowSize = 1024;
@@ -66,9 +66,10 @@ inline ShadowQualitySettings qualitySettingsOf(ShadowQuality q) {
             s.cascadeCount = 3;
             s.shadowMapSize = 2048;
             s.pcssEnabled = false;
+            s.pcfKernel = 5;
             s.penumbraScale = 1.0f;
-            s.maxDepthBias = 0.04f;
-            s.normalBias = 0.02f;
+            s.maxDepthBias = 0.0015f;
+            s.normalBias = 0.015f;
             s.pointShadowSize = 2048;
             s.maxPointShadows = 2;
             s.spotShadowSize = 2048;
@@ -76,14 +77,15 @@ inline ShadowQualitySettings qualitySettingsOf(ShadowQuality q) {
         case ShadowQuality::Ultra:
         default:
             s.cascadeCount = 4;
-            s.shadowMapSize = 4096;
+            s.shadowMapSize = 2048;
             s.pcssEnabled = false;
+            s.pcfKernel = 5;
             s.penumbraScale = 1.0f;
-            s.maxDepthBias = 0.03f;
-            s.normalBias = 0.015f;
-            s.pointShadowSize = 4096;
+            s.maxDepthBias = 0.001f;
+            s.normalBias = 0.0125f;
+            s.pointShadowSize = 2048;
             s.maxPointShadows = 2;
-            s.spotShadowSize = 4096;
+            s.spotShadowSize = 2048;
             break;
     }
     return s;

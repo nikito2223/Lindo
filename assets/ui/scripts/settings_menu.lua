@@ -1,8 +1,11 @@
 local settings = Settings.get()
+---@type DisplaySettingsInstance
 local display = DisplaySettings.get()
-
+local userSettings = UserSettings.get()
 
 local function syncUIWithSettings()
+
+    UI.setText("playerName", userSettings.userName)
 
     -- Громкость (слайдер + label)
     local masterVol = math.floor(settings.masterVolume * 100)
@@ -42,9 +45,18 @@ local function syncUIWithSettings()
 
     -- Toggle
     UI.setChecked("bloomToggle", settings.enableBloom)
+    UI.setChecked("ssaoToggle", settings.enableSSAO)
+    UI.setChecked("shadowsToggle", settings.enableShadows)
     UI.setChecked("vsyncToggle", display.vsync)
     UI.setChecked("debugToggle", settings.showFPS)
 end
+
+local function onPlayerNameChanged(text)
+    if text and text ~= "" then
+        userSettings.userName = text
+    end
+end
+
 
 
 local function onVolumeChanged(value)
@@ -72,6 +84,14 @@ end
 local function onBloomToggle(checked)
 
     settings.enableBloom = checked
+end
+
+local function onSSAOToggle(checked)
+    settings.enableSSAO = checked
+end
+
+local function onShadowsToggle(checked)
+    settings.enableShadows = checked
 end
 
 
@@ -145,8 +165,15 @@ local function onFpsChanged(index, option)
 end
 
 local function closeSaveSettings()
+    -- Забираем текст из поля ввода, даже если пользователь не нажал Enter
+    local currentName = UI.getValue("playerName")
+    if type(currentName) == "string" and currentName ~= "" then
+        userSettings.userName = currentName
+    end
+
     settings:apply()
     display:apply()
+    userSettings:apply() -- теперь сохраняет актуальное имя
 
     UI.setVisible("settingsPanel", false)
     UI.setVisible("mainPanel", true)
@@ -166,10 +193,13 @@ end
 return {
     syncUIWithSettings = syncUIWithSettings,
 
+    onPlayerNameChanged = onPlayerNameChanged,
     onVolumeChanged = onVolumeChanged,
     onFovChanged = onFovChanged,
 
     onBloomToggle = onBloomToggle,
+    onSSAOToggle = onSSAOToggle,
+    onShadowsToggle = onShadowsToggle,
     onVSyncToggle = onVSyncToggle,
     onDebugToggle = onDebugToggle,
 

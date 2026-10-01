@@ -88,6 +88,9 @@ namespace Lindo {
         std::unique_ptr<Lindo::World::Scene> currentScene;
         std::string currentSceneName;
         std::string pendingSceneName;
+        int loadingFramesRemaining = 0;
+        bool loadingScreenVisible = false;
+        bool loadingScreenReady = false;
 
         // ��� ����������� ���������� ��������
         std::vector<std::function<void(Lindo::World::Scene*)>> pendingContent;

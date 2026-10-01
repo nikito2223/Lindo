@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <cstddef>
 #include "Frustum.h"
 
 namespace Lindo {
@@ -44,7 +45,16 @@ namespace Lindo {
             Skybox* getSkybox() const { return m_skybox.get(); }
 
         private:
-            void renderScene(Lindo::World::Scene& scene,
+            struct SceneRenderStats {
+                std::size_t meshRenderers = 0;
+                std::size_t invalidRenderers = 0;
+                std::size_t culledRenderers = 0;
+                std::size_t submittedRenderers = 0;
+                std::size_t drawCalls = 0;
+                std::size_t triangles = 0;
+            };
+
+            SceneRenderStats renderScene(Lindo::World::Scene& scene,
                 Lindo::Graphics::Shader& shader,
                 Lindo::Components::Rendering::Camera* camera);
 
@@ -54,6 +64,8 @@ namespace Lindo {
 
             std::unique_ptr<Lindo::Graphics::Shader> m_lightingShader;
             std::unique_ptr<Lindo::Graphics::Skybox> m_skybox;
+            std::string m_skyboxPath;
+            int m_skyboxResolution = 0;
             std::unique_ptr<Lindo::Graphics::ShadowManager> m_shadowManager;
             std::unique_ptr<Lindo::Graphics::Framebuffer> m_fbo;
 
@@ -64,6 +76,14 @@ namespace Lindo {
             float m_lightIconRadius = 0.3f;
             bool m_initialized = false;
             Frustum m_frustum;
+            unsigned int m_sceneSamplesQuery = 0;
+            bool m_sceneSamplesPending = false;
+            std::string m_lastSampleDiagnostic;
+            std::string m_pendingQueryScene;
+            SceneRenderStats m_pendingQueryStats;
+            std::string m_pixelProbeScene;
+            std::string m_missingCameraScene;
+            std::size_t m_missingCameraFrames = 0;
         };
     }
 }

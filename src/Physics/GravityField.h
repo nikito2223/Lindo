@@ -26,6 +26,9 @@ namespace Lindo {
 
                 GravityField() = default;
 
+                void OnStart() override;
+                void OnDestroy() override;
+
                 // ----- Configuration -----
                 void SetType(FieldType type) { fieldType = type; }
                 FieldType GetType() const { return fieldType; }
@@ -33,7 +36,10 @@ namespace Lindo {
                 void SetGlobalGravity(const glm::vec3& gravity) { globalGravity = gravity; }
                 glm::vec3 GetGlobalGravity() const { return globalGravity; }
 
-                void SetDirection(const glm::vec3& dir) { direction = glm::normalize(dir); }
+                void SetDirection(const glm::vec3& dir) {
+                    float length = glm::length(dir);
+                    if (length > 1e-6f) direction = dir / length;
+                }
                 glm::vec3 GetDirection() const { return direction; }
 
 void SetStrength(float newStrength) { strength = newStrength; }
@@ -58,7 +64,7 @@ void SetStrength(float newStrength) { strength = newStrength; }
 
             private:
                 FieldType fieldType = FieldType::Global;
-                glm::vec3 globalGravity{ 0.0f, -9.81f, 0.0f };
+                glm::vec3 globalGravity{ 0.0f };
                 glm::vec3 direction{ 0.0f, -1.0f, 0.0f };
                 float strength = 9.81f;
                 glm::vec3 focalPoint{ 0.0f };

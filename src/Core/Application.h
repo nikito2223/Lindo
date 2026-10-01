@@ -14,7 +14,7 @@ namespace Lindo {
         static constexpr const char* Name = "Lindo";
         static constexpr int VersionMajor = 26;
         static constexpr int VersionMinor = 2;
-        static constexpr int VersionPatch = 4;
+        static constexpr int VersionPatch = 5;
         static constexpr const char* Stage = "dev";
 
         /**

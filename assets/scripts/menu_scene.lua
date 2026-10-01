@@ -1,6 +1,9 @@
 local settingsMenu = require("ui.scripts.settings_menu")
+local isTransitioning = false
 
 local function play()
+    if isTransitioning then return end
+    isTransitioning = true
     Input.setUIActive(false)
     Scenes.load("Game")
 end
@@ -17,10 +20,8 @@ local function openSettings()
     UI.setVisible("settingsPanel", true)
 end
 
-local function closeSettings()
-end
-
 function OnCreate(scene)
+    isTransitioning = false
     Input.setUIActive(true)
 
     local handlers = {
@@ -29,6 +30,7 @@ function OnCreate(scene)
         closeSettings = settingsMenu.closeSaveSettings,
         quit = quit,
 
+        onPlayerNameChanged = settingsMenu.onPlayerNameChanged,
         onVolumeChanged = settingsMenu.onVolumeChanged,
         onFovChanged = settingsMenu.onFovChanged,
 
@@ -43,6 +45,12 @@ function OnCreate(scene)
 
         onBloomToggle =
             settingsMenu.onBloomToggle,
+
+        onSSAOToggle =
+            settingsMenu.onSSAOToggle,
+
+        onShadowsToggle =
+            settingsMenu.onShadowsToggle,
 
         onVSyncToggle =
             settingsMenu.onVSyncToggle,

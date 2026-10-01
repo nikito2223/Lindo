@@ -77,6 +77,7 @@ private:
     // Cached per-frame data.
     std::vector<Lindo::World::GameObject*> m_shadowCasters;
     std::vector<const Components::Light::PointLight*> m_pointLightSources;
+    std::vector<bool> m_pointShadowAvailable;
     std::vector<glm::vec3> m_pointLightPositions;
     std::vector<float> m_pointLightFarPlanes;
     std::vector<int> m_pointLightShadowIndices;

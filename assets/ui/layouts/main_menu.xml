@@ -1,4 +1,4 @@
-<UI>
+<UI styles="common.xml">
 
     <!-- Base фон панели: #0F1115 → 0.06, 0.07, 0.08, 0.94 -->
     <!-- Корневая панель центрируется по экрану -->
@@ -7,13 +7,13 @@
            y="0"
            width="500"
            height="500"
-           color="0.06,0.07,0.08,0.94"
+           style="menuPanel"
            anchor="Center">
 
         <!-- Неоновая линия сверху: #00F0FF -->
         <Panel x="0" y="0"
                width="500" height="5"
-               color="0,0.94,1,1"
+               style="accent"
                anchor="TopLeft" />
 
         <!-- Заголовок: #00F0FF (главный акцент) -->
@@ -21,8 +21,7 @@
                x="0" y="45"
                width="500" height="70"
                text="LINDO"
-               color="0,0.94,1,1"
-               fontSize="54"
+               style="title"
                anchor="TopCenter" />
 
         <!-- Подзаголовок: #64748B (приглушённый текст) -->
@@ -30,14 +29,13 @@
                x="0" y="112"
                width="500" height="35"
                text="3D СИМУЛЯЦИЯ МИРА"
-               color="0.39,0.45,0.55,1"
-               fontSize="16"
+               style="mutedLabel"
                anchor="TopLeft" />
 
         <!-- Разделитель: #0F172A -->
         <Panel x="65" y="165"
                width="370" height="1"
-               color="0.06,0.09,0.16,1"
+               style="divider"
                anchor="TopLeft" />
 
         <!-- Кнопка Play: основной бренд #008DFF -->
@@ -46,9 +44,7 @@
                 width="400" height="58"
                 text="НАЧАТЬ ИГРУ"
                 onClick="play"
-                color="0,0.55,1,1"
-                textColor="1,1,1,1"
-                fontSize="20"
+                style="primaryButton"
                 anchor="TopLeft" />
 
         <!-- Кнопка Настройки: вторичная панель #1E293B + текст #E2E8F0 -->
@@ -57,9 +53,7 @@
                 width="400" height="52"
                 text="НАСТРОЙКИ"
                 onClick="openSettings"
-                color="0.12,0.16,0.23,1"
-                textColor="0.88,0.91,0.94,1"
-                fontSize="18"
+                style="secondaryButton"
                 anchor="TopLeft" />
 
         <!-- Кнопка Выход: вторичная панель #1E293B + приглушённый текст #64748B -->
@@ -68,9 +62,7 @@
                 width="400" height="52"
                 text="ВЫХОД"
                 onClick="quit"
-                color="0.12,0.16,0.23,1"
-                textColor="0.39,0.45,0.55,1"
-                fontSize="18"
+                style="secondaryButton, mutedLabel"
                 anchor="TopLeft" />
 
         <!-- Версия: приглушённый текст #64748B -->
@@ -78,8 +70,7 @@
                x="25" y="430"
                width="450" height="25"
                text=""
-               color="0.39,0.45,0.55,1"
-               fontSize="14"
+               style="mutedLabel"
                anchor="TopLeft" />
 
         <!-- Билд: ещё тише — используем #0F172A (границы) как «тень» -->
@@ -87,8 +78,7 @@
                x="25" y="455"
                width="450" height="25"
                text=""
-               color="0.06,0.09,0.16,1"
-               fontSize="12"
+               style="divider"
                anchor="TopLeft" />
 
     </Panel>

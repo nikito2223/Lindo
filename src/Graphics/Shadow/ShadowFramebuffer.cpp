@@ -58,7 +58,17 @@ namespace Lindo {
             destroy();
 
             m_type = type;
-            m_size = size;
+            GLint maxViewportDims[2] = { 0, 0 };
+            glGetIntegerv(GL_MAX_VIEWPORT_DIMS, maxViewportDims);
+            const GLint maxShadowViewport = glm::min(maxViewportDims[0], maxViewportDims[1]);
+            m_size = maxShadowViewport > 0
+                ? glm::min(size, static_cast<unsigned int>(maxShadowViewport))
+                : size;
+            if (m_size < size) {
+                LOG_WARN("ShadowFramebuffer::init - shadow map size reduced from " +
+                    std::to_string(size) + " to " + std::to_string(m_size) +
+                    " to fit the device viewport limit.");
+            }
             m_layers = (type == MountType::Cube) ? 6 : glm::max(layers, 1);
 
             glGenFramebuffers(1, &m_fbo);
@@ -79,9 +89,6 @@ namespace Lindo {
                 const float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
                 glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);
                 glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
                 glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_texture, 0);
             }
@@ -145,7 +152,9 @@ namespace Lindo {
             if (!m_valid) return;
 
             glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+            Shader::logOpenGLErrors("shadow framebuffer bind");
             RenderCommand::SetViewport(0, 0, static_cast<int>(m_size), static_cast<int>(m_size));
+            Shader::logOpenGLErrors("shadow framebuffer viewport");
 
             if (m_type == MountType::Array2D) {
                 glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_texture, 0, layerOrFace);
@@ -158,6 +167,7 @@ namespace Lindo {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                     GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_texture, 0);
             }
+            Shader::logOpenGLErrors("shadow framebuffer attachment");
 
             const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
             if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -165,7 +175,7 @@ namespace Lindo {
                     std::to_string(static_cast<int>(status)) + ", layer=" +
                     std::to_string(layerOrFace) + ")");
             }
-            Shader::logOpenGLErrors("shadow framebuffer layer binding");
+            Shader::logOpenGLErrors("shadow framebuffer status check");
 
             RenderCommand::Clear(false, true);
         }

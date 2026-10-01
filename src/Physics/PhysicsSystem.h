@@ -58,6 +58,7 @@ namespace Lindo {
                 // ----- Configuration -----
                 void SetGlobalGravity(const glm::vec3& gravity);
                 glm::vec3 GetGlobalGravity() const;
+                glm::vec3 GetGravityAt(const glm::vec3& worldPos) const;
                 void SetIterations(int iterations);
                 int GetIterations() const;
                 void SetVelocityIterations(int iterations);
@@ -99,9 +100,6 @@ namespace Lindo {
 
 // Resolution: applies impulses to resolve overlapping bodies.
                 void ResolveContacts(std::vector<Contact>& contacts);
-
-                // Compute the effective gravity at a body's position.
-                glm::vec3 ComputeGravityAt(const glm::vec3& worldPos) const;
 
                 // Compute combined friction / restitution for a contact.
                 void ComputeContactProperties(const Contact& contact,

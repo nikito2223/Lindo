@@ -17,6 +17,8 @@ namespace Lindo {
             uint32_t getTextureID() const { return m_colorAttachment; }
             inline uint32_t getColorAttachmentID() const { return m_colorAttachment; }
             uint32_t getFBOID() const { return m_fbo; }
+            bool isComplete() const { return m_status == GL_FRAMEBUFFER_COMPLETE; }
+            GLenum getStatus() const { return m_status; }
 
         private:
             void invalidate();
@@ -24,6 +26,7 @@ namespace Lindo {
             uint32_t m_colorAttachment = 0;
             uint32_t m_depthAttachment = 0;
             int m_width, m_height;
+            GLenum m_status = GL_FRAMEBUFFER_UNDEFINED;
         };
     }
 }

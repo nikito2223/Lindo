@@ -1,7 +1,8 @@
 ﻿#version 330 core
 out vec4 FragColor;
 
-#include "include/Lighting.glsl"
+#include "include/Material.glsl"
+#include "include/Lights.glsl"
 #include "include/Shadows.glsl"
 
 #define NR_POINT_LIGHTS 32
@@ -20,12 +21,12 @@ uniform SpotLight spotLight;
 uniform Material material;
 
 // --- Post / tonemapping ---
-uniform float exposure = 1.0f;   // default'ы в GLSL 330 можно
-uniform float gamma    = 2.2f;   // но лучше без них и просто объявить
+uniform float exposure;
+uniform float gamma;
 
 // Forward Declarations
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffCol, vec3 specCol);
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol, int lightIndex);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol);
 
 void main()
@@ -55,13 +56,13 @@ void main()
         ? normalize(viewPos - FragPos)
         : vec3(0.0, 0.0, 1.0);
 
-    vec3 result = diffCol * 0.03
+    vec3 result = diffCol * 0.006
                 + CalcDirLight(dirLight, norm, viewDir, diffCol, specCol);
 
     int numLights = min(activePointLights, NR_POINT_LIGHTS);
     for (int i = 0; i < numLights; i++) {
         if (pointLights[i].enabled) {
-            result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, diffCol, specCol);
+            result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, diffCol, specCol, i);
         }
     }
 
@@ -69,9 +70,9 @@ void main()
         result += CalcSpotLight(spotLight, norm, FragPos, viewDir, diffCol, specCol);
     }
 
-    vec3 color = result * exposure;
+    vec3 color = max(result, vec3(0.0)) * max(exposure, 0.0);
     color = color / (color + vec3(1.0));       // опционально Reinhard
-    color = pow(color, vec3(1.0 / gamma));
+    color = pow(color, vec3(1.0 / max(gamma, 0.001)));
     FragColor = vec4(color, 1.0);
 }
 
@@ -88,17 +89,19 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffCol, vec3 
     vec3 diffuse  = light.diffuse  * light.color * diff  * diffCol;
     vec3 specular = light.specular * light.color * spec * specCol;
 
+    float shadow = 0.0;
     if (u_shadowsEnabled) {
         vec4 viewPosition = viewMatrix * vec4(FragPos, 1.0);
-        float shadow = CascadedShadowCalculation(FragPos, normal, lightDir, -viewPosition.z);
+        shadow = CascadedShadowCalculation(FragPos, normal, lightDir, -viewPosition.z);
         diffuse *= 1.0 - shadow;
         specular *= 1.0 - shadow;
     }
+    ambient *= 1.0 - shadow * 0.88;
 
     return ambient + diffuse + specular;
 }
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol)
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol, int lightIndex)
 {
     vec3 lightDir = light.position - fragPos;
     float distance = length(lightDir);
@@ -107,7 +110,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     float denom = light.constant + light.linear * distance + light.quadratic * (distance * distance);
     float attenuation = 1.0 / max(denom, 0.0001);
 
-    if (attenuation < 0.01) {
+    if (attenuation < 0.01 || distance >= light.radius) {
         return vec3(0.0);
     }
 
@@ -118,8 +121,11 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     vec3 ambient  = light.ambient  * light.color * diffCol;
     vec3 diffuse  = light.diffuse  * light.color * diff  * diffCol;
     vec3 specular = light.specular * light.color * spec * specCol;
+    float shadow = PointShadowCalculation(lightIndex, fragPos, normal, lightDir);
+    float rangeFade = 1.0 - smoothstep(light.radius * 0.8, light.radius, distance);
+    ambient *= 1.0 - shadow * 0.88;
 
-    return (ambient + diffuse + specular) * attenuation;
+    return (ambient + (1.0 - shadow) * (diffuse + specular)) * attenuation * rangeFade;
 }
 
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffCol, vec3 specCol)
@@ -144,7 +150,9 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
 
     float shadow = SpotShadowCalculation(fragPos, normal, light.position, light.direction);
 
-    vec3 lighting = ambient + (1.0 - shadow) * (diffuse + specular);
+    vec3 lighting = ambient * (1.0 - shadow * 0.88)
+                  + (1.0 - shadow) * (diffuse + specular);
 
-    return lighting * attenuation * spotIntensity;
+    float rangeFade = 1.0 - smoothstep(light.radius * 0.8, light.radius, distance);
+    return lighting * attenuation * spotIntensity * rangeFade;
 }

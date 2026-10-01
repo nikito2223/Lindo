@@ -183,8 +183,8 @@ namespace Lindo {
 
         void Skybox::initShader() {
             auto& assets = AssetManager::get();
-            std::string vs = assets.getShaderPath("skybox/skybox.vs");
-            std::string fs = assets.getShaderPath("skybox/skybox.fs");
+            std::string vs = assets.getShaderPath("Skybox.gslv");
+            std::string fs = assets.getShaderPath("Skybox.gslf");
 
             if (!std::filesystem::exists(vs) || !std::filesystem::exists(fs)) {
                 LOG_ERROR("Skybox shaders not found: " + vs + " | " + fs);
@@ -248,13 +248,8 @@ namespace Lindo {
             glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
             auto& assets = AssetManager::get();
-            std::string vsPath = assets.getShaderPath("equirectangular_to_cubemap.vs");
-            std::string fsPath = assets.getShaderPath("equirectangular_to_cubemap.fs");
-
-            if (!std::filesystem::exists(vsPath) || !std::filesystem::exists(fsPath)) {
-                vsPath = assets.getShaderPath("skybox/equirectangular_to_cubemap.vs");
-                fsPath = assets.getShaderPath("skybox/equirectangular_to_cubemap.fs");
-            }
+            std::string vsPath = assets.getShaderPath("EquirectangularToCubemap.gslv");
+            std::string fsPath = assets.getShaderPath("EquirectangularToCubemap.gslf");
 
             Shader equirectangularToCubemapShader(vsPath.c_str(), fsPath.c_str());
 

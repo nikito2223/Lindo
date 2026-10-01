@@ -1,6 +1,6 @@
 #include "ShadowCaster.h"
 
-#include "Component/Physhcs/MeshRenderer.h"
+#include "Component/Graphics/MeshRenderer.h"
 #include "Component/GameObject/GameObject.h"
 #include "Debug/DebugLogger.h"
 #include "Core/RenderCommand.h"
@@ -179,14 +179,14 @@ namespace Lindo {
             }
         }
 
-        void DirectionalShadowCaster::render(const std::vector<Lindo::World::GameObject*>& shadowCasters) {
-            if (!m_target || !m_target->valid() || !m_renderScene) return;
+        bool DirectionalShadowCaster::render(const std::vector<Lindo::World::GameObject*>& shadowCasters) {
+            if (!m_target || !m_target->valid() || !m_renderScene) return false;
 
             auto& assets = AssetManager::get();
             static Shader* s_depthShader = nullptr;
 
-            std::string vsPath = assets.resolvePath("csm_depth.vs", "shaders/Shadow");
-            std::string fsPath = assets.resolvePath("csm_depth.fs", "shaders/Shadow");
+            std::string vsPath = assets.getShaderPath("CsmDepth.gslv");
+            std::string fsPath = assets.getShaderPath("CsmDepth.gslf");
 
             if (!s_depthShader) {
                 static Shader depthShader(vsPath.c_str(), fsPath.c_str());
@@ -194,9 +194,17 @@ namespace Lindo {
                 LOG_INFO("DirectionalShadowCaster: CSM depth shader loaded (ID=" +
                     std::to_string(depthShader.getID()) + ").");
             }
+            if (!s_depthShader->isValid()) {
+                static bool failureReported = false;
+                if (!failureReported) {
+                    failureReported = true;
+                    LOG_ERROR("DirectionalShadowCaster: depth shader is invalid; directional shadows are skipped.");
+                }
+                return false;
+            }
 
             computeCascades(m_near, m_far);
-            if (m_lightSpaceMatrices.empty()) return; // cascadeCount could be 0
+            if (m_lightSpaceMatrices.empty()) return false; // cascadeCount could be 0
 
             s_depthShader->use();
 
@@ -205,6 +213,8 @@ namespace Lindo {
             RenderCommand::SetDepthFuncLess();
             RenderCommand::SetCullFace(false); // Keep all shadow geometry, including non-standard winding.
             RenderCommand::SetBlending(false);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.5f, 2.0f);
 
             for (int i = 0; i < m_cascadeCount; ++i) {
                 m_target->beginRender(i);
@@ -212,7 +222,9 @@ namespace Lindo {
                 m_renderScene(shadowCasters, *s_depthShader);
             }
 
+            glDisable(GL_POLYGON_OFFSET_FILL);
             RenderCommand::SetCullFace(true, true);
+            return true;
         }
 
         //==============================================================================
@@ -237,19 +249,27 @@ namespace Lindo {
             }
         }
 
-        void PointShadowCaster::render(const std::vector<Lindo::World::GameObject*>& shadowCasters) {
-            if (!m_target || !m_target->valid() || !m_renderScene) return;
+        bool PointShadowCaster::render(const std::vector<Lindo::World::GameObject*>& shadowCasters) {
+            if (!m_target || !m_target->valid() || !m_renderScene) return false;
 
             auto& assets = AssetManager::get();
             static Lindo::Graphics::Shader* s_depthShader = nullptr;
 
-            std::string vsPath = assets.resolvePath("point_depth.vs", "shaders/Shadow");
-            std::string gsPath = assets.resolvePath("point_depth.gs", "shaders/Shadow");
-            std::string fsPath = assets.resolvePath("point_depth.fs", "shaders/Shadow");
+            std::string vsPath = assets.getShaderPath("PointDepth.gslv");
+            std::string gsPath = assets.getShaderPath("PointDepth.gslg");
+            std::string fsPath = assets.getShaderPath("PointDepth.gslf");
 
             if (!s_depthShader) {
                 static Lindo::Graphics::Shader depthShader(vsPath, gsPath, fsPath);
                 s_depthShader = &depthShader;
+            }
+            if (!s_depthShader->isValid()) {
+                static bool failureReported = false;
+                if (!failureReported) {
+                    failureReported = true;
+                    LOG_ERROR("PointShadowCaster: depth shader is invalid; point shadows are skipped.");
+                }
+                return false;
             }
 
             const float farPlane = m_farPlane;
@@ -277,11 +297,15 @@ namespace Lindo {
             RenderCommand::SetDepthFuncLess();
             RenderCommand::SetCullFace(false);
             RenderCommand::SetBlending(false);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.5f, 2.0f);
 
             m_target->beginRender(0);
             m_renderScene(shadowCasters, *s_depthShader);
 
+            glDisable(GL_POLYGON_OFFSET_FILL);
             RenderCommand::SetCullFace(true, true);
+            return true;
         }
 
         //==============================================================================
@@ -309,18 +333,26 @@ namespace Lindo {
             }
         }
 
-        void SpotShadowCaster::render(const std::vector<Lindo::World::GameObject*>& shadowCasters) {
-            if (!m_target || !m_target->valid() || !m_renderScene) return;
+        bool SpotShadowCaster::render(const std::vector<Lindo::World::GameObject*>& shadowCasters) {
+            if (!m_target || !m_target->valid() || !m_renderScene) return false;
 
             auto& assets = AssetManager::get();
 
-            std::string vertPath = assets.resolvePath("csm_depth.vs", "shaders/Shadow");
-            std::string fragPath = assets.resolvePath("csm_depth.fs", "shaders/Shadow");
+            std::string vertPath = assets.getShaderPath("CsmDepth.gslv");
+            std::string fragPath = assets.getShaderPath("CsmDepth.gslf");
 
             static Shader* s_depthShader = nullptr;
             if (!s_depthShader) {
                 static Shader depthShader(vertPath, fragPath);
                 s_depthShader = &depthShader;
+            }
+            if (!s_depthShader->isValid()) {
+                static bool failureReported = false;
+                if (!failureReported) {
+                    failureReported = true;
+                    LOG_ERROR("SpotShadowCaster: depth shader is invalid; spot shadows are skipped.");
+                }
+                return false;
             }
 
             const glm::vec3 lightPos = m_lightPos;
@@ -342,11 +374,15 @@ namespace Lindo {
             RenderCommand::SetDepthFuncLess();
             RenderCommand::SetCullFace(false);
             RenderCommand::SetBlending(false);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.5f, 2.0f);
 
             m_target->beginRender(0);
             m_renderScene(shadowCasters, *s_depthShader);
 
+            glDisable(GL_POLYGON_OFFSET_FILL);
             RenderCommand::SetCullFace(true, true);
+            return true;
         }
 
     } // namespace Graphics

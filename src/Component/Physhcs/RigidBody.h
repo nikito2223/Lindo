@@ -74,13 +74,13 @@ namespace Lindo {
                 float GetMass() const { return mass; }
                 float GetInvMass() const { return invMass; }
                 const glm::vec3& GetVelocity() const { return velocity; }
-                void SetVelocity(const glm::vec3& v) { velocity = v; }
-                void SetAngularVelocity(const glm::vec3& w) { angularVelocity = w; }
+                void SetVelocity(const glm::vec3& v) { velocity = v; Wake(); }
+                void SetAngularVelocity(const glm::vec3& w) { angularVelocity = w; Wake(); }
                 void SetKinematic(bool kinematic) { isKinematic = kinematic; }
                 bool IsKinematic() const { return isKinematic; }
                 void SetGravityScale(float scale) { gravityScale = scale; }
                 void SetUseGravity(bool enabled) { useGravity = enabled; }
-                void Wake() { isSleeping = false; }
+                void Wake() { isSleeping = false; sleepTimer = 0.0f; }
 
                 // Inertia tensor (for a simple box/sphere approximation).
                 // Used in angular impulse response.

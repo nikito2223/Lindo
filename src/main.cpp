@@ -130,6 +130,7 @@ int main() {
     try {
         Lindo::DisplaySettings::getInstance().loadFromFile("../config/display.ini");
         Lindo::Settings::getInstance().loadFromFile("../config/settings.ini");
+        Lindo::UserSettings::getInstance().loadFromFile("../config/user.ini");
 
         Lindo::Application app;
         app.run();

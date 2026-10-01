@@ -2,6 +2,19 @@ local settingsMenu = require("ui.scripts.settings_menu")
 
 local isPaused = false
 local isInventoryOpen = false           -- НОВОЕ
+local isTransitioning = false
+local uvScroll = {x = 0.0, y = 0.0}
+
+local function requestScene(name, uiActive)
+    if isTransitioning then return end
+
+    isTransitioning = true
+    isPaused = false
+    isInventoryOpen = false
+    Time.setTimeScale(1)
+    Input.setUIActive(uiActive)
+    Scenes.load(name)
+end
 
 local function refreshInputState()
     local anyUI = isPaused or isInventoryOpen
@@ -84,6 +97,14 @@ local function primitive(scene, name, model, position, scale, color, collider, t
 end
 
 function OnCreate(scene)
+    isPaused = false
+    isInventoryOpen = false
+    isTransitioning = false
+    uvScroll.x = 0.0
+    uvScroll.y = 0.0
+    Time.setTimeScale(1)
+    Input.setUIActive(false)
+
     -- Обработчики взаимодействия с интерфейсом.
     -- Настройки делегируются в общий модуль settingsMenu —
     -- тот же, что использует главное меню.
@@ -95,24 +116,24 @@ function OnCreate(scene)
         onOpenSettings = openSettings,
         closeSettings  = closeSettings,
         onRestart = function()
-            Time.setTimeScale(1)
-            Input.setUIActive(false)
-            Scenes.load(scene.name)
+            requestScene(scene.name, false)
         end,
         onQuit = function()
-            Time.setTimeScale(1)
-            Scenes.load("MainMenu")
+            requestScene("MainMenu", true)
         end,
         closeInventory = function() toggleInventory() end,
 
 
         -- settings_menu.xml — всё из общего модуля
+        onPlayerNameChanged           = settingsMenu.onPlayerNameChanged,
         onVolumeChanged           = settingsMenu.onVolumeChanged,
         onFovChanged              = settingsMenu.onFovChanged,
         onShadowQualityChanged    = settingsMenu.onShadowQualityChanged,
         onTextureFilteringChanged = settingsMenu.onTextureFilteringChanged,
         onFpsChanged              = settingsMenu.onFpsChanged,
         onBloomToggle             = settingsMenu.onBloomToggle,
+        onSSAOToggle              = settingsMenu.onSSAOToggle,
+        onShadowsToggle           = settingsMenu.onShadowsToggle,
         onVSyncToggle             = settingsMenu.onVSyncToggle,
         onDebugToggle             = settingsMenu.onDebugToggle,
         resetSettings             = settingsMenu.resetSettings,
@@ -127,6 +148,7 @@ function OnCreate(scene)
 
     local player = scene:create("Player")
     player.transform.position = Vector3(0, 2, -5)
+    player.transform.rotation = Vector3(0, 90, 0)
     player:addComponent("Player")
 
     -- Ground: текстура 25x25 раз — идеально под размер площадки.
@@ -217,9 +239,6 @@ function OnCreate(scene)
 
 end
 
--- Храним накопители UV-offset, чтобы не зависеть от deltaTime на больших dt.
-local uvScroll = {x = 0.0, y = 0.0}
-
 function Update(scene, deltaTime)
     if Input.consumeEscape() or Input.getKeyDown("escape") then
         if isInventoryOpen then
@@ -254,5 +273,10 @@ function Update(scene, deltaTime)
 end
 
 function OnDestroy(scene)
+    isPaused = false
+    isInventoryOpen = false
+    isTransitioning = false
+    Time.setTimeScale(1)
+    Input.setUIActive(true)
     UI.clear()
 end

@@ -1,7 +1,7 @@
 project(LindoSrc)
 
-file(GLOB_RECURSE headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-file(GLOB_RECURSE sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE headers CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+file(GLOB_RECURSE sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 list(REMOVE_DUPLICATES sources)
 list(REMOVE_ITEM sources ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
 
@@ -13,6 +13,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glm REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(pugixml CONFIG REQUIRED)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     # specific for vcpkg
     find_package(OpenAL CONFIG REQUIRED)
@@ -42,6 +43,7 @@ target_link_libraries(
             glad::glad
             assimp::assimp
             nlohmann_json::nlohmann_json
+            pugixml::pugixml
             OpenAL::OpenAL
             Freetype::Freetype
             PNG::PNG

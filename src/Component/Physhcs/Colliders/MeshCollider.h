@@ -3,7 +3,7 @@
 #include "Collider.h"
 #include <Physics/Math/AABB.h>
 #include <Graphics/core/mesh.h>
-#include <Component/Physhcs/MeshRenderer.h>
+#include <Component/Graphics/MeshRenderer.h>
 #include <glm/glm.hpp>
 #include <vector>
 

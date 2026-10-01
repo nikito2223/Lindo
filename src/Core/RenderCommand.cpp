@@ -7,7 +7,6 @@ namespace Lindo::Graphics {
     std::unique_ptr<IRenderAPI>& RenderCommand::GetAPIInstance() {
         static std::unique_ptr<IRenderAPI> s_renderAPI = nullptr;
 
-        // ������� ������ ������ �����, ����� � ���� ������� ���������� (��� ����� main)
         if (!s_renderAPI) {
             switch (IRenderAPI::GetAPI()) {
             case GraphicsAPI::OpenGL:

@@ -6,7 +6,7 @@
 #include "Component/GameObject/GameObject.h"
 #include "Component/PlayerController/Player.h"
 #include "Component/Camera/Camera.h"
-#include "Component/Physhcs/MeshRenderer.h"
+#include "Component/Graphics/MeshRenderer.h"
 #include "Component/Physhcs/RigidBody.h"
 #include "Component/Physhcs/Colliders/BoxCollider.h"
 #include "Component/Physhcs/Colliders/SphereCollider.h"

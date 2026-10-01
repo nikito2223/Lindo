@@ -8,6 +8,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <Component/Graphics/Material/Material.h>
 #include <Debug/DebugLogger.h>
+#include <Core/Types/Settings.h>
 #include <utility>
 
 namespace Lindo {
@@ -134,12 +135,18 @@ namespace Lindo {
 
                     Lindo::Graphics::Material* currentMaterial = material ? material : GetDefaultMaterial();
                     currentMaterial->apply(shader);
+                    if (Settings::getInstance().debugMode) {
+                        Lindo::Graphics::Shader::logOpenGLErrors("applying material on object '" + gameObject->getName() + "'");
+                    }
 
                     if (mesh) {
                         // Для одиночного меша передаём мировую матрицу, чтобы тени и геометрия совпадали
                         shader.setMat4("model", worldMatrix);
                         glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(worldMatrix)));
                         shader.setMat3("normalMatrix", normalMatrix);
+                        if (Settings::getInstance().debugMode) {
+                            Lindo::Graphics::Shader::logOpenGLErrors("setting transforms on object '" + gameObject->getName() + "'");
+                        }
                         mesh->Draw(shader);
                     }
                     else if (model) {

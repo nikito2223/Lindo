@@ -122,7 +122,17 @@ namespace Lindo {
                 outContact.colliderA = a;
                 outContact.colliderB = b;
                 outContact.point = info.contactPoint;
-                outContact.normal = info.contactNormal;
+                glm::vec3 normal = info.contactNormal;
+                float normalLength = glm::length(normal);
+                if (normalLength < 1e-6f) return false;
+                normal /= normalLength;
+
+                // Contact normals use a single A-to-B convention throughout the solver.
+                glm::vec3 centerDelta = b->GetWorldCenter() - a->GetWorldCenter();
+                if (glm::dot(normal, centerDelta) < 0.0f) {
+                    normal = -normal;
+                }
+                outContact.normal = normal;
                 outContact.penetration = info.penetrationDepth;
 
                 float friction, restitution;
@@ -251,18 +261,15 @@ namespace Lindo {
                     
                         if (bodyA && !bodyA->IsKinematic() && bodyA->gameObject) {
                             bodyA->gameObject->transform.position -= correction * invMassA;
-                            // Гасим накопленную скорость в сторону сжатия
-                            bodyA->SetVelocity(bodyA->GetVelocity() * 0.5f);
                         }
                         if (bodyB && !bodyB->IsKinematic() && bodyB->gameObject) {
                             bodyB->gameObject->transform.position += correction * invMassB;
-                            bodyB->SetVelocity(bodyB->GetVelocity() * 0.5f);
                         }
                     }
                 }
             }
 
-            glm::vec3 PhysicsSystem::ComputeGravityAt(const glm::vec3& worldPos) const {
+            glm::vec3 PhysicsSystem::GetGravityAt(const glm::vec3& worldPos) const {
                 glm::vec3 gravity = globalGravity;
                 for (auto* field : gravityFields) {
                     if (!field || !field->IsEnabled()) continue;
@@ -296,24 +303,28 @@ namespace Lindo {
                 bool aHasB = std::find(aCollisions.begin(), aCollisions.end(), b) != aCollisions.end();
                 bool bHasA = std::find(bCollisions.begin(), bCollisions.end(), a) != bCollisions.end();
 
-                CollisionInfo info;
-                info.other = b;
-                info.contactPoint = contact.point;
-                info.contactNormal = contact.normal;
-                info.penetrationDepth = contact.penetration;
-                info.relativeVelocity = 0.0f;
+                CollisionInfo infoA;
+                infoA.other = b;
+                infoA.contactPoint = contact.point;
+                infoA.contactNormal = -contact.normal;
+                infoA.penetrationDepth = contact.penetration;
+                infoA.relativeVelocity = 0.0f;
+
+                CollisionInfo infoB = infoA;
+                infoB.other = a;
+                infoB.contactNormal = contact.normal;
 
                 if (!aHasB) {
-                    a->OnCollisionEnter(b, info);
+                    a->OnCollisionEnter(b, infoA);
                 }
                 else {
-                    a->OnCollisionStay(b, info);
+                    a->OnCollisionStay(b, infoA);
                 }
                 if (!bHasA) {
-                    b->OnCollisionEnter(a, info);
+                    b->OnCollisionEnter(a, infoB);
                 }
                 else {
-                    b->OnCollisionStay(a, info);
+                    b->OnCollisionStay(a, infoB);
                 }
             }
 
@@ -344,7 +355,7 @@ namespace Lindo {
                 // 1. Интеграция физических тел
                 for (auto* body : rigidBodies) {
                     if (!body || body->isSleeping || body->IsKinematic()) continue;
-                    body->integrate(ComputeGravityAt(body->gameObject ? body->gameObject->transform.position : glm::vec3(0.0f)));
+                    body->integrate(GetGravityAt(body->gameObject ? body->gameObject->transform.position : glm::vec3(0.0f)));
                 }
 
                 // 2. Broad phase

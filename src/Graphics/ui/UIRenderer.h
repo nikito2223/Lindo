@@ -1,8 +1,13 @@
 #pragma once
 #include "UIMath.h"
+#include <memory>
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+namespace Lindo::Graphics {
+    class Shader;
+}
 
 namespace Lindo {
     namespace Graphics {
@@ -34,7 +39,7 @@ namespace Lindo {
                 void endFrame();
 
                 void drawRaw(const std::vector<Vertex>& vertices, unsigned int textureId);
-                unsigned int getShaderProgram() const { return m_shaderProgram; }
+                unsigned int getShaderProgram() const;
 
                 unsigned int m_currentTexture = 0;
                 bool m_useTexture = false;
@@ -44,7 +49,7 @@ namespace Lindo {
                 static const size_t MAX_VERTICES = 100000;
                 std::vector<Vertex> m_vertices;
                 unsigned int m_vao, m_vbo;
-                unsigned int m_shaderProgram;
+                std::unique_ptr<Lindo::Graphics::Shader> m_shader;
                 glm::mat4 m_projection;
                 unsigned int m_whiteTexture = 0;
 

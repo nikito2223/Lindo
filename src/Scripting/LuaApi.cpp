@@ -6,7 +6,7 @@
 #include "Component/GameObject/GameObject.h"
 #include "Component/PlayerController/Player.h"
 #include "Component/Camera/Camera.h"
-#include "Component/Physhcs/MeshRenderer.h"
+#include "Component/Graphics/MeshRenderer.h"
 #include "Component/Physhcs/RigidBody.h"
 #include "Component/Physhcs/Colliders/BoxCollider.h"
 #include "Component/Physhcs/Colliders/SphereCollider.h"
@@ -18,10 +18,12 @@
 #include "Graphics/ui/UIWidget.h"
 #include "Scripting/LuaScript.h"
 #include "Scripting/LuaScene.h"
+#include "Scripting/UIXmlDocument.h"
+#include "Scripting/UIStyleSheet.h"
+#include "Scripting/LuaUIXmlProcessor.h"
 #include "Debug/DebugLogger.h"
 #include "Graphics/core/Renderer.h"
 #include <fstream>
-#include <regex>
 #include <sstream>
 #include <vector>
 #include <unordered_map>
@@ -46,62 +48,6 @@ namespace {
         }
     }
 
-    std::string attr(const std::string& text, const std::string& name, const std::string& fallback = {}) {
-        const std::regex pattern(name + R"(\s*=\s*["']([^"']*)["'])");
-        std::smatch match;
-        return std::regex_search(text, match, pattern) ? match[1].str() : fallback;
-    }
-
-    float number(const std::string& text, const std::string& name, float fallback = 0.0f) {
-        const std::string value = attr(text, name);
-        if (value.empty()) return fallback;
-        try { return std::stof(value); } catch (...) { return fallback; }
-    }
-
-    int integer(const std::string& text, const std::string& name, int fallback = 0) {
-        return static_cast<int>(number(text, name, static_cast<float>(fallback)));
-    }
-
-    Lindo::Graphics::UI::Color color(const std::string& text, const std::string& name,
-        const Lindo::Graphics::UI::Color& fallback) {
-        const std::string value = attr(text, name);
-        if (value.empty()) return fallback;
-        std::stringstream stream(value);
-        std::string part;
-        std::vector<float> values;
-        while (std::getline(stream, part, ',')) {
-            try { values.push_back(std::stof(part)); } catch (...) { return fallback; }
-        }
-        if (values.size() < 3) return fallback;
-        return { values[0], values[1], values[2], values.size() > 3 ? values[3] : 1.0f };
-    }
-
-    // 1. В applyRect НЕ прибавляем parentX и parentY:
-    void applyRect(const std::shared_ptr<Lindo::Graphics::UI::UIWidget>& widget,
-                   const std::string& text) {
-        if (!widget) return;
-                
-        widget->setPosition(number(text, "x"), number(text, "y"));
-        widget->setSize(number(text, "width", 100.0f), number(text, "height", 40.0f));
-        widget->setTextSize(number(text, "fontSize", 24.0f));
-                
-        int zVal = integer(text, "zOrder", integer(text, "z", 0));
-        widget->setZOrder(zVal);
-
-        // Разбор якорей (Unity Style)
-        std::string anchorStr = attr(text, "anchor");
-        if (!anchorStr.empty()) {
-            if (anchorStr == "Center")       widget->setAnchor(Lindo::Graphics::UI::UIAnchor::Center);
-            else if (anchorStr == "TopLeft")      widget->setAnchor(Lindo::Graphics::UI::UIAnchor::TopLeft);
-            else if (anchorStr == "TopCenter")    widget->setAnchor(Lindo::Graphics::UI::UIAnchor::TopCenter);
-            else if (anchorStr == "TopRight")     widget->setAnchor(Lindo::Graphics::UI::UIAnchor::TopRight);
-            else if (anchorStr == "CenterLeft")   widget->setAnchor(Lindo::Graphics::UI::UIAnchor::CenterLeft);
-            else if (anchorStr == "CenterRight")  widget->setAnchor(Lindo::Graphics::UI::UIAnchor::CenterRight);
-            else if (anchorStr == "BottomLeft")   widget->setAnchor(Lindo::Graphics::UI::UIAnchor::BottomLeft);
-            else if (anchorStr == "BottomCenter") widget->setAnchor(Lindo::Graphics::UI::UIAnchor::BottomCenter);
-            else if (anchorStr == "BottomRight")  widget->setAnchor(Lindo::Graphics::UI::UIAnchor::BottomRight);
-        }
-    }
 }
 
 namespace Lindo::Scripting {
@@ -127,181 +73,45 @@ namespace Lindo::Scripting {
             return false;
         }
 
+        const std::string xml((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        UIXmlDocument document;
+        std::string error;
+        if (!document.parse(xml, error)) {
+            LOG_ERROR("[Lua UI] Invalid layout '" + fullPath + "': " + error);
+            return false;
+        }
+        if (document.root().name != "UI") {
+            LOG_ERROR("[Lua UI] Layout root must be <UI>: " + fullPath);
+            return false;
+        }
+
+        UIStyleSheet styles;
+        std::string styleFiles = document.root().attribute("styles");
+        for (char& ch : styleFiles) if (ch == ',') ch = ' ';
+        std::istringstream styleNames(styleFiles);
+        std::string styleName;
+        while (styleNames >> styleName) {
+            const std::string stylePath = AssetManager::get().resolvePath(styleName, "ui/styles");
+            if (!styles.load(stylePath, error)) {
+                LOG_WARN("[Lua UI] " + error + "; using inline layout values where available.");
+            }
+        }
+
         if (clearExisting) {
             g_ui->clearDynamicWidgets();
             g_namedWidgets.clear();
             restorePersistentWidgets();
             for (const auto& entry : g_persistentWidgets) g_namedWidgets[entry.first] = entry.second;
         }
+        std::unordered_map<std::string, std::shared_ptr<Lindo::Graphics::UI::UIWidget>> previousWidgets;
+        if (!clearExisting) previousWidgets = g_namedWidgets;
         auto root = g_ui->getRootPanel();
-        std::vector<std::shared_ptr<Lindo::Graphics::UI::UIPanel>> panels{ root };
-        const std::regex tags(R"(<\s*(/?)\s*([A-Za-z]+)([^>]*)>)");
-        std::string xml((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        for (std::sregex_iterator it(xml.begin(), xml.end(), tags), end; it != end; ++it) {
-            const std::smatch& match = *it;
-            const bool closing = !match[1].str().empty();
-            const std::string type = match[2].str();
-            const std::string attributes = match[3].str();
-            if (closing) {
-                if ((type == "Panel" || type == "UI") && panels.size() > 1) panels.pop_back();
-                continue;
-            }
-            if (type == "UI") continue;
-
-            std::shared_ptr<Lindo::Graphics::UI::UIWidget> widget;
-            float px = (panels.size() > 1) ? panels.back()->getX() : 0.0f;
-            float py = (panels.size() > 1) ? panels.back()->getY() : 0.0f;
-
-            if (type == "Panel") {
-                auto panel = std::make_shared<Lindo::Graphics::UI::UIPanel>();
-                applyRect(panel, attributes);
-                panel->SetColor(color(attributes, "color", { 0, 0, 0, 0 }));
-                panels.back()->addChild(panel);
-                widget = panel;
-                if (attributes.empty() || attributes.back() != '/') panels.push_back(panel);
-            }
-            else if (type == "Label") {
-                auto label = std::make_shared<Lindo::Graphics::UI::UILabel>(attr(attributes, "text"));
-                applyRect(label, attributes);
-                label->setTextColor(color(attributes, "color", { 1, 1, 1, 1 }));
-                panels.back()->addChild(label);
-                widget = label;
-            }
-            else if (type == "Button") {
-                sol::function callback;
-                const std::string handler = attr(attributes, "onClick");
-                if (!handler.empty()) {
-                    sol::object value = handlers[handler];
-                    if (value.is<sol::function>()) callback = value.as<sol::function>();
-                }
-                auto button = std::make_shared<Lindo::Graphics::UI::UIButton>(attr(attributes, "text"),
-                    [callback]() mutable {
-                        if (callback.valid()) {
-                            sol::protected_function_result result = callback();
-                            if (!result.valid()) {
-                                sol::error error = result;
-                                LOG_ERROR("[Lua UI] Button callback failed: " + std::string(error.what()));
-                            }
-                        }
-                    });
-                applyRect(button, attributes);
-                button->setTextColor(color(attributes, "textColor", { 1, 1, 1, 1 }));
-                button->setNormalColor(color(attributes, "color", { 0.2f, 0.2f, 0.2f, 1 }));
-                panels.back()->addChild(button);
-                widget = button;
-            }
-            else if (type == "Input") {
-                auto inputField = std::make_shared<Lindo::Graphics::UI::UITextInput>(attr(attributes, "placeholder"));
-                applyRect(inputField, attributes);
-
-                sol::function callback;
-                const std::string handler = attr(attributes, "onSubmit");
-                if (!handler.empty()) {
-                    sol::object value = handlers[handler];
-                    if (value.is<sol::function>()) callback = value.as<sol::function>();
-                }
-                inputField->setOnSubmit([callback](const std::string& val) mutable {
-                    if (callback.valid()) callback(val);
-                });
-
-                panels.back()->addChild(inputField);
-                widget = inputField;
-            }
-            else if (type == "Slider") {
-                float minV = number(attributes, "min", 0.0f);
-                float maxV = number(attributes, "max", 1.0f);
-                float val = number(attributes, "value", minV);
-
-                auto slider = std::make_shared<Lindo::Graphics::UI::UISlider>(minV, maxV, val);
-                applyRect(slider, attributes);
-
-                sol::function callback;
-                const std::string handler = attr(attributes, "onChange");
-                if (!handler.empty()) {
-                    sol::object value = handlers[handler];
-                    if (value.is<sol::function>()) callback = value.as<sol::function>();
-                }
-                slider->setOnChange([callback](float v) mutable {
-                    if (callback.valid()) callback(v);
-                });
-
-                panels.back()->addChild(slider);
-                widget = slider;
-            }
-            else if (type == "DropDown") {
-                std::vector<std::string> options;
-                std::string rawOptions = attr(attributes, "options");
-                std::stringstream ss(rawOptions);
-                std::string opt;
-                while (std::getline(ss, opt, ',')) options.push_back(opt);
-                        
-                auto dropdown = std::make_shared<Lindo::Graphics::UI::UIDropDown>(options);
-                applyRect(dropdown, attributes);
-
-                // Начальное значение из XML: "value=2" или "value=High"
-                const std::string initial = attr(attributes, "value");
-                if (!initial.empty()) {
-                    try {
-                        dropdown->setSelectedIndex(std::stoi(initial), /*notify*/ false);
-                    } catch (...) {
-                        for (size_t i = 0; i < options.size(); ++i) {
-                            if (options[i] == initial) {
-                                dropdown->setSelectedIndex(static_cast<int>(i), false);
-                                break;
-                            }
-                        }
-                    }
-                }
-                        
-                sol::function callback;
-                const std::string handler = attr(attributes, "onSelect");
-                if (!handler.empty()) {
-                    sol::object value = handlers[handler];
-                    if (value.is<sol::function>()) callback = value.as<sol::function>();
-                }
-                dropdown->setOnSelect([callback](int idx, const std::string& val) mutable {
-                    if (callback.valid()) callback(idx, val);
-                });
-            
-                panels.back()->addChild(dropdown);
-                widget = dropdown;
-            }
-            else if (type == "Toggle") {
-                bool checked = (attr(attributes, "checked") == "true" || attr(attributes, "checked") == "1");
-                auto toggle = std::make_shared<Lindo::Graphics::UI::UIToggle>(checked);
-                applyRect(toggle, attributes);
-                
-                toggle->setLabel(attr(attributes, "label"));
-
-                sol::function callback;
-                const std::string handler = attr(attributes, "onChange");
-                if (!handler.empty()) {
-                    sol::object value = handlers[handler];
-                    if (value.is<sol::function>()) callback = value.as<sol::function>();
-                }
-                
-                toggle->setOnChange([callback](bool state) mutable {
-                    if (callback.valid()) {
-                        sol::protected_function_result result = callback(state);
-                        if (!result.valid()) {
-                            sol::error error = result;
-                            LOG_ERROR("[Lua UI] Toggle callback failed: " + std::string(error.what()));
-                        }
-                    }
-                });
-
-                panels.back()->addChild(toggle);
-                widget = toggle;
-            }
-
-            
-
-            if (widget && attributes.find("visible=\"false\"") != std::string::npos) widget->setVisible(false);
-            if (widget) {
-                const std::string id = attr(attributes, "id");
-                if (!id.empty()) {
-                    g_namedWidgets[id] = widget;
-                    if (!clearExisting) g_persistentWidgets[id] = widget;
+        LuaUIXmlProcessor::build(document.root(), root, handlers, styles, g_namedWidgets);
+        if (!clearExisting) {
+            for (const auto& entry : g_namedWidgets) {
+                const auto previous = previousWidgets.find(entry.first);
+                if (previous == previousWidgets.end() || previous->second != entry.second) {
+                    g_persistentWidgets[entry.first] = entry.second;
                 }
             }
         }
@@ -309,6 +119,8 @@ namespace Lindo::Scripting {
             auto root = g_ui->getRootPanel();
             root->updateLayout(0.0f, 0.0f, root->getWidth(), root->getHeight());
         }
+        LOG_INFO("[Lua UI] Loaded layout '" + path + "' with " +
+            std::to_string(g_namedWidgets.size()) + " named widget(s).");
         return true;
 
     }
@@ -330,8 +142,18 @@ namespace Lindo::Scripting {
     void LuaUI::SetText(const std::string& id, const std::string& text) {
         auto it = g_namedWidgets.find(id);
         if (it == g_namedWidgets.end()) return;
-        auto label = std::dynamic_pointer_cast<Lindo::Graphics::UI::UILabel>(it->second);
-        if (label) label->setText(text);
+
+        if (auto label = std::dynamic_pointer_cast<Lindo::Graphics::UI::UILabel>(it->second)) {
+            label->setText(text);
+            return;
+        }
+        if (auto input = std::dynamic_pointer_cast<Lindo::Graphics::UI::UITextInput>(it->second)) {
+            input->setText(text);
+            return;
+        }
+        if (auto button = std::dynamic_pointer_cast<Lindo::Graphics::UI::UIButton>(it->second)) {
+            button->setLabel(text);
+        }
     }
 
     void LuaUI::SetVisible(const std::string& id, bool visible) {
@@ -424,6 +246,27 @@ namespace Lindo::Scripting {
                 [](Lindo::DisplaySettings& ds, const std::string& path) { ds.loadFromFile(path); }
             ),
             "get", &Lindo::DisplaySettings::getInstance
+        );
+
+        lua.new_usertype<Lindo::UserSettings>("UserSettings",
+            sol::no_constructor,
+
+            "userName", &Lindo::UserSettings::userName,
+            "id", &Lindo::UserSettings::id,
+
+            "apply", sol::overload(
+                [](Lindo::UserSettings& ds) { ds.apply(); },
+                [](Lindo::UserSettings& ds, const std::string& path) { ds.apply(path); }
+            ),
+            "saveToFile", sol::overload(
+                [](Lindo::UserSettings& ds) { ds.saveToFile(); },
+                [](Lindo::UserSettings& ds, const std::string& path) { ds.saveToFile(path); }
+            ),
+            "loadFromFile", sol::overload(
+                [](Lindo::UserSettings& ds) { ds.loadFromFile(); },
+                [](Lindo::UserSettings& ds, const std::string& path) { ds.loadFromFile(path); }
+            ),
+            "get", &Lindo::UserSettings::getInstance
         );
 
         // --- RigidBody Binding ---
@@ -695,6 +538,33 @@ namespace Lindo::Scripting {
         };
         ui["setText"] = &LuaUI::SetText;
         ui["setVisible"] = &LuaUI::SetVisible;
+        ui["exists"] = [](const std::string& id) { return g_namedWidgets.find(id) != g_namedWidgets.end(); };
+        ui["setPosition"] = [](const std::string& id, float x, float y) {
+            const auto it = g_namedWidgets.find(id);
+            if (it != g_namedWidgets.end()) it->second->setPosition(x, y);
+        };
+        ui["setSize"] = [](const std::string& id, float width, float height) {
+            const auto it = g_namedWidgets.find(id);
+            if (it != g_namedWidgets.end()) it->second->setSize(width, height);
+        };
+        ui["getPosition"] = [&lua](const std::string& id) -> sol::object {
+            const auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return sol::nil;
+            const auto rect = it->second->getRect();
+            sol::table result = lua.create_table();
+            result["x"] = rect.x;
+            result["y"] = rect.y;
+            return result;
+        };
+        ui["getSize"] = [&lua](const std::string& id) -> sol::object {
+            const auto it = g_namedWidgets.find(id);
+            if (it == g_namedWidgets.end()) return sol::nil;
+            const auto rect = it->second->getRect();
+            sol::table result = lua.create_table();
+            result["width"] = rect.w;
+            result["height"] = rect.h;
+            return result;
+        };
 
         ui["setChecked"] = [](const std::string& id, bool checked) {
             LuaUI::SetChecked(id, checked);

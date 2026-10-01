@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <Core/AssetManager.h> // Проверь правильность пути к AssetManager.h!
+#include <Core/Types/Settings.h>
 
 namespace Lindo {
     namespace Graphics {
@@ -20,6 +21,9 @@ namespace Lindo {
 
             glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(finalModelMatrix)));
             shader.setMat3("normalMatrix", normalMatrix);
+            if (Settings::getInstance().debugMode) {
+                Shader::logOpenGLErrors("setting model transforms");
+            }
 
             for (auto& mesh : meshes)
             {
@@ -33,7 +37,7 @@ namespace Lindo {
             const aiScene* scene = importer.ReadFile(
                 path,
                 aiProcess_Triangulate |
-                aiProcess_GenNormals |
+                aiProcess_GenSmoothNormals |
                 aiProcess_CalcTangentSpace
             );
 

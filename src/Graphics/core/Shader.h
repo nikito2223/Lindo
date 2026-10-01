@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <filesystem>
+#include <stdexcept>
 
 #include "Debug/DebugLogger.h"
 
@@ -346,8 +347,7 @@ namespace Lindo {
                 LOG_DEBUG("[Shader Preprocessor] Reading file: " + filepath);
                 std::ifstream file(filepath);
                 if (!file.is_open()) {
-                    LOG_ERROR("[Shader Preprocessor] Cannot open file: " + filepath);
-                    return "";
+                    throw std::runtime_error("Cannot open shader source: " + filepath);
                 }
 
                 std::string source;
@@ -407,6 +407,7 @@ namespace Lindo {
                 }
                 catch (const std::exception& e) {
                     LOG_ERROR("[Shader] Exception during preprocessing: " + std::string(e.what()));
+                    ID = 0;
                     return;
                 }
 
@@ -427,76 +428,113 @@ namespace Lindo {
                     return;
                 }
 
-                unsigned int vertex = 0, geometry = 0, fragment = 0;
+                const std::string vertexLabel = m_vertexPath.empty() ? "inline vertex source" : m_vertexPath;
+                const std::string geometryLabel = m_geometryPath.empty() ? "inline geometry source" : m_geometryPath;
+                const std::string fragmentLabel = m_fragmentPath.empty() ? "inline fragment source" : m_fragmentPath;
 
-                // Vertex Shader
-                LOG_DEBUG("[Shader Compilation] Compiling Vertex Shader...");
-                vertex = glCreateShader(GL_VERTEX_SHADER);
-                glShaderSource(vertex, 1, &vShaderCode, NULL);
-                glCompileShader(vertex);
-                checkCompileErrors(vertex, "VERTEX");
-                logOpenGLErrors("after vertex shader compilation");
+                GLuint vertex = 0;
+                GLuint geometry = 0;
+                GLuint fragment = 0;
 
-                // Geometry Shader
-                if (gShaderCode) {
-                    LOG_DEBUG("[Shader Compilation] Compiling Geometry Shader...");
-                    geometry = glCreateShader(GL_GEOMETRY_SHADER);
-                    glShaderSource(geometry, 1, &gShaderCode, NULL);
-                    glCompileShader(geometry);
-                    checkCompileErrors(geometry, "GEOMETRY");
-                    logOpenGLErrors("after geometry shader compilation");
+                auto cleanupShaders = [&]() {
+                    if (vertex) glDeleteShader(vertex);
+                    if (geometry) glDeleteShader(geometry);
+                    if (fragment) glDeleteShader(fragment);
+                };
+
+                if (!compileStage(GL_VERTEX_SHADER, vShaderCode, vertexCode, "VERTEX", vertexLabel, vertex)) {
+                    cleanupShaders();
+                    ID = 0;
+                    return;
                 }
 
-                // Fragment Shader
-                LOG_DEBUG("[Shader Compilation] Compiling Fragment Shader...");
-                fragment = glCreateShader(GL_FRAGMENT_SHADER);
-                glShaderSource(fragment, 1, &fShaderCode, NULL);
-                glCompileShader(fragment);
-                checkCompileErrors(fragment, "FRAGMENT");
-                logOpenGLErrors("after fragment shader compilation");
+                if (gShaderCode && !compileStage(GL_GEOMETRY_SHADER, gShaderCode, geometryCode, "GEOMETRY", geometryLabel, geometry)) {
+                    cleanupShaders();
+                    ID = 0;
+                    return;
+                }
 
-                // Program Linking
-                LOG_DEBUG("[Shader Linking] Linking Shader Program...");
-                ID = glCreateProgram();
-                glAttachShader(ID, vertex);
-                if (geometry) glAttachShader(ID, geometry);
-                glAttachShader(ID, fragment);
-                glLinkProgram(ID);
-                checkCompileErrors(ID, "PROGRAM");
-                logOpenGLErrors("after shader program link");
+                if (!compileStage(GL_FRAGMENT_SHADER, fShaderCode, fragmentCode, "FRAGMENT", fragmentLabel, fragment)) {
+                    cleanupShaders();
+                    ID = 0;
+                    return;
+                }
 
-                // Cleanup
-                glDeleteShader(vertex);
-                if (geometry) glDeleteShader(geometry);
-                glDeleteShader(fragment);
-            }
-            
-            void checkCompileErrors(GLuint shader, std::string type)
-            {
-                GLint success;
-                GLchar infoLog[1024];
+                const GLuint program = glCreateProgram();
+                if (program == 0) {
+                    LOG_ERROR("[Shader] glCreateProgram failed for vertex='" + vertexLabel + "', fragment='" + fragmentLabel + "'.");
+                    cleanupShaders();
+                    ID = 0;
+                    return;
+                }
 
-                if (type != "PROGRAM") {
-                    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-                    if (!success) {
-                        glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                        LOG_ERROR("[Shader Compilation Error] Type: " + type + "\n" + std::string(infoLog));
-                    }
-                    else {
-                        LOG_DEBUG("[Shader Compilation Success] Stage: " + type);
-                    }
+                glAttachShader(program, vertex);
+                if (geometry) glAttachShader(program, geometry);
+                glAttachShader(program, fragment);
+                glLinkProgram(program);
+
+                GLint linkSuccess = GL_FALSE;
+                glGetProgramiv(program, GL_LINK_STATUS, &linkSuccess);
+                if (linkSuccess != GL_TRUE) {
+                    GLint logLength = 0;
+                    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
+                    std::vector<GLchar> infoLog(static_cast<size_t>(logLength > 0 ? logLength : 1), '\0');
+                    GLsizei written = 0;
+                    glGetProgramInfoLog(program, static_cast<GLsizei>(infoLog.size()), &written, infoLog.data());
+                    LOG_ERROR("[Shader Linker Error] Program linking failed. Vertex='" + vertexLabel +
+                        "', Geometry='" + (geometry ? geometryLabel : "none") + "', Fragment='" + fragmentLabel +
+                        "'. Driver log:\n" + std::string(infoLog.data(), static_cast<size_t>(written)));
+                    glDeleteProgram(program);
+                    ID = 0;
                 }
                 else {
-                    glGetProgramiv(shader, GL_LINK_STATUS, &success);
-                    if (!success) {
-                        glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                        LOG_ERROR("[Shader Linker Error] Program Linking Failed!\n" + std::string(infoLog));
-                        ID = 0;
-                    }
-                    else {
-                        LOG_INFO("[Shader Linker Success] Program linked successfully (ID: " + std::to_string(ID) + ")");
-                    }
+                    ID = program;
+                    LOG_INFO("[Shader Linker Success] Program linked successfully (ID: " + std::to_string(ID) +
+                        ", vertex='" + vertexLabel + "', fragment='" + fragmentLabel + "').");
                 }
+
+                cleanupShaders();
+                logOpenGLErrors("shader compile/link");
+            }
+
+            static std::string numberedSource(const std::string& source) {
+                std::istringstream input(source);
+                std::ostringstream output;
+                std::string line;
+                size_t lineNumber = 1;
+                while (std::getline(input, line)) {
+                    output << lineNumber++ << " | " << line << '\n';
+                }
+                return output.str();
+            }
+
+            static bool compileStage(GLenum stage, const char* code, const std::string& source,
+                const std::string& stageName, const std::string& sourceLabel, GLuint& shader) {
+                shader = glCreateShader(stage);
+                if (shader == 0) {
+                    LOG_ERROR("[Shader Compilation Error] glCreateShader failed for " + stageName + " source='" + sourceLabel + "'.");
+                    return false;
+                }
+
+                glShaderSource(shader, 1, &code, nullptr);
+                glCompileShader(shader);
+
+                GLint success = GL_FALSE;
+                glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+                if (success == GL_TRUE) {
+                    LOG_DEBUG("[Shader Compilation Success] Stage=" + stageName + " source='" + sourceLabel + "'.");
+                    return true;
+                }
+
+                GLint logLength = 0;
+                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+                std::vector<GLchar> infoLog(static_cast<size_t>(logLength > 0 ? logLength : 1), '\0');
+                GLsizei written = 0;
+                glGetShaderInfoLog(shader, static_cast<GLsizei>(infoLog.size()), &written, infoLog.data());
+                LOG_ERROR("[Shader Compilation Error] Stage=" + stageName + " source='" + sourceLabel +
+                    "'. Driver log:\n" + std::string(infoLog.data(), static_cast<size_t>(written)) +
+                    "\nExpanded source with line numbers:\n" + numberedSource(source));
+                return false;
             }
         };
     }

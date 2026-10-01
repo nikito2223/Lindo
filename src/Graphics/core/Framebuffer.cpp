@@ -3,6 +3,22 @@
 
 namespace Lindo {
     namespace Graphics {
+        namespace {
+            const char* FramebufferStatusName(GLenum status) {
+                switch (status) {
+                case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
+                case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
+                case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+                case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+                case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+                case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+                case GL_FRAMEBUFFER_UNSUPPORTED: return "GL_FRAMEBUFFER_UNSUPPORTED";
+                case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+                default: return "unknown framebuffer status";
+                }
+            }
+        }
+
         Framebuffer::Framebuffer(int width, int height) : m_width(width), m_height(height) {
             invalidate();
         }
@@ -36,11 +52,15 @@ namespace Lindo {
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_width, m_height);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_depthAttachment);
 
-            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                LOG_ERROR("[Framebuffer] Framebuffer is NOT complete! Status: " + std::to_string(glCheckFramebufferStatus(GL_FRAMEBUFFER)));
+            m_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            if (m_status != GL_FRAMEBUFFER_COMPLETE) {
+                LOG_ERROR("[Framebuffer] FBO " + std::to_string(m_fbo) + " is incomplete: " +
+                    FramebufferStatusName(m_status) + " (0x" + std::to_string(static_cast<unsigned int>(m_status)) +
+                    "), size=" + std::to_string(m_width) + "x" + std::to_string(m_height) + ".");
             }
             else {
-                LOG_INFO("[Framebuffer] Framebuffer created successfully: " + std::to_string(m_width) + "x" + std::to_string(m_height));
+                LOG_INFO("[Framebuffer] FBO " + std::to_string(m_fbo) + " complete: " +
+                    std::to_string(m_width) + "x" + std::to_string(m_height) + ".");
             }
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
